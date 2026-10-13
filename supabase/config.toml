@@ -1,0 +1,19 @@
+# Minimal Supabase CLI config. `supabase link --project-ref <ref>` connects it to your project.
+project_id = "bueroki"
+
+[auth]
+site_url = "bueroki://"
+
+[auth.email]
+enable_signup = true
+otp_length = 6
+otp_expiry = 3600
+
+[functions.analyze-document]
+verify_jwt = true
+
+[functions.draft-reply]
+verify_jwt = true
+
+[functions.case-chat]
+verify_jwt = true

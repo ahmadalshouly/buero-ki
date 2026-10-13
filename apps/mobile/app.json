@@ -1,0 +1,46 @@
+{
+  "expo": {
+    "name": "BüroKI",
+    "slug": "bueroki",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "de.bueroki.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "package": "de.bueroki.app"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-localization",
+      "expo-sqlite",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "BüroKI needs your photos to read letters you choose.",
+          "cameraPermission": "BüroKI uses the camera to photograph your letters.",
+          "microphonePermission": false
+        }
+      ]
+    ],
+    "scheme": "bueroki",
+    "experiments": {
+      "typedRoutes": true
+    },
+    "userInterfaceStyle": "light"
+  }
+}
