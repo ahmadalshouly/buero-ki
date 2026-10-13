@@ -35,7 +35,8 @@
           "cameraPermission": "BüroKI uses the camera to photograph your letters.",
           "microphonePermission": false
         }
-      ]
+      ],
+      "expo-image"
     ],
     "scheme": "bueroki",
     "experiments": {
