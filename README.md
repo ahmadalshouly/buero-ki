@@ -2,30 +2,53 @@
 
 A personal helper for German paperwork, built for people with an immigration background. You open a **case** for each matter (for example a Jobcenter Bürgergeld application), add the letters you receive, and an AI agent explains them in your language, tracks deadlines, drafts German replies and answers questions about the case.
 
-This repository holds the first version (MVP) from the product plan:
+What is in this version:
 
-- **Cases** with letters, tasks and drafts
-- **Scan and explain**: photo or PDF in, explanation, deadlines and German terms out, in the user's language
-- **Deadline tracking** pulled from every letter
-- **Reply drafting**: formal German letter or email plus a translation and "before you send" notes
-- **Chat with the case** in any language
-- **Six languages**: English, Deutsch, العربية, Türkçe, Українська, فارسی (with right-to-left layout)
+- **Cases** with a history timeline, letters, tasks and drafts. Cases can be edited, put on "waiting", closed or deleted.
+- **Scan and explain**: up to 10 photographed pages or one PDF per letter. The agent returns an explanation, deadlines (with where each date came from), amounts, German terms and whether to get advice, in the person's language.
+- **Today and Deadlines**: what is overdue, due this week and later, across all cases. Tasks can also be added by hand.
+- **Reply drafting**: a formal German letter or email with a translation and "before you send" notes. Drafts can be edited, revised by the agent ("make it shorter"), opened in the email app and marked as sent.
+- **Chat with the case** in any language.
+- **Search** across cases and letters.
+- **Onboarding** with language, name and explicit consent to AI processing.
+- **Deadline reminders** on the phone (3 days before and on the day) and an optional **Face ID / fingerprint lock**.
+- **Light and dark mode**, six languages (English, Deutsch, العربية, Türkçe, Українська, فارسی) with right-to-left layout.
+- **Works offline** from a cached copy of your cases.
 
 Sending emails, AI phone calls, the community translator marketplace and the lawyer/doctor directory come in later phases.
+
+## Production features
+
+| Area | What it does |
+| --- | --- |
+| Security | Row level security on every table; storage paths scoped to the user; the API key only lives in edge functions; letters are treated as data, never as instructions to the agent. |
+| Privacy (GDPR) | Consent recorded with time and terms version; "Download my data" (Art. 15/20) and "Delete account" (Art. 17), which removes files, rows and the login. |
+| Limits | Daily per-plan limits for each agent function, counted in `ai_usage`. Users cannot change their own plan. |
+| Audit | `audit_log` records case, letter, task and draft changes. |
+| Reliability | Every function validates input with zod, returns `{ error, code, requestId }` on failure and writes one JSON log line per request. |
+| Quality | Typecheck, ESLint and Jest for the app; `deno check` and tests for the functions; migration and row-level-security tests on an in-memory Postgres. All run in GitHub Actions. |
 
 ## Layout
 
 ```
-apps/mobile/          Expo (React Native) app for iOS, Android and web
-  src/app/            Screens (Expo Router)
-  src/lib/api.ts      Data layer: Supabase, or demo mode when no Supabase is configured
-  src/locales/        UI translations
+apps/mobile/            Expo (React Native) app for iOS, Android and web
+  src/app/              Screens (Expo Router): (tabs)/ Today, Cases, Deadlines, Settings
+  src/lib/api.ts        Data layer: Supabase, or demo mode when no Supabase is configured
+  src/lib/queries.ts    TanStack Query hooks, cache persisted on the device
+  src/locales/          UI translations
+  src/__tests__/        Jest tests
 supabase/
-  migrations/         Database schema with row level security and the private storage bucket
-  functions/          Edge functions that call Claude
-    analyze-document/ Reads a letter, explains it, creates tasks, updates the case
-    draft-reply/      Writes a German letter or email with a translation
-    case-chat/        Answers questions about one case
+  migrations/           Schema, row level security, storage bucket, usage, audit log, timeline, search
+  functions/
+    _shared/            Request handler, Claude client, limits, case context, output schemas
+    analyze-document/   Reads a letter, explains it, creates tasks, updates the case
+    draft-reply/        Writes or revises a German letter or email with a translation
+    case-chat/          Answers questions about one case
+    export-data/        GDPR data export
+    delete-account/     GDPR account deletion
+    tests/              Deno tests
+  tests/                Migration and row-level-security tests (PGlite)
+.github/workflows/ci.yml
 ```
 
 ## Run the app in demo mode
@@ -52,10 +75,18 @@ Scan the QR code with the Expo Go app on your phone, or press `w` for the browse
 3. Add your Anthropic API key and deploy the functions:
    ```bash
    supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
-   supabase functions deploy analyze-document draft-reply case-chat
+   supabase functions deploy analyze-document draft-reply case-chat export-data delete-account
    ```
 4. Sign-in uses a 6-digit email code. In the Supabase dashboard go to **Authentication > Email Templates > Magic Link** and make sure the template includes `{{ .Token }}`, for example: `Your BüroKI code is {{ .Token }}`.
 5. Copy `apps/mobile/.env.example` to `apps/mobile/.env` and fill in the project URL and publishable key from **Project Settings > API**. Restart `npx expo start`.
+
+## Run the tests
+
+```bash
+cd apps/mobile && npm run typecheck && npm run lint && npm test
+deno check supabase/functions/*/index.ts && deno test supabase/functions/tests/
+cd supabase/tests && npm install && npm test
+```
 
 ## Build for the app stores
 
@@ -71,7 +102,8 @@ Store submission needs an Apple Developer account and a Google Play developer ac
 
 ## Notes on the AI
 
-- Model: Claude Opus 5.5 via the Anthropic API, called only from the edge functions so the API key never reaches the phone.
+- Claude is called through the Anthropic API only from the edge functions, so the API key never reaches the phone. The model is set in `supabase/functions/_shared/anthropic.ts`.
 - Answers use structured JSON output, so the app always gets the same fields (summary, actions, deadlines, terms).
 - The agent explains and drafts but does not give individual legal advice. It flags when someone should see a Beratungsstelle or a lawyer, in line with the Rechtsdienstleistungsgesetz. Have a German lawyer confirm this before launch.
-- Every function runs as the signed-in user, so row level security applies to everything the agent reads and writes.
+- Every function runs as the signed-in user, so row level security applies to everything the agent reads and writes. Only `delete-account` uses the service role, and only to remove the person's own files and login.
+- Plan limits live in `supabase/functions/_shared/limits.ts` (enforced) and `apps/mobile/src/lib/limits.ts` (shown in Settings). Keep them in sync.

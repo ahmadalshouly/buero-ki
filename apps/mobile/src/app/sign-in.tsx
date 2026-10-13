@@ -1,11 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { Button, ErrorBox, Field, Muted, styles } from "@/components/ui";
+import { KeyboardAvoidingView, Platform, View } from "react-native";
+import { Button, ErrorBox, Field, Screen, Txt } from "@/components/ui";
 import { initialLanguage } from "@/lib/i18n";
 import { supabase } from "@/lib/supabase";
-import { colors, space, type } from "@/lib/theme";
+import { space } from "@/lib/theme";
+
+const RESEND_SECONDS = 60;
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 export default function SignIn() {
   const { t } = useTranslation();
@@ -14,38 +16,53 @@ export default function SignIn() {
   const [step, setStep] = useState<"email" | "code">("email");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [cooldown, setCooldown] = useState(0);
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setTimeout(() => setCooldown(cooldown - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [cooldown]);
+
+  const validEmail = EMAIL.test(email.trim());
 
   async function sendCode() {
+    if (!validEmail) return;
     setBusy(true);
     setError(null);
     const { error } = await supabase!.auth.signInWithOtp({
-      email: email.trim(),
+      email: email.trim().toLowerCase(),
       options: { shouldCreateUser: true, data: { language: initialLanguage } },
     });
     setBusy(false);
-    if (error) setError(error.message);
-    else setStep("code");
+    if (error) {
+      setError(error.message);
+      return;
+    }
+    setStep("code");
+    setCode("");
+    setCooldown(RESEND_SECONDS);
   }
 
-  async function verify() {
+  async function verify(token = code) {
     setBusy(true);
     setError(null);
-    const { error } = await supabase!.auth.verifyOtp({ email: email.trim(), token: code.trim(), type: "email" });
+    const { error } = await supabase!.auth.verifyOtp({ email: email.trim().toLowerCase(), token: token.trim(), type: "email" });
     setBusy(false);
     if (error) setError(error.message);
   }
 
   return (
-    <SafeAreaView style={styles.screen}>
-      <View style={[styles.column, { flex: 1, justifyContent: "center" }]}>
-        <View style={{ gap: space(2), marginBottom: space(4) }}>
-          <Text style={[type.title, { fontSize: 36, color: colors.accent }]}>BüroKI</Text>
-          <Text style={type.h3}>{t("common.tagline")}</Text>
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      <Screen padTop>
+        <View style={{ gap: space(2), marginTop: space(10), marginBottom: space(2) }}>
+          <Txt variant="title" tone="accent" style={{ fontSize: 38, lineHeight: 44 }}>BüroKI</Txt>
+          <Txt variant="h3">{t("common.tagline")}</Txt>
         </View>
 
         {step === "email" ? (
           <>
-            <Muted>{t("auth.intro")}</Muted>
+            <Txt tone="muted">{t("auth.intro")}</Txt>
             <Field
               label={t("auth.email")}
               value={email}
@@ -53,28 +70,46 @@ export default function SignIn() {
               keyboardType="email-address"
               autoCapitalize="none"
               autoComplete="email"
+              textContentType="emailAddress"
               placeholder="name@example.com"
+              returnKeyType="send"
+              onSubmitEditing={sendCode}
+              error={email.length > 4 && !validEmail && email.includes("@") ? t("auth.emailInvalid") : null}
             />
-            <Button title={t("auth.sendCode")} onPress={sendCode} loading={busy} disabled={!email.includes("@")} />
+            <Button title={t("auth.sendCode")} onPress={sendCode} loading={busy} disabled={!validEmail} />
           </>
         ) : (
           <>
-            <Muted>{t("auth.codeSent", { email })}</Muted>
+            <Txt tone="muted">{t("auth.codeSent", { email: email.trim() })}</Txt>
             <Field
               label={t("auth.code")}
               value={code}
-              onChangeText={setCode}
+              onChangeText={(v) => {
+                const digits = v.replace(/\D/g, "").slice(0, 6);
+                setCode(digits);
+                if (digits.length === 6) verify(digits);
+              }}
               keyboardType="number-pad"
               autoComplete="one-time-code"
+              textContentType="oneTimeCode"
               maxLength={6}
               placeholder="123456"
+              autoFocus
+              style={{ fontSize: 24, letterSpacing: 8, textAlign: "center" }}
             />
-            <Button title={t("auth.verify")} onPress={verify} loading={busy} disabled={code.trim().length < 6} />
+            <Button title={t("auth.verify")} onPress={() => verify()} loading={busy} disabled={code.length !== 6} />
+            <Button
+              variant="ghost"
+              title={cooldown > 0 ? t("auth.resendIn", { seconds: cooldown }) : t("auth.resend")}
+              onPress={sendCode}
+              disabled={cooldown > 0 || busy}
+            />
             <Button variant="ghost" title={t("auth.changeEmail")} onPress={() => setStep("email")} />
           </>
         )}
         {error && <ErrorBox message={error} />}
-      </View>
-    </SafeAreaView>
+        <Txt variant="small" tone="faint" style={{ textAlign: "center" }}>{t("auth.privacy")}</Txt>
+      </Screen>
+    </KeyboardAvoidingView>
   );
 }

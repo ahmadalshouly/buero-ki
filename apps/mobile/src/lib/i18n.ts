@@ -14,6 +14,7 @@ const supported = LANGUAGES.map((l) => l.code) as string[];
 const device = getLocales()[0]?.languageCode ?? "en";
 export const initialLanguage = (supported.includes(device) ? device : "en") as Language;
 
+// eslint-disable-next-line import/no-named-as-default-member -- the default instance is the one react-i18next binds to
 i18n.use(initReactI18next).init({
   resources: {
     en: { translation: en },
@@ -37,6 +38,7 @@ export function isRtl(lang: string) {
  * changes, which only takes effect after the app restarts.
  */
 export function setLanguage(lang: Language): boolean {
+  // eslint-disable-next-line import/no-named-as-default-member
   i18n.changeLanguage(lang);
   const rtl = isRtl(lang);
   if (Platform.OS === "web") {

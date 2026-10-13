@@ -8,3 +8,5 @@ apps/mobile/android/
 supabase/.temp/
 supabase/.branches/
 .DS_Store
+supabase/tests/node_modules/
+supabase/tests/package-lock.json

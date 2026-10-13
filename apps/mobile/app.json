@@ -36,7 +36,9 @@
           "microphonePermission": false
         }
       ],
-      "expo-image"
+      "expo-image",
+      "expo-sharing",
+      "expo-asset"
     ],
     "scheme": "bueroki",
     "experiments": {

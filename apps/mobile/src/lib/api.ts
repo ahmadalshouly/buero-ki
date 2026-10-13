@@ -1,72 +1,96 @@
-import { FunctionsHttpError, type SupabaseClient } from "@supabase/supabase-js";
+import { FunctionsFetchError, FunctionsHttpError, type SupabaseClient } from "@supabase/supabase-js";
 import { demoApi } from "./demo";
+import { ApiError, EXTENSIONS, validatePages } from "./errors";
+import { DAILY_LIMITS } from "./limits";
 import { isDemo, supabase } from "./supabase";
 import type {
-  Case, CaseDocument, CaseStatus, ChatMessage, Draft, NewCase, PickedFile, Profile, Task,
+  AgentFunction, Case, CaseDocument, CaseStatus, ChatMessage, Draft, NewCase, PickedFile, Profile, SearchResult, Task,
+  TimelineItem, UsageToday,
 } from "./types";
+
+export { ApiError, MAX_PAGES, TERMS_VERSION, type ApiErrorCode } from "./errors";
+
+export type ProfilePatch = Partial<Pick<Profile, "full_name" | "language" | "city" | "onboarded_at" | "ai_consent_at">> & {
+  terms_version?: string;
+};
 
 export interface Api {
   getProfile(): Promise<Profile>;
-  updateProfile(patch: Partial<Pick<Profile, "full_name" | "language" | "city">>): Promise<void>;
+  updateProfile(patch: ProfilePatch): Promise<void>;
+  getUsage(): Promise<UsageToday>;
+  exportData(): Promise<unknown>;
+  deleteAccount(): Promise<void>;
 
   listCases(): Promise<Case[]>;
   getCase(id: string): Promise<Case>;
   createCase(input: NewCase): Promise<Case>;
-  setCaseStatus(id: string, status: CaseStatus): Promise<void>;
+  updateCase(id: string, patch: Partial<NewCase> & { status?: CaseStatus }): Promise<void>;
+  deleteCase(id: string): Promise<void>;
+  getTimeline(caseId: string): Promise<TimelineItem[]>;
 
   listDocuments(caseId: string): Promise<CaseDocument[]>;
   getDocument(id: string): Promise<CaseDocument>;
-  getDocumentUrl(doc: CaseDocument): Promise<string | null>;
-  /** Uploads the file, then has the agent read it. Resolves when the analysis is done. */
-  addDocument(caseId: string, file: PickedFile): Promise<CaseDocument>;
+  getPageUrls(doc: CaseDocument): Promise<string[]>;
+  /** Uploads the pages, then has the agent read them. Resolves when the analysis is done. */
+  addDocument(caseId: string, pages: PickedFile[]): Promise<CaseDocument>;
   retryDocument(id: string): Promise<CaseDocument>;
+  deleteDocument(id: string): Promise<void>;
 
   listTasks(filter: { caseId?: string; openOnly?: boolean }): Promise<Task[]>;
+  createTask(input: { caseId: string; title: string; dueDate: string | null }): Promise<Task>;
   setTaskDone(id: string, done: boolean): Promise<void>;
+  deleteTask(id: string): Promise<void>;
 
   listDrafts(caseId: string): Promise<Draft[]>;
   getDraft(id: string): Promise<Draft>;
-  createDraft(input: { caseId: string; documentId?: string | null; kind: "letter" | "email"; instructions: string }): Promise<Draft>;
+  createDraft(input: {
+    caseId: string;
+    documentId?: string | null;
+    kind: "letter" | "email";
+    instructions: string;
+    reviseDraftId?: string | null;
+  }): Promise<Draft>;
+  updateDraft(id: string, patch: { subject?: string; body_de?: string }): Promise<void>;
   setDraftStatus(id: string, status: Draft["status"]): Promise<void>;
+  deleteDraft(id: string): Promise<void>;
 
   listMessages(caseId: string): Promise<ChatMessage[]>;
   sendMessage(caseId: string, text: string): Promise<ChatMessage>;
+
+  search(q: string): Promise<SearchResult[]>;
 }
 
-function must<T>(result: { data: T | null; error: { message: string } | null }): T {
-  if (result.error) throw new Error(result.error.message);
-  if (result.data === null) throw new Error("Not found");
+function must<T>(result: { data: T | null; error: { message: string; code?: string } | null }): T {
+  if (result.error) throw new ApiError(result.error.message, result.error.code === "PGRST116" ? "not_found" : "error");
+  if (result.data === null) throw new ApiError("Not found", "not_found");
   return result.data;
+}
+
+function ok(result: { error: { message: string } | null }): void {
+  if (result.error) throw new ApiError(result.error.message);
 }
 
 async function invoke<T>(db: SupabaseClient, name: string, body: object): Promise<T> {
   const { data, error } = await db.functions.invoke(name, { body });
-  if (error) {
-    if (error instanceof FunctionsHttpError) {
-      const payload = await error.context.json().catch(() => null);
-      throw new Error(payload?.error ?? error.message);
-    }
-    throw error;
+  if (!error) return data as T;
+  if (error instanceof FunctionsHttpError) {
+    const payload = await error.context.json().catch(() => null);
+    throw new ApiError(payload?.error ?? error.message, payload?.code ?? "error", payload?.requestId);
   }
-  return data as T;
+  if (error instanceof FunctionsFetchError) throw new ApiError(error.message, "offline");
+  throw new ApiError(error.message);
 }
-
-const EXTENSIONS: Record<string, string> = {
-  "image/jpeg": "jpg",
-  "image/png": "png",
-  "image/webp": "webp",
-  "application/pdf": "pdf",
-};
 
 function supabaseApi(db: SupabaseClient): Api {
   async function userId(): Promise<string> {
     const { data } = await db.auth.getSession();
     const id = data.session?.user.id;
-    if (!id) throw new Error("Not signed in");
+    if (!id) throw new ApiError("Not signed in", "auth");
     return id;
   }
 
   async function analyze(documentId: string): Promise<CaseDocument> {
+    // On failure the function marks the letter as failed, so the list shows a retry.
     await invoke(db, "analyze-document", { document_id: documentId });
     return api.getDocument(documentId);
   }
@@ -74,12 +98,23 @@ function supabaseApi(db: SupabaseClient): Api {
   const api: Api = {
     async getProfile() {
       const id = await userId();
-      return must(await db.from("profiles").select("*").eq("id", id).single());
+      return must(await db.from("profiles").select("id, full_name, language, city, onboarded_at, ai_consent_at, plan").eq("id", id).single());
     },
     async updateProfile(patch) {
-      const id = await userId();
-      const { error } = await db.from("profiles").update(patch).eq("id", id);
-      if (error) throw new Error(error.message);
+      ok(await db.from("profiles").update(patch).eq("id", await userId()));
+    },
+    async getUsage() {
+      const profile = await api.getProfile();
+      const since = new Date(Date.now() - 86400000).toISOString();
+      const rows = must(await db.from("ai_usage").select("function_name").gte("created_at", since));
+      const used = { "analyze-document": 0, "draft-reply": 0, "case-chat": 0 } as Record<AgentFunction, number>;
+      for (const r of rows as { function_name: AgentFunction }[]) if (r.function_name in used) used[r.function_name]++;
+      return { plan: profile.plan, used, limits: DAILY_LIMITS[profile.plan] ?? DAILY_LIMITS.free };
+    },
+    exportData: () => invoke(db, "export-data", {}),
+    async deleteAccount() {
+      await invoke(db, "delete-account", { confirm: "DELETE" });
+      await db.auth.signOut();
     },
 
     async listCases() {
@@ -90,15 +125,27 @@ function supabaseApi(db: SupabaseClient): Api {
     },
     async createCase(input) {
       return must(await db.from("cases").insert({
-        title: input.title,
+        title: input.title.trim(),
         category: input.category,
-        authority: input.authority || null,
-        reference_number: input.reference_number || null,
+        authority: input.authority?.trim() || null,
+        reference_number: input.reference_number?.trim() || null,
       }).select().single());
     },
-    async setCaseStatus(id, status) {
-      const { error } = await db.from("cases").update({ status }).eq("id", id);
-      if (error) throw new Error(error.message);
+    async updateCase(id, patch) {
+      ok(await db.from("cases").update(patch).eq("id", id));
+    },
+    async deleteCase(id) {
+      const uid = await userId();
+      const docs = must(await db.from("documents").select("storage_path, page_paths").eq("case_id", id));
+      const paths = docs.flatMap((d) => (d.page_paths?.length ? d.page_paths : [d.storage_path]));
+      if (paths.length) await db.storage.from("documents").remove(paths);
+      // Older uploads may not be referenced by a row any more; clear the case folder too.
+      const { data: rest } = await db.storage.from("documents").list(`${uid}/${id}`);
+      if (rest?.length) await db.storage.from("documents").remove(rest.map((f) => `${uid}/${id}/${f.name}`));
+      ok(await db.from("cases").delete().eq("id", id));
+    },
+    async getTimeline(caseId) {
+      return must(await db.from("case_timeline").select("*").eq("case_id", caseId).order("at", { ascending: false }).limit(100));
     },
 
     async listDocuments(caseId) {
@@ -107,38 +154,57 @@ function supabaseApi(db: SupabaseClient): Api {
     async getDocument(id) {
       return must(await db.from("documents").select("*").eq("id", id).single());
     },
-    async getDocumentUrl(doc) {
-      const { data } = await db.storage.from("documents").createSignedUrl(doc.storage_path, 60 * 10);
-      return data?.signedUrl ?? null;
+    async getPageUrls(doc) {
+      const paths = doc.page_paths?.length ? doc.page_paths : [doc.storage_path];
+      const { data } = await db.storage.from("documents").createSignedUrls(paths, 60 * 10);
+      return (data ?? []).map((d) => d.signedUrl).filter((u): u is string => !!u);
     },
-    async addDocument(caseId, file) {
+    async addDocument(caseId, pages) {
+      validatePages(pages);
       const uid = await userId();
-      const ext = EXTENSIONS[file.mimeType];
-      if (!ext) throw new Error("Please choose a JPEG, PNG or PDF file.");
-      const path = `${uid}/${caseId}/${Date.now()}.${ext}`;
-      const bytes = await (await fetch(file.uri)).arrayBuffer();
-      const upload = await db.storage.from("documents").upload(path, bytes, { contentType: file.mimeType });
-      if (upload.error) throw new Error(upload.error.message);
-
+      const stamp = Date.now();
+      const paths = await Promise.all(pages.map(async (page, i) => {
+        const path = `${uid}/${caseId}/${stamp}-${i + 1}.${EXTENSIONS[page.mimeType]}`;
+        const bytes = await (await fetch(page.uri)).arrayBuffer();
+        const upload = await db.storage.from("documents").upload(path, bytes, { contentType: page.mimeType });
+        if (upload.error) throw new ApiError(upload.error.message);
+        return path;
+      }));
       const doc = must(await db.from("documents").insert({
         case_id: caseId,
-        storage_path: path,
-        mime_type: file.mimeType,
-        file_name: file.name,
+        storage_path: paths[0],
+        page_paths: paths,
+        mime_type: pages[0].mimeType,
+        file_name: pages[0].name,
       }).select().single()) as CaseDocument;
       return analyze(doc.id);
     },
     retryDocument: analyze,
+    async deleteDocument(id) {
+      const doc = await api.getDocument(id);
+      await db.storage.from("documents").remove(doc.page_paths?.length ? doc.page_paths : [doc.storage_path]);
+      ok(await db.from("documents").delete().eq("id", id));
+    },
 
     async listTasks({ caseId, openOnly }) {
       let query = db.from("tasks").select("*");
       if (caseId) query = query.eq("case_id", caseId);
       if (openOnly) query = query.eq("done", false);
-      return must(await query.order("due_date", { ascending: true, nullsFirst: false }));
+      return must(await query.order("due_date", { ascending: true, nullsFirst: false }).order("created_at"));
+    },
+    async createTask({ caseId, title, dueDate }) {
+      return must(await db.from("tasks").insert({
+        case_id: caseId,
+        title: title.trim(),
+        due_date: dueDate,
+        source: "user",
+      }).select().single());
     },
     async setTaskDone(id, done) {
-      const { error } = await db.from("tasks").update({ done }).eq("id", id);
-      if (error) throw new Error(error.message);
+      ok(await db.from("tasks").update({ done }).eq("id", id));
+    },
+    async deleteTask(id) {
+      ok(await db.from("tasks").delete().eq("id", id));
     },
 
     async listDrafts(caseId) {
@@ -147,18 +213,24 @@ function supabaseApi(db: SupabaseClient): Api {
     async getDraft(id) {
       return must(await db.from("drafts").select("*").eq("id", id).single());
     },
-    async createDraft({ caseId, documentId, kind, instructions }) {
+    async createDraft({ caseId, documentId, kind, instructions, reviseDraftId }) {
       const res = await invoke<{ draft: Draft }>(db, "draft-reply", {
         case_id: caseId,
         document_id: documentId ?? null,
         kind,
         instructions,
+        revise_draft_id: reviseDraftId ?? null,
       });
       return res.draft;
     },
+    async updateDraft(id, patch) {
+      ok(await db.from("drafts").update({ ...patch, edited: true }).eq("id", id));
+    },
     async setDraftStatus(id, status) {
-      const { error } = await db.from("drafts").update({ status }).eq("id", id);
-      if (error) throw new Error(error.message);
+      ok(await db.from("drafts").update({ status, sent_at: status === "sent" ? new Date().toISOString() : null }).eq("id", id));
+    },
+    async deleteDraft(id) {
+      ok(await db.from("drafts").delete().eq("id", id));
     },
 
     async listMessages(caseId) {
@@ -167,6 +239,12 @@ function supabaseApi(db: SupabaseClient): Api {
     async sendMessage(caseId, text) {
       const res = await invoke<{ message: ChatMessage }>(db, "case-chat", { case_id: caseId, message: text });
       return res.message;
+    },
+
+    async search(q) {
+      const term = q.trim();
+      if (term.length < 2) return [];
+      return must(await db.rpc("search_everything", { q: term }));
     },
   };
   return api;

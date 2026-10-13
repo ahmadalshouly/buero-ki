@@ -1,14 +1,12 @@
 -- Production hardening: consent and preferences, multi-page letters, usage limits,
 -- audit log, case timeline and search.
 
--- Profiles: onboarding, consent, preferences, plan ---------------------------
+-- Profiles: onboarding, consent and plan (reminders and app lock live on the device) --
 
 alter table public.profiles
   add column onboarded_at timestamptz,
   add column ai_consent_at timestamptz,
   add column terms_version text,
-  add column notify_deadlines boolean not null default true,
-  add column app_lock boolean not null default false,
   add column plan text not null default 'free' check (plan in ('free', 'plus', 'org'));
 
 -- Users may edit their own preferences but never their plan.

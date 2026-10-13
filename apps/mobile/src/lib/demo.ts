@@ -1,7 +1,10 @@
 // Demo mode: an in-memory backend with one sample case, used when no Supabase
 // project is configured. Lets anyone click through the app without an account.
 import type { Api } from "./api";
-import type { Analysis, Case, CaseDocument, ChatMessage, Draft, Profile, Task } from "./types";
+import { ApiError, validatePages } from "./errors";
+import { DAILY_LIMITS } from "./limits";
+import { authStorage } from "./storage";
+import type { AgentFunction, Analysis, Case, CaseDocument, ChatMessage, Draft, Profile, Task, TimelineItem } from "./types";
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const now = () => new Date().toISOString();
@@ -45,10 +48,14 @@ After the deadline the Jobcenter can refuse the money (§ 66 SGB I). You can sti
   needs_advice: false,
   advice_reason: null,
   reference_number: "BG 12345//0067890",
+  amounts: [{ label: "Monthly Bürgergeld applied for", amount_eur: 1124 }],
 };
 
 const state = {
-  profile: { id: "demo-user", full_name: "Amina", language: "en", city: "Berlin" } as Profile,
+  profile: {
+    id: "demo-user", full_name: "Amina", language: "en", city: "Berlin",
+    onboarded_at: null, ai_consent_at: null, plan: "free",
+  } as Profile,
   cases: [
     {
       id: "demo-case-1",
@@ -62,12 +69,26 @@ const state = {
       created_at: day(-10) + "T09:00:00Z",
       updated_at: now(),
     },
+    {
+      id: "demo-case-2",
+      title: "Kindergeld for Yusuf",
+      category: "familienkasse",
+      authority: "Familienkasse Berlin-Brandenburg",
+      reference_number: "123FK456789",
+      status: "waiting",
+      summary: "You sent the Kindergeld application with Yusuf's birth certificate. The Familienkasse confirmed it arrived and is checking it.",
+      facts: {},
+      created_at: day(-30) + "T09:00:00Z",
+      updated_at: day(-6) + "T09:00:00Z",
+    },
   ] as Case[],
   documents: [
     {
       id: "demo-doc-1",
       case_id: "demo-case-1",
       storage_path: "",
+      page_paths: [],
+      page_count: 2,
       mime_type: "image/jpeg",
       file_name: "letter.jpg",
       status: "ready",
@@ -80,23 +101,78 @@ const state = {
       error: null,
       created_at: day(-2) + "T10:00:00Z",
     },
+    {
+      id: "demo-doc-2",
+      case_id: "demo-case-2",
+      storage_path: "",
+      page_paths: [],
+      page_count: 1,
+      mime_type: "image/jpeg",
+      file_name: "eingang.jpg",
+      status: "ready",
+      sender: "Familienkasse Berlin-Brandenburg",
+      document_date: day(-6),
+      title_de: "Eingangsbestätigung",
+      summary: "The Familienkasse confirms it received your Kindergeld application. You do not need to do anything now.",
+      urgency: "low",
+      analysis: {
+        ...sampleAnalysis,
+        title_de: "Eingangsbestätigung",
+        sender: "Familienkasse Berlin-Brandenburg",
+        document_type: "Confirmation of receipt",
+        summary: "The Familienkasse confirms it received your Kindergeld application. You do not need to do anything now.",
+        explanation: "## What is this letter?\nA confirmation that your application arrived.\n\n## What you should do now\nNothing. Keep this letter. If you hear nothing in 8 weeks, ask about the status.",
+        actions: [],
+        key_terms: [{ term_de: "Eingangsbestätigung", meaning: "Confirmation that something arrived." }],
+        urgency: "low",
+        amounts: [],
+        reference_number: "123FK456789",
+      },
+      error: null,
+      created_at: day(-6) + "T10:00:00Z",
+    },
   ] as CaseDocument[],
-  tasks: sampleAnalysis.actions.map((a, i) => ({
-    id: `demo-task-${i}`,
-    case_id: "demo-case-1",
-    document_id: "demo-doc-1",
-    title: a.title,
-    due_date: a.due_date,
-    done: false,
-    created_at: day(-2) + "T10:00:00Z",
-  })) as Task[],
+  tasks: [
+    ...sampleAnalysis.actions.map((a, i) => ({
+      id: `demo-task-${i}`,
+      case_id: "demo-case-1",
+      document_id: "demo-doc-1",
+      title: a.title,
+      due_date: a.due_date,
+      done: false,
+      source: "agent",
+      completed_at: null,
+      created_at: day(-2) + "T10:00:00Z",
+    })),
+    {
+      id: "demo-task-9",
+      case_id: "demo-case-2",
+      document_id: null,
+      title: "Send birth certificate",
+      due_date: day(-8),
+      done: true,
+      source: "user",
+      completed_at: day(-8) + "T15:00:00Z",
+      created_at: day(-20) + "T10:00:00Z",
+    },
+  ] as Task[],
   drafts: [] as Draft[],
   messages: [] as ChatMessage[],
+  usage: [] as { fn: AgentFunction; at: number }[],
 };
+
+// Keep the demo profile (onboarding, consent, language) across reloads.
+const PROFILE_KEY = "bueroki.demo.profile";
+try {
+  const saved = authStorage?.getItem(PROFILE_KEY);
+  if (saved) Object.assign(state.profile, JSON.parse(saved));
+} catch {
+  // Ignore unreadable storage; the demo starts fresh.
+}
 
 function find<T extends { id: string }>(list: T[], key: string): T {
   const item = list.find((x) => x.id === key);
-  if (!item) throw new Error("Not found");
+  if (!item) throw new ApiError("Not found", "not_found");
   return item;
 }
 
@@ -105,12 +181,44 @@ function touch(caseId: string) {
   if (c) c.updated_at = now();
 }
 
+function spend(fn: AgentFunction) {
+  const since = Date.now() - 86400000;
+  const used = state.usage.filter((u) => u.fn === fn && u.at > since).length;
+  const limit = DAILY_LIMITS[state.profile.plan][fn];
+  if (used >= limit) throw new ApiError(`You reached today's limit of ${limit} for this feature.`, "limit");
+  if (!state.profile.ai_consent_at) throw new ApiError("Please agree to AI processing in the app settings first.", "consent");
+  state.usage.push({ fn, at: Date.now() });
+}
+
+const drop = <T extends { id: string }>(list: T[], key: string) => {
+  const i = list.findIndex((x) => x.id === key);
+  if (i >= 0) list.splice(i, 1);
+};
+
 export const demoApi: Api = {
   async getProfile() {
     return { ...state.profile };
   },
   async updateProfile(patch) {
-    Object.assign(state.profile, patch);
+    const { terms_version: _ignored, ...rest } = patch;
+    Object.assign(state.profile, rest);
+    try {
+      authStorage?.setItem(PROFILE_KEY, JSON.stringify(state.profile));
+    } catch {
+      // Storage may be blocked; the change still applies for this session.
+    }
+  },
+  async getUsage() {
+    const since = Date.now() - 86400000;
+    const used = { "analyze-document": 0, "draft-reply": 0, "case-chat": 0 } as Record<AgentFunction, number>;
+    for (const u of state.usage) if (u.at > since) used[u.fn]++;
+    return { plan: state.profile.plan, used, limits: DAILY_LIMITS[state.profile.plan] };
+  },
+  async exportData() {
+    return { exported_at: now(), format_version: 1, demo: true, ...state };
+  },
+  async deleteAccount() {
+    throw new ApiError("Demo mode has no account to delete.", "input");
   },
 
   async listCases() {
@@ -122,10 +230,10 @@ export const demoApi: Api = {
   async createCase(input) {
     const c: Case = {
       id: id(),
-      title: input.title,
+      title: input.title.trim(),
       category: input.category,
-      authority: input.authority || null,
-      reference_number: input.reference_number || null,
+      authority: input.authority?.trim() || null,
+      reference_number: input.reference_number?.trim() || null,
       status: "open",
       summary: null,
       facts: {},
@@ -135,8 +243,33 @@ export const demoApi: Api = {
     state.cases.push(c);
     return c;
   },
-  async setCaseStatus(key, status) {
-    find(state.cases, key).status = status;
+  async updateCase(key, patch) {
+    Object.assign(find(state.cases, key), patch);
+    touch(key);
+  },
+  async deleteCase(key) {
+    drop(state.cases, key);
+    for (const list of [state.documents, state.tasks, state.drafts, state.messages] as { id: string; case_id: string }[][]) {
+      for (const item of list.filter((x) => x.case_id === key)) drop(list, item.id);
+    }
+  },
+  async getTimeline(caseId) {
+    const items: TimelineItem[] = [
+      ...state.documents.filter((d) => d.case_id === caseId).map((d) => ({
+        case_id: caseId, item_id: d.id, kind: "document" as const, at: d.created_at, title: d.title_de ?? d.file_name,
+        detail: d.summary, tone: d.urgency,
+      })),
+      ...state.drafts.filter((d) => d.case_id === caseId).flatMap((d) => [
+        { case_id: caseId, item_id: d.id, kind: "draft" as const, at: d.created_at, title: d.subject, detail: d.kind, tone: null },
+        ...(d.sent_at
+          ? [{ case_id: caseId, item_id: d.id, kind: "sent" as const, at: d.sent_at, title: d.subject, detail: d.kind, tone: null }]
+          : []),
+      ]),
+      ...state.tasks.filter((t) => t.case_id === caseId && t.completed_at).map((t) => ({
+        case_id: caseId, item_id: t.id, kind: "task_done" as const, at: t.completed_at!, title: t.title, detail: null, tone: null,
+      })),
+    ];
+    return items.sort((a, b) => b.at.localeCompare(a.at));
   },
 
   async listDocuments(caseId) {
@@ -145,10 +278,12 @@ export const demoApi: Api = {
   async getDocument(key) {
     return { ...find(state.documents, key) };
   },
-  async getDocumentUrl() {
-    return null;
+  async getPageUrls() {
+    return [];
   },
-  async addDocument(caseId, file) {
+  async addDocument(caseId, pages) {
+    validatePages(pages);
+    spend("analyze-document");
     await wait(1800);
     const analysis: Analysis = {
       ...sampleAnalysis,
@@ -161,8 +296,10 @@ export const demoApi: Api = {
       id: id(),
       case_id: caseId,
       storage_path: "",
-      mime_type: file.mimeType,
-      file_name: file.name,
+      page_paths: [],
+      page_count: pages.length,
+      mime_type: pages[0].mimeType,
+      file_name: pages[0].name,
       status: "ready",
       sender: analysis.sender,
       document_date: day(0),
@@ -175,7 +312,10 @@ export const demoApi: Api = {
     };
     state.documents.push(doc);
     for (const a of analysis.actions) {
-      state.tasks.push({ id: id(), case_id: caseId, document_id: doc.id, title: a.title, due_date: a.due_date, done: false, created_at: now() });
+      state.tasks.push({
+        id: id(), case_id: caseId, document_id: doc.id, title: a.title, due_date: a.due_date, done: false,
+        source: "agent", completed_at: null, created_at: now(),
+      });
     }
     touch(caseId);
     return doc;
@@ -183,14 +323,31 @@ export const demoApi: Api = {
   async retryDocument(key) {
     return { ...find(state.documents, key) };
   },
+  async deleteDocument(key) {
+    drop(state.documents, key);
+  },
 
   async listTasks({ caseId, openOnly }) {
     return state.tasks
       .filter((t) => (!caseId || t.case_id === caseId) && (!openOnly || !t.done))
       .sort((a, b) => (a.due_date ?? "9999").localeCompare(b.due_date ?? "9999"));
   },
+  async createTask({ caseId, title, dueDate }) {
+    const task: Task = {
+      id: id(), case_id: caseId, document_id: null, title: title.trim(), due_date: dueDate, done: false,
+      source: "user", completed_at: null, created_at: now(),
+    };
+    state.tasks.push(task);
+    touch(caseId);
+    return task;
+  },
   async setTaskDone(key, done) {
-    find(state.tasks, key).done = done;
+    const task = find(state.tasks, key);
+    task.done = done;
+    task.completed_at = done ? now() : null;
+  },
+  async deleteTask(key) {
+    drop(state.tasks, key);
   },
 
   async listDrafts(caseId) {
@@ -199,13 +356,15 @@ export const demoApi: Api = {
   async getDraft(key) {
     return { ...find(state.drafts, key) };
   },
-  async createDraft({ caseId, documentId, kind, instructions }) {
+  async createDraft({ caseId, documentId, kind, instructions, reviseDraftId }) {
+    spend("draft-reply");
     await wait(1500);
     const c = find(state.cases, caseId);
+    const previous = reviseDraftId ? find(state.drafts, reviseDraftId) : null;
     const draft: Draft = {
       id: id(),
       case_id: caseId,
-      document_id: documentId ?? null,
+      document_id: documentId ?? previous?.document_id ?? null,
       kind,
       subject: `${c.reference_number ?? c.title}: Einreichung von Unterlagen`,
       body_de: `[Ihr Name]
@@ -234,20 +393,32 @@ Mit freundlichen Grüßen
       body_translation: `Demo translation. Your request was: "${instructions}". In the real app, this is a full translation of the German letter in your language.`,
       notes: "Demo mode. Check names and addresses, attach copies (not originals), and keep a photo of everything you send.",
       status: "draft",
+      edited: false,
+      sent_at: null,
+      revision_of: reviseDraftId ?? null,
       created_at: now(),
     };
     state.drafts.push(draft);
     touch(caseId);
     return draft;
   },
+  async updateDraft(key, patch) {
+    Object.assign(find(state.drafts, key), patch, { edited: true });
+  },
   async setDraftStatus(key, status) {
-    find(state.drafts, key).status = status;
+    const d = find(state.drafts, key);
+    d.status = status;
+    d.sent_at = status === "sent" ? now() : null;
+  },
+  async deleteDraft(key) {
+    drop(state.drafts, key);
   },
 
   async listMessages(caseId) {
     return state.messages.filter((m) => m.case_id === caseId);
   },
   async sendMessage(caseId, text) {
+    spend("case-chat");
     state.messages.push({ id: id(), case_id: caseId, role: "user", content: text, created_at: now() });
     await wait(1200);
     const reply: ChatMessage = {
@@ -260,5 +431,19 @@ Mit freundlichen Grüßen
     state.messages.push(reply);
     touch(caseId);
     return reply;
+  },
+
+  async search(q) {
+    const term = q.trim().toLowerCase();
+    if (term.length < 2) return [];
+    const hit = (...parts: (string | null)[]) => parts.some((p) => p?.toLowerCase().includes(term));
+    return [
+      ...state.cases.filter((c) => hit(c.title, c.authority, c.reference_number)).map((c) => ({
+        kind: "case" as const, id: c.id, case_id: c.id, title: c.title, detail: c.authority ?? c.summary, at: c.updated_at,
+      })),
+      ...state.documents.filter((d) => hit(d.title_de, d.sender, d.summary)).map((d) => ({
+        kind: "document" as const, id: d.id, case_id: d.case_id, title: d.title_de ?? d.file_name, detail: d.summary, at: d.created_at,
+      })),
+    ].sort((a, b) => b.at.localeCompare(a.at));
   },
 };

@@ -10,9 +10,11 @@
     "@tanstack/react-query-persist-client": "^5.104.2",
     "expo": "~57.0.28",
     "expo-application": "~57.0.3",
+    "expo-asset": "~57.0.19",
     "expo-clipboard": "~57.0.2",
     "expo-constants": "~57.0.21",
     "expo-document-picker": "~57.0.3",
+    "expo-file-system": "~57.0.7",
     "expo-haptics": "~57.0.3",
     "expo-image": "~57.0.5",
     "expo-image-picker": "~57.0.20",
@@ -21,6 +23,7 @@
     "expo-localization": "~57.0.2",
     "expo-notifications": "~57.0.22",
     "expo-router": "~57.0.26",
+    "expo-sharing": "~57.0.23",
     "expo-sqlite": "~57.0.4",
     "expo-status-bar": "~57.0.1",
     "i18next": "^26.4.4",
@@ -48,7 +51,18 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
-    "export:web": "expo export --platform web"
+    "export:web": "expo export --platform web",
+    "test": "jest",
+    "lint": "eslint src"
   },
-  "private": true
+  "private": true,
+  "jest": {
+    "preset": "jest-expo",
+    "testMatch": [
+      "<rootDir>/src/**/*.test.ts?(x)"
+    ],
+    "setupFiles": [
+      "<rootDir>/jest.setup.ts"
+    ]
+  }
 }

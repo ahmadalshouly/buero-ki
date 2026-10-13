@@ -25,11 +25,16 @@ export type CaseCategory = (typeof CATEGORIES)[number];
 
 export type CaseStatus = "open" | "waiting" | "closed";
 
+export type Plan = "free" | "plus" | "org";
+
 export interface Profile {
   id: string;
   full_name: string | null;
   language: Language;
   city: string | null;
+  onboarded_at: string | null;
+  ai_consent_at: string | null;
+  plan: Plan;
 }
 
 export interface Case {
@@ -59,12 +64,15 @@ export interface Analysis {
   needs_advice: boolean;
   advice_reason: string | null;
   reference_number: string | null;
+  amounts?: { label: string; amount_eur: number }[];
 }
 
 export interface CaseDocument {
   id: string;
   case_id: string;
   storage_path: string;
+  page_paths: string[];
+  page_count: number;
   mime_type: string;
   file_name: string | null;
   status: "uploaded" | "analyzing" | "ready" | "failed";
@@ -85,6 +93,8 @@ export interface Task {
   title: string;
   due_date: string | null;
   done: boolean;
+  source: "agent" | "user";
+  completed_at: string | null;
   created_at: string;
 }
 
@@ -98,6 +108,9 @@ export interface Draft {
   body_translation: string | null;
   notes: string | null;
   status: "draft" | "approved" | "sent";
+  edited: boolean;
+  sent_at: string | null;
+  revision_of: string | null;
   created_at: string;
 }
 
@@ -118,6 +131,33 @@ export interface PickedFile {
 export interface NewCase {
   title: string;
   category: CaseCategory;
-  authority?: string;
-  reference_number?: string;
+  authority?: string | null;
+  reference_number?: string | null;
+}
+
+export interface TimelineItem {
+  case_id: string;
+  item_id: string;
+  kind: "document" | "draft" | "sent" | "task_done";
+  at: string;
+  title: string | null;
+  detail: string | null;
+  tone: "low" | "medium" | "high" | null;
+}
+
+export interface SearchResult {
+  kind: "case" | "document";
+  id: string;
+  case_id: string;
+  title: string | null;
+  detail: string | null;
+  at: string;
+}
+
+export type AgentFunction = "analyze-document" | "draft-reply" | "case-chat";
+
+export interface UsageToday {
+  plan: Plan;
+  used: Record<AgentFunction, number>;
+  limits: Record<AgentFunction, number>;
 }

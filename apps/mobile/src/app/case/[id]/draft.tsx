@@ -1,50 +1,99 @@
-import { router, useLocalSearchParams } from "expo-router";
+import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Text, View } from "react-native";
-import { Button, Chip, ErrorBox, Field, Muted, Screen } from "@/components/ui";
-import { api } from "@/lib/api";
-import { space, type } from "@/lib/theme";
+import { ActivityIndicator, View } from "react-native";
+import { Button, Chip, DemoBanner, ErrorBox, Field, Muted, Screen, Segmented, Txt } from "@/components/ui";
+import { friendlyError } from "@/lib/errorText";
+import { useCreateDraft, useDocuments, useDraft } from "@/lib/queries";
+import { space, useColors } from "@/lib/theme";
 
 export default function NewDraft() {
-  const { id, documentId } = useLocalSearchParams<{ id: string; documentId?: string }>();
+  const { id, documentId, revise } = useLocalSearchParams<{ id: string; documentId?: string; revise?: string }>();
   const { t } = useTranslation();
+  const c = useColors();
+  const previous = useDraft(revise ?? "");
+  const documents = useDocuments(id);
   const [kind, setKind] = useState<"letter" | "email">("letter");
+  const [docId, setDocId] = useState<string | null>(documentId ?? null);
   const [instructions, setInstructions] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const create = useCreateDraft(id);
+  const revising = !!revise;
+  const ready = (documents.data ?? []).filter((d) => d.status === "ready");
 
-  async function generate() {
-    setBusy(true);
-    setError(null);
-    try {
-      const draft = await api.createDraft({ caseId: id, documentId: documentId ?? null, kind, instructions: instructions.trim() });
-      router.replace(`/draft/${draft.id}`);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-      setBusy(false);
-    }
+  const suggestions = [
+    t("draft.suggestSendDocs"),
+    t("draft.suggestMoreTime"),
+    t("draft.suggestObjection"),
+    t("draft.suggestAppointment"),
+  ];
+
+  function generate() {
+    create.mutate({
+      documentId: revising ? previous.data?.document_id ?? null : docId,
+      kind: revising ? previous.data?.kind ?? kind : kind,
+      instructions: instructions.trim(),
+      reviseDraftId: revise ?? null,
+    }, { onSuccess: (draft) => router.replace(`/draft/${draft.id}`) });
+  }
+
+  if (create.isPending) {
+    return (
+      <Screen scroll={false}>
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: space(4) }}>
+          <ActivityIndicator size="large" color={c.accent} />
+          <Txt variant="h2">{t("draft.generating")}</Txt>
+        </View>
+      </Screen>
+    );
   }
 
   return (
     <Screen>
-      <View style={{ gap: space(2) }}>
-        <Text style={type.h3}>{t("draft.kind")}</Text>
-        <View style={{ flexDirection: "row", gap: space(2) }}>
-          <Chip label={t("draft.letter")} selected={kind === "letter"} onPress={() => setKind("letter")} />
-          <Chip label={t("draft.email")} selected={kind === "email"} onPress={() => setKind("email")} />
-        </View>
-      </View>
+      {revising && <Stack.Screen options={{ title: t("draft.reviseTitle") }} />}
+      <DemoBanner />
+      {!revising && (
+        <>
+          <View style={{ gap: space(2) }}>
+            <Txt variant="h3">{t("draft.kind")}</Txt>
+            <Segmented
+              value={kind}
+              onChange={setKind}
+              options={[{ value: "letter", label: t("draft.letter") }, { value: "email", label: t("draft.email") }]}
+            />
+          </View>
+          {ready.length > 0 && (
+            <View style={{ gap: space(2) }}>
+              <Txt variant="h3">{t("draft.replyingTo")}</Txt>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: space(2) }}>
+                <Chip label={t("draft.noLetter")} selected={!docId} onPress={() => setDocId(null)} />
+                {ready.slice(0, 6).map((d) => (
+                  <Chip key={d.id} label={d.title_de ?? d.file_name ?? t("document.title")} selected={docId === d.id} onPress={() => setDocId(d.id)} />
+                ))}
+              </View>
+            </View>
+          )}
+        </>
+      )}
+      {revising && previous.data && <Muted>{previous.data.subject}</Muted>}
       <Field
-        label={t("draft.instructions")}
+        label={revising ? t("draft.reviseInstructions") : t("draft.instructions")}
         value={instructions}
         onChangeText={setInstructions}
-        placeholder={t("draft.instructionsPlaceholder")}
+        placeholder={revising ? t("draft.revisePlaceholder") : t("draft.instructionsPlaceholder")}
         multiline
         autoFocus
+        maxLength={4000}
       />
-      {error && <ErrorBox message={error} />}
-      <Button icon="sparkles-outline" title={busy ? t("draft.generating") : t("draft.generate")} onPress={generate} loading={busy} disabled={!instructions.trim()} />
+      {!revising && (
+        <View style={{ gap: space(2) }}>
+          <Txt variant="small" tone="muted">{t("draft.suggestions")}</Txt>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: space(2) }}>
+            {suggestions.map((s) => <Chip key={s} label={s} selected={instructions === s} onPress={() => setInstructions(s)} />)}
+          </View>
+        </View>
+      )}
+      {create.error && <ErrorBox message={friendlyError(create.error, t)} />}
+      <Button icon="sparkles-outline" title={t("draft.generate")} onPress={generate} disabled={!instructions.trim()} />
       <Muted>{t("draft.disclaimer")}</Muted>
     </Screen>
   );
