@@ -19,7 +19,10 @@ export const HELP_KINDS = [
 export type HelpKind = (typeof HELP_KINDS)[number];
 
 // Overpass filters per kind. Each entry is one `nwr…` statement without the area filter.
-const name = (words: string) => `["name"~"${words}",i]`;
+// Name searches use word stems without the first letter instead of a case-insensitive match:
+// "chuldner" finds Schuldnerberatung and Schuldner- und Insolvenzberatung, and the busy public
+// servers answer it several times faster.
+const name = (stems: string) => `["name"~"${stems}"]`;
 const FILTERS: Record<HelpKind, string[]> = {
   doctor: [`["amenity"="doctors"]`, `["healthcare"="doctor"]`, `["amenity"="clinic"]`],
   dentist: [`["amenity"="dentist"]`, `["healthcare"="dentist"]`],
@@ -29,19 +32,19 @@ const FILTERS: Record<HelpKind, string[]> = {
   ],
   lawyer: [`["office"="lawyer"]`],
   migration: [
-    `["social_facility:for"~"migrant|refugee"]`,
-    name("migrationsberatung|migrationsdienst|jugendmigrationsdienst|flüchtlingsberatung|fluechtlingsberatung|integrationszentrum|integrationsagentur"),
+    `["social_facility:for"~"migrant|refugee"]["social_facility"!~"group_home|shelter|housing|assisted_living|nursing_home"]`,
+    name("igrationsberatung|igrationsdienst|lüchtlingsberatung|ntegrationszentrum|ntegrationsagentur"),
   ],
   social: [
     `["healthcare"="counselling"]`,
     `["social_facility"="outreach"]`,
-    name("sozialberatung|beratungsstelle|beratungszentrum"),
+    name("ozialberatung|eratungsstelle|eratungszentrum"),
   ],
-  debt: [name("schuldnerberatung|schuldnerhilfe|insolvenzberatung")],
-  tenant: [name("mieterverein|mieterbund|mieterschutz|mieterberatung|mietergemeinschaft")],
-  consumer: [name("verbraucherzentrale|verbraucherberatung")],
-  tax: [name("lohnsteuerhilfe|lohnsteuerberatung|lohnsteuer-hilfe")],
-  patient: [name("patientenberatung|patientenfürsprech|patientenstelle")],
+  debt: [name("chuldner|nsolvenzberatung")],
+  tenant: [name("ieterverein|ieterbund|ieterschutz|ieterberatung|ietergemeinschaft")],
+  consumer: [name("erbraucherzentrale|erbraucherberatung")],
+  tax: [name("ohnsteuerhilfe|ohnsteuerberatung")],
+  patient: [name("atientenberatung|atientenfürsprech|atientenstelle")],
 };
 
 export const PlacesInput = z.strictObject({
@@ -80,10 +83,18 @@ export interface Center {
 /** Rounds a position to about 100 m: enough for nearby places, and the exact spot never leaves the function. */
 export const coarse = (x: number) => Math.round(x * 1000) / 1000;
 
-export function overpassQuery(kind: HelpKind, lat: number, lon: number, radiusKm: number, limit = 80): string {
-  const around = `(around:${Math.round(radiusKm * 1000)},${coarse(lat)},${coarse(lon)})`;
-  const parts = FILTERS[kind].map((f) => `nwr${around}${f};`).join("");
-  return `[out:json][timeout:20];(${parts});out center tags ${limit};`;
+/** A box around the position: Overpass servers answer box queries much faster than radius ones. */
+export function bbox(lat: number, lon: number, radiusKm: number): string {
+  const dLat = radiusKm / 111.32;
+  const dLon = radiusKm / (111.32 * Math.cos(lat * Math.PI / 180));
+  const r = (x: number) => x.toFixed(4);
+  return `${r(lat - dLat)},${r(lon - dLon)},${r(lat + dLat)},${r(lon + dLon)}`;
+}
+
+export function overpassQuery(kind: HelpKind, lat: number, lon: number, radiusKm: number, limit = 150): string {
+  const box = `(${bbox(coarse(lat), coarse(lon), radiusKm)})`;
+  const parts = FILTERS[kind].map((f) => `nwr${f}${box};`).join("");
+  return `[out:json][timeout:15];(${parts});out center tags ${limit};`;
 }
 
 export function distanceM(a: { lat: number; lon: number }, b: { lat: number; lon: number }): number {
@@ -130,8 +141,12 @@ function languages(tags: Record<string, string>): string[] {
 // Without a doctor, lawyer or counseling tag a name match is too loose (a shop called "Beratungsstelle Müller" is fine,
 // a kindergarten run by a welfare association is not), so name-only kinds drop obvious non-offices.
 const NOT_AN_OFFICE = /^(kindergarten|school|place_of_worship|restaurant|cafe|parking|bench|vending_machine|toilets)$/;
+// Housing for refugees or the homeless is often tagged like an advice office, but nobody gives advice there.
+const NOT_ADVICE = /unterkunft|wohnheim|notunterkunft|wohnprojekt|\bkita\b|kindergarten/i;
+const ADVICE_KINDS: HelpKind[] = ["migration", "social", "debt", "tenant", "consumer", "tax", "patient"];
 
-export function parsePlaces(kind: HelpKind, center: { lat: number; lon: number }, data: unknown, max = 50): Place[] {
+/** The box's corners lie outside the radius; those places are dropped. */
+export function parsePlaces(kind: HelpKind, center: { lat: number; lon: number }, data: unknown, radiusKm = Infinity, max = 50): Place[] {
   const elements = ((data as { elements?: OsmElement[] })?.elements ?? []);
   const seen = new Set<string>();
   const places: Place[] = [];
@@ -142,6 +157,7 @@ export function parsePlaces(kind: HelpKind, center: { lat: number; lon: number }
     const label = tags.name?.trim();
     if (!label || lat === undefined || lon === undefined) continue;
     if (NOT_AN_OFFICE.test(tags.amenity ?? "")) continue;
+    if (ADVICE_KINDS.includes(kind) && NOT_ADVICE.test(label)) continue;
     // The same practice is often mapped twice (a point and its building).
     const dedupe = `${label.toLowerCase()}|${lat.toFixed(3)}|${lon.toFixed(3)}`;
     if (seen.has(dedupe)) continue;
@@ -162,7 +178,7 @@ export function parsePlaces(kind: HelpKind, center: { lat: number; lon: number }
       wheelchair: tags.wheelchair === "yes" ? true : tags.wheelchair === "no" ? false : null,
     });
   }
-  return places.sort((a, b) => a.distance_m - b.distance_m).slice(0, max);
+  return places.filter((p) => p.distance_m <= radiusKm * 1000).sort((a, b) => a.distance_m - b.distance_m).slice(0, max);
 }
 
 export function parseGeocode(data: unknown): Center | null {
@@ -175,4 +191,81 @@ export function parseGeocode(data: unknown): Center | null {
   const label = hit.display_name?.split(",").map((s) => s.trim()).filter((s) => s && !/^\d{5}$/.test(s) && s !== "Deutschland")
     .slice(0, 2).join(", ") ?? null;
   return { lat, lon, label: label || null };
+}
+
+// Google Places (Text Search). Used when a GOOGLE_MAPS_API_KEY is set: it knows far more
+// Beratungsstellen than OpenStreetMap, with phone numbers and opening hours.
+const GOOGLE_TERMS: Record<HelpKind, string> = {
+  doctor: "Hausarzt",
+  dentist: "Zahnarzt",
+  psychotherapy: "Psychotherapeut",
+  lawyer: "Rechtsanwalt",
+  migration: "Migrationsberatung",
+  social: "Sozialberatung",
+  debt: "Schuldnerberatung",
+  tenant: "Mieterverein",
+  consumer: "Verbraucherzentrale Beratungsstelle",
+  tax: "Lohnsteuerhilfeverein",
+  patient: "Patientenberatung",
+};
+
+export const GOOGLE_FIELDS = [
+  "places.id", "places.displayName", "places.formattedAddress", "places.location", "places.nationalPhoneNumber",
+  "places.websiteUri", "places.regularOpeningHours.weekdayDescriptions", "places.accessibilityOptions", "places.businessStatus",
+].join(",");
+
+export function googleRequest(kind: HelpKind, center: { lat: number; lon: number }, radiusKm: number) {
+  return {
+    textQuery: GOOGLE_TERMS[kind],
+    languageCode: "de",
+    regionCode: "DE",
+    pageSize: 20,
+    locationBias: { circle: { center: { latitude: coarse(center.lat), longitude: coarse(center.lon) }, radius: Math.min(radiusKm, 50) * 1000 } },
+  };
+}
+
+interface GooglePlace {
+  id: string;
+  displayName?: { text?: string };
+  formattedAddress?: string;
+  location?: { latitude: number; longitude: number };
+  nationalPhoneNumber?: string;
+  websiteUri?: string;
+  regularOpeningHours?: { weekdayDescriptions?: string[] };
+  accessibilityOptions?: { wheelchairAccessibleEntrance?: boolean };
+  businessStatus?: string;
+}
+
+/** Google only biases by distance, so places far outside the chosen radius are dropped here. */
+export function parseGooglePlaces(kind: HelpKind, center: { lat: number; lon: number }, radiusKm: number, data: unknown): Place[] {
+  const places = ((data as { places?: GooglePlace[] })?.places ?? []);
+  return places
+    .filter((p) => p.location && p.displayName?.text && p.businessStatus !== "CLOSED_PERMANENTLY")
+    .map((p): Place => {
+      const lat = p.location!.latitude;
+      const lon = p.location!.longitude;
+      return {
+        id: `google/${p.id}`,
+        kind,
+        name: p.displayName!.text!,
+        lat,
+        lon,
+        distance_m: distanceM(center, { lat, lon }),
+        address: p.formattedAddress?.replace(/, Deutschland$/, "") ?? null,
+        phone: p.nationalPhoneNumber ?? null,
+        email: null,
+        website: p.websiteUri ?? null,
+        opening_hours: p.regularOpeningHours?.weekdayDescriptions?.join("; ") ?? null,
+        languages: [],
+        wheelchair: p.accessibilityOptions?.wheelchairAccessibleEntrance ?? null,
+      };
+    })
+    .filter((p) => p.distance_m <= radiusKm * 1500)
+    .sort((a, b) => a.distance_m - b.distance_m);
+}
+
+/** Overpass answers 200 with a "remark" when the query ran out of time; that is a failure, not "nothing here". */
+export function overpassFailed(data: unknown): string | null {
+  const remark = (data as { remark?: string })?.remark;
+  return remark && /error|timed out|out of memory/i.test(remark) ? remark : null;
 }
