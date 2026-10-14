@@ -292,6 +292,18 @@ export function useSetDraftStatus(draft: Draft | undefined) {
   });
 }
 
+export function useSendEmail(draft: Draft | undefined) {
+  const qc = useQueryClient();
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (to: string) => api.sendEmail(draft!.id, to),
+    onSuccess: (sent) => {
+      qc.setQueryData(keys.draft(sent.id), sent);
+      invalidate(sent.case_id);
+    },
+  });
+}
+
 export function useDeleteDraft() {
   const invalidate = useInvalidate();
   return useMutation({ mutationFn: (d: Draft) => api.deleteDraft(d.id), onSuccess: (_r, d) => invalidate(d.case_id) });

@@ -10,6 +10,7 @@ What is in this version:
 - **Reply drafting**: a formal German letter or email with a translation and "before you send" notes. Drafts can be edited, revised by the agent ("make it shorter"), opened in the email app and marked as sent.
 - **Letters as PDF**: a reply can be saved as an A4 PDF laid out after DIN 5008, so it can be printed, signed and posted in a window envelope. The app warns when fields in [brackets] are still empty.
 - **Form filling**: photograph a form or pick its PDF. The agent lists every field, explains it in the person's language and pre-fills what it knows from the profile, the case and other cases. Empty fields become plain questions, and the person can answer in their own words. PDFs with form fields come back filled in; photos and scans get a printable filling sheet.
+- **Send emails for you**: BüroKI sends an email draft to the office from its own address, in the person's name. Replies go to the person's own email and they get a copy. Nothing is sent before they check the address and tap "Send now", and drafts with empty [brackets] cannot be sent.
 - **Chat with the case** in any language.
 - **Search** across cases and letters.
 - **Onboarding** with language, name and explicit consent to AI processing.
@@ -17,7 +18,7 @@ What is in this version:
 - **Light and dark mode**, six languages (English, Deutsch, العربية, Türkçe, Українська, فارسی) with right-to-left layout.
 - **Works offline** from a cached copy of your cases.
 
-Sending emails, AI phone calls, the community translator marketplace and the lawyer/doctor directory come in later phases.
+AI phone calls, the community translator marketplace and the lawyer/doctor directory come in later phases.
 
 ## Production features
 
@@ -48,6 +49,7 @@ supabase/
     case-chat/          Answers questions about one case
     fill-form/          Reads a form, pre-fills its fields and writes them into the PDF
     learn-facts/        Suggests facts about the person to remember; kept only if they agree
+    send-email/         Sends a confirmed email draft through Resend
     export-data/        GDPR data export
     delete-account/     GDPR account deletion
     tests/              Deno tests
@@ -71,6 +73,8 @@ Scan the QR code with the Expo Go app on your phone, or press `w` for the browse
 
 **From GitHub:** add the repository secrets `SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_PASSWORD` and `ANTHROPIC_API_KEY`, then run the **Deploy backend** workflow (Actions tab). It does everything below, including the sign-in email, and runs again whenever `supabase/` changes.
 
+**Sending emails (optional):** create an account at [resend.com](https://resend.com), add and verify a domain you own (Resend shows the DNS records to add), create an API key, then add the repository secrets `RESEND_API_KEY` and `EMAIL_FROM` (an address on that domain, for example `post@mail.your-domain.de`) and run **Deploy backend** again. Without them, the app opens the email in the person's email app instead.
+
 **From your computer:** with the [Supabase CLI](https://supabase.com/docs/guides/cli) installed, run
 
 ```bash
@@ -92,7 +96,7 @@ It links the project, creates the database, stores the Anthropic key as a functi
 3. Add your Anthropic API key and deploy the functions:
    ```bash
    supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
-   supabase functions deploy analyze-document draft-reply case-chat fill-form learn-facts export-data delete-account
+   supabase functions deploy analyze-document draft-reply case-chat fill-form learn-facts send-email export-data delete-account
    ```
 4. Sign-in uses a 6-digit email code. In the Supabase dashboard go to **Authentication > Email Templates > Magic Link** and make sure the template includes `{{ .Token }}`, for example: `Your BüroKI code is {{ .Token }}`.
 5. Copy `apps/mobile/.env.example` to `apps/mobile/.env` and fill in the project URL and publishable key from **Project Settings > API**. Restart `npx expo start`.

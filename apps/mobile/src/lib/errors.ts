@@ -5,7 +5,7 @@ export const TERMS_VERSION = "2026-10";
 
 export type ApiErrorCode =
   | "auth" | "consent" | "limit" | "busy" | "upstream" | "agent" | "input" | "not_found" | "file_type" | "offline" | "timeout"
-  | "error";
+  | "error" | "email_off" | "already_sent" | "placeholders" | "email_rejected";
 
 /** Error with a machine-readable code, so screens can react (e.g. show the limit or consent screen). */
 export class ApiError extends Error {
