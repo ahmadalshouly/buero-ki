@@ -33,6 +33,8 @@ export interface Api {
   listDocuments(caseId: string): Promise<CaseDocument[]>;
   getDocument(id: string): Promise<CaseDocument>;
   getPageUrls(doc: CaseDocument): Promise<string[]>;
+  /** Short-lived links to stored files, in the same order. */
+  getFileUrls(paths: string[]): Promise<string[]>;
   /** Uploads the pages, then has the agent read them. Resolves when the analysis is done. */
   addDocument(caseId: string, pages: PickedFile[]): Promise<CaseDocument>;
   retryDocument(id: string): Promise<CaseDocument>;
@@ -74,6 +76,11 @@ export interface Api {
   /** BüroKI sends the saved email draft to `to`; replies go to the person. Only call after they confirmed. */
   sendEmail(id: string, to: string, replyTo: string): Promise<Draft>;
   deleteDraft(id: string): Promise<void>;
+  /** Keeps the exported PDF with the draft, replacing an older one. */
+  saveDraftPdf(id: string, pdf: PickedFile): Promise<Draft>;
+  /** Adds photos proving the letter was sent (receipt, tracking number). */
+  addDraftProof(id: string, photos: PickedFile[]): Promise<Draft>;
+  removeDraftProof(id: string, path: string): Promise<Draft>;
 
   listMessages(caseId: string): Promise<ChatMessage[]>;
   /** onText receives the answer so far while it is being written. */
@@ -265,6 +272,11 @@ function supabaseApi(db: SupabaseClient): Api {
     async getDocument(id) {
       return must(await db.from("documents").select("*").eq("id", id).single());
     },
+    async getFileUrls(paths) {
+      if (!paths.length) return [];
+      const { data } = await db.storage.from("documents").createSignedUrls(paths, 60 * 10);
+      return (data ?? []).map((d) => d.signedUrl ?? "");
+    },
     async getPageUrls(doc) {
       const paths = doc.page_paths?.length ? doc.page_paths : [doc.storage_path];
       const { data } = await db.storage.from("documents").createSignedUrls(paths, 60 * 10);
@@ -346,6 +358,24 @@ function supabaseApi(db: SupabaseClient): Api {
       ok(await db.from("tasks").delete().eq("id", id));
     },
 
+    async saveDraftPdf(id, pdf) {
+      const draft = await api.getDraft(id);
+      const [path] = await upload(draft.case_id, [pdf], `draft-${id}-pdf-`);
+      const saved = must(await db.from("drafts").update({ pdf_path: path, pdf_at: new Date().toISOString() }).eq("id", id).select().single()) as Draft;
+      if (draft.pdf_path) await db.storage.from("documents").remove([draft.pdf_path]);
+      return saved;
+    },
+    async addDraftProof(id, photos) {
+      const draft = await api.getDraft(id);
+      const paths = await upload(draft.case_id, photos, `draft-${id}-proof-`);
+      return must(await db.from("drafts").update({ proof_paths: [...(draft.proof_paths ?? []), ...paths] }).eq("id", id).select().single()) as Draft;
+    },
+    async removeDraftProof(id, path) {
+      const draft = await api.getDraft(id);
+      const saved = must(await db.from("drafts").update({ proof_paths: (draft.proof_paths ?? []).filter((p) => p !== path) }).eq("id", id).select().single()) as Draft;
+      await db.storage.from("documents").remove([path]);
+      return saved;
+    },
     async listDrafts(caseId) {
       return must(await db.from("drafts").select("*").eq("case_id", caseId).order("created_at", { ascending: false }));
     },
@@ -373,6 +403,9 @@ function supabaseApi(db: SupabaseClient): Api {
       return res.draft;
     },
     async deleteDraft(id) {
+      const draft = await api.getDraft(id);
+      const files = [...(draft.pdf_path ? [draft.pdf_path] : []), ...(draft.proof_paths ?? [])];
+      if (files.length) await db.storage.from("documents").remove(files);
       ok(await db.from("drafts").delete().eq("id", id));
     },
 

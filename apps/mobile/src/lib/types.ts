@@ -163,6 +163,11 @@ export interface Draft {
   sent_to?: string | null;
   /** "bueroki" when BüroKI sent it, "self" or empty when the person sent it themselves. */
   sent_via?: "self" | "bueroki" | null;
+  /** The PDF the person last exported, kept in storage. */
+  pdf_path?: string | null;
+  pdf_at?: string | null;
+  /** Photos proving it was sent: a post office receipt or a tracking number. */
+  proof_paths?: string[];
   revision_of: string | null;
   created_at: string;
 }
