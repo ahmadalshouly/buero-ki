@@ -5,6 +5,7 @@ import * as LocalAuthentication from "expo-local-authentication";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { AppState, Platform, View } from "react-native";
+import { Backdrop } from "@/components/glass";
 import { Button, Txt } from "@/components/ui";
 import i18n from "./i18n";
 import { getPrefs, setPrefs, usePrefs } from "./prefs";
@@ -82,6 +83,7 @@ export function LockGate({ children }: { children: ReactNode }) {
   if (!active || !locked) return <>{children}</>;
   return (
     <View style={{ flex: 1, backgroundColor: c.bg, alignItems: "center", justifyContent: "center", gap: space(4), padding: space(8) }}>
+      <Backdrop />
       <Ionicons name="lock-closed" size={48} color={c.accent} />
       <Txt variant="h2" style={{ textAlign: "center" }}>{t("lock.title")}</Txt>
       <Button icon="finger-print" title={t("lock.unlock")} onPress={unlock} />

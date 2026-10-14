@@ -104,7 +104,7 @@ export default function CaseScreen() {
         <Badge label={t(`status.${theCase.status}`)} tone={theCase.status === "closed" ? "neutral" : theCase.status === "waiting" ? "warn" : "accent"} />
       </View>
 
-      <Card style={{ backgroundColor: c.accent, borderColor: c.accent }}>
+      <Card style={{ backgroundColor: c.accent, borderColor: c.glassEdge, experimental_backgroundImage: `linear-gradient(135deg, ${c.accent} 0%, #5E5CE6 100%)` }}>
         <Txt variant="label" tone="accentInk" style={{ opacity: 0.8 }}>{t("case.nextStep")}</Txt>
         <Txt variant="h2" tone="accentInk">{next ? next.title : t("case.nothingNext")}</Txt>
         {next?.due_date && <Txt tone="accentInk" style={{ opacity: 0.85 }}>{t("due.on", { date: formatDate(next.due_date) })}</Txt>}

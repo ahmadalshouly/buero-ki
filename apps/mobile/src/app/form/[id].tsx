@@ -6,7 +6,7 @@ import { ActivityIndicator, Switch, TextInput, View } from "react-native";
 import { useFeedback } from "@/components/feedback";
 import { Markdown } from "@/components/Markdown";
 import {
-  Badge, Button, Card, Chip, DemoBanner, ErrorBox, IconButton, Muted, Screen, Section, Segmented, Sheet, SkeletonList, Txt,
+  Badge, Button, Card, Chip, DemoBanner, ErrorBox, Footer, IconButton, Muted, Screen, Section, Segmented, Sheet, SkeletonList, Txt,
 } from "@/components/ui";
 import { friendlyError } from "@/lib/errorText";
 import { formFileName, formProgress, formSheetHtml, groupFields, isFilled } from "@/lib/formSheet";
@@ -24,6 +24,8 @@ function FieldCard({ field, onChange }: { field: FormField; onChange: (value: st
   const input = {
     color: c.ink, backgroundColor: c.bg, borderColor: filled ? c.line : c.warn, borderWidth: 1, borderRadius: radius.sm,
     paddingHorizontal: space(3), paddingVertical: space(2.5), fontSize: 16, writingDirection: "ltr" as const, textAlign: "left" as const,
+    // Keeps the input above the card's glass layer on the web, where it would otherwise blur the text.
+    position: "relative" as const, zIndex: 1,
   };
   const checked = /^(true|ja|yes|x|1)$/i.test(field.value?.trim() ?? "");
 
@@ -256,7 +258,7 @@ export default function FormScreen() {
   return (
     <Screen
       footer={
-        <View style={{ padding: space(4), gap: space(2), borderTopWidth: 1, borderTopColor: c.line, backgroundColor: c.bg }}>
+        <Footer>
           {draft ? (
             <View style={{ flexDirection: "row", gap: space(2) }}>
               <Button style={{ flex: 1 }} variant="secondary" title={t("common.cancel")} onPress={() => setDraft(null)} />
@@ -267,7 +269,7 @@ export default function FormScreen() {
             <Button icon="document-outline" title={form.fillable ? t("form.downloadFilled") : t("form.downloadSheet")}
               onPress={exportPdf} loading={exporting} disabled={busy} />
           )}
-        </View>
+        </Footer>
       }
     >
       {header}

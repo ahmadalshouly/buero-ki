@@ -4,7 +4,7 @@ import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ActivityIndicator, View } from "react-native";
-import { Button, Card, DemoBanner, ErrorBox, IconButton, Muted, Screen, Txt } from "@/components/ui";
+import { Button, Card, DemoBanner, ErrorBox, Footer, IconButton, Muted, Screen, Txt } from "@/components/ui";
 import { MAX_PAGES } from "@/lib/api";
 import { friendlyError } from "@/lib/errorText";
 import { choosePdf, choosePhotos, PermissionDenied, takePhoto } from "@/lib/pick";
@@ -78,9 +78,9 @@ export default function Scan() {
   return (
     <Screen
       footer={pages.length > 0 ? (
-        <View style={{ padding: space(4), borderTopWidth: 1, borderTopColor: c.line, backgroundColor: c.bg }}>
+        <Footer>
           <Button icon="sparkles" title={t(isForm ? "form.analyze" : "scan.analyze", { count: pages.length })} onPress={analyze} />
-        </View>
+        </Footer>
       ) : undefined}
     >
       {isForm && <Stack.Screen options={{ title: t("form.addTitle") }} />}

@@ -68,7 +68,7 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
         >
           <View style={{
             flexDirection: "row", alignItems: "center", gap: space(2), maxWidth: 520,
-            backgroundColor: c.ink, paddingHorizontal: space(4), paddingVertical: space(3), borderRadius: radius.md,
+            backgroundColor: c.ink, paddingHorizontal: space(4), paddingVertical: space(3), borderRadius: 999,
           }}>
             <Ionicons name={icon} size={20} color={iconColor} />
             <Txt tone="bg" style={{ flexShrink: 1 }}>{toast.message}</Txt>
@@ -83,7 +83,7 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
           <Pressable
             onPress={() => {}}
             accessibilityRole="alert"
-            style={{ backgroundColor: c.card, borderRadius: radius.lg, padding: space(5), gap: space(3), width: "100%", maxWidth: 420 }}
+            style={{ backgroundColor: c.solid, borderRadius: radius.lg, borderCurve: "continuous", padding: space(5), gap: space(3), width: "100%", maxWidth: 420 }}
           >
             <Txt variant="h2">{dialog?.title}</Txt>
             {dialog?.message && <Txt tone="muted">{dialog.message}</Txt>}
