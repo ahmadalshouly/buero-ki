@@ -23,6 +23,7 @@ const en = {
     busy: "The assistant is busy. Please try again in a minute.",
     offline: "No internet connection. Please try again when you are online.",
     upstream: "The assistant is unavailable right now. Please try again.",
+    timeout: "This took too long. Please check your connection and try again.",
     auth: "Please sign in again.",
     not_found: "This item no longer exists.",
     file_type: "Please use JPEG, PNG or PDF files.",
