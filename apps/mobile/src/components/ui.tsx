@@ -6,7 +6,7 @@ import {
   type StyleProp, type TextInputProps, type TextStyle, type ViewStyle,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import { useDirection, useIconFlip, useInputDir, useLtrText, useTextDir } from "@/lib/direction";
+import { LTR_INPUT, useDirection, useIconFlip, useInputDir, useTextDir } from "@/lib/direction";
 import { tap } from "@/lib/haptics";
 import { daysUntil, formatDate } from "@/lib/i18n";
 import { makeStyles } from "@/lib/styles";
@@ -300,7 +300,6 @@ export function Field({
 }) {
   const s = useStyles();
   const dir = useInputDir();
-  const ltrText = useLtrText();
   return (
     <View style={{ gap: space(1.5) }}>
       <Txt variant="small" tone="muted" style={{ fontWeight: "600", marginStart: space(1) }}>{label}</Txt>
@@ -308,7 +307,7 @@ export function Field({
         placeholderTextColor={s.c.faint}
         accessibilityLabel={label}
         {...props}
-        style={[s.input, props.multiline && s.multiline, error && s.inputError, ltr ? ltrText : dir, props.style]}
+        style={[s.input, props.multiline && s.multiline, error && s.inputError, ltr ? LTR_INPUT : dir, props.style]}
       />
       {error ? <Txt variant="small" tone="danger" style={{ marginStart: space(1) }}>{error}</Txt> : hint ? <View style={{ marginStart: space(1) }}><Muted>{hint}</Muted></View> : null}
     </View>

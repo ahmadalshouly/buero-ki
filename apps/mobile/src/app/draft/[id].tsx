@@ -5,8 +5,9 @@ import { useTranslation } from "react-i18next";
 import { Linking, Share, TextInput, View } from "react-native";
 import { useFeedback } from "@/components/feedback";
 import { Badge, Button, Card, ErrorBox, Field, IconButton, Muted, Screen, Section, Sheet, SkeletonList, Txt } from "@/components/ui";
-import { useLtrText } from "@/lib/direction";
+import { LTR_INPUT, useLtrText } from "@/lib/direction";
 import { ApiError } from "@/lib/errors";
+import { friendlyError } from "@/lib/errorText";
 import { formatDate } from "@/lib/i18n";
 import { emailIn, isEmailAddress, placeholders } from "@/lib/letter";
 import { exportLetterPdf } from "@/lib/printLetter";
@@ -102,7 +103,7 @@ export default function DraftScreen() {
     try {
       await exportLetterPdf(draft!.body_de, draft!.subject);
     } catch (e) {
-      toast(errorMessage(e), "error");
+      toast(friendlyError(e, t), "error");
     } finally {
       setPrinting(false);
     }
@@ -152,7 +153,7 @@ export default function DraftScreen() {
               multiline
               accessibilityLabel={t("draft.german")}
               style={{
-                minHeight: 320, textAlignVertical: "top", ...ltrText, fontSize: 16, lineHeight: 23,
+                minHeight: 320, textAlignVertical: "top", ...LTR_INPUT, fontSize: 16, lineHeight: 23,
                 color: c.ink, backgroundColor: c.glassFill, borderColor: c.accent, borderWidth: 1, borderRadius: radius.md, borderCurve: "continuous", padding: space(4),
               }}
             />

@@ -2,7 +2,7 @@ import type { TFunction } from "i18next";
 import { ApiError } from "./errors";
 import i18n from "./i18n";
 
-const TRANSLATED = ["limit", "consent", "busy", "offline", "upstream", "auth", "not_found", "file_type", "email_off", "already_sent"] as const;
+const TRANSLATED = ["limit", "consent", "busy", "offline", "upstream", "auth", "not_found", "file_type", "timeout", "email_off", "already_sent"] as const;
 
 /**
  * Shows our own translated text for errors people can act on. Other messages

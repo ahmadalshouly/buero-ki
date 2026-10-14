@@ -25,6 +25,7 @@ const de: Locale = {
     busy: "Der Assistent ist gerade beschäftigt. Bitte versuch es in einer Minute nochmal.",
     offline: "Keine Internetverbindung. Bitte versuch es nochmal, wenn du online bist.",
     upstream: "Der Assistent ist gerade nicht erreichbar. Bitte versuch es nochmal.",
+    timeout: "Das hat zu lange gedauert. Bitte prüf deine Verbindung und versuch es nochmal.",
     auth: "Bitte melde dich erneut an.",
     not_found: "Das gibt es nicht mehr.",
     file_type: "Bitte nutze JPEG-, PNG- oder PDF-Dateien.",

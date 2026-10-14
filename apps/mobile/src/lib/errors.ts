@@ -4,14 +4,23 @@ export const MAX_PAGES = 10;
 export const TERMS_VERSION = "2026-10";
 
 export type ApiErrorCode =
-  | "auth" | "consent" | "limit" | "busy" | "upstream" | "agent" | "input" | "not_found" | "file_type" | "offline" | "error"
-  | "email_off" | "already_sent" | "placeholders" | "email_rejected";
+  | "auth" | "consent" | "limit" | "busy" | "upstream" | "agent" | "input" | "not_found" | "file_type" | "offline" | "timeout"
+  | "error" | "email_off" | "already_sent" | "placeholders" | "email_rejected";
 
 /** Error with a machine-readable code, so screens can react (e.g. show the limit or consent screen). */
 export class ApiError extends Error {
   constructor(message: string, public code: ApiErrorCode = "error", public requestId?: string) {
     super(message);
   }
+}
+
+/** Rejects with a "timeout" error when the work takes longer than ms, so a spinner never runs forever. */
+export function withTimeout<T>(work: Promise<T>, ms: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new ApiError(`Timed out after ${Math.round(ms / 1000)} s`, "timeout")), ms);
+  });
+  return Promise.race([work, timeout]).finally(() => clearTimeout(timer));
 }
 
 export const EXTENSIONS: Record<string, string> = {

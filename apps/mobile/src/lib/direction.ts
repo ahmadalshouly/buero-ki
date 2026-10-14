@@ -59,12 +59,18 @@ export function useLtrText(): TextStyle {
   return useRtl() ? LTR_BLOCK_IN_RTL : LTR_BLOCK;
 }
 
-const RTL_INPUT: TextStyle = { textAlign: RIGHT_EDGE, writingDirection: "rtl" };
+// Text inputs are different: React Native on iOS does not swap their textAlign
+// (the input never learns its layout direction), so "left" and "right" mean
+// the physical edges there, as on the web.
+const RTL_INPUT: TextStyle = { textAlign: "right", writingDirection: "rtl" };
 
 /** Aligns typed text to the reading side; inputs don't follow writingDirection alone. */
 export function useInputDir(): TextStyle | null {
   return useRtl() ? RTL_INPUT : null;
 }
+
+/** Inputs for German text (form answers, letter drafts): typed left-to-right from the left edge. */
+export const LTR_INPUT: TextStyle = LTR_BLOCK;
 
 const FLIP: ViewStyle = { transform: [{ scaleX: -1 }] };
 const DIRECTIONAL = /(^|-)(arrow-(forward|back)|chevron-(forward|back)|caret-(forward|back))/;
