@@ -8,6 +8,7 @@ import { Markdown } from "@/components/Markdown";
 import {
   Badge, Button, Card, Chip, DemoBanner, ErrorBox, Footer, IconButton, Muted, Screen, Section, Segmented, Sheet, SkeletonList, Txt,
 } from "@/components/ui";
+import { useInputDir } from "@/lib/direction";
 import { friendlyError } from "@/lib/errorText";
 import { formFileName, formProgress, formSheetHtml, groupFields, isFilled } from "@/lib/formSheet";
 import { errorMessage, useForm, useFormActions } from "@/lib/queries";
@@ -90,6 +91,7 @@ function FieldCard({ field, onChange }: { field: FormField; onChange: (value: st
 function Ask({ form, busy, onSend }: { form: CaseForm; busy: boolean; onSend: (text: string) => Promise<string | null> }) {
   const { t } = useTranslation();
   const c = useColors();
+  const inputDir = useInputDir();
   const [text, setText] = useState("");
   const [reply, setReply] = useState<string | null>(null);
   const [skipped, setSkipped] = useState<string[]>([]);
@@ -130,10 +132,10 @@ function Ask({ form, busy, onSend }: { form: CaseForm; busy: boolean; onSend: (t
         placeholder={current ? t("form.answerPlaceholder") : t("form.askPlaceholder")}
         placeholderTextColor={c.faint}
         accessibilityLabel={current?.question ?? t("form.askTitle")}
-        style={{
-          minHeight: current ? 48 : 72, textAlignVertical: "top", color: c.ink, backgroundColor: c.card, borderRadius: radius.sm,
+        style={[{
+          minHeight: current ? 48 : 72, textAlignVertical: "top", color: c.ink, backgroundColor: c.glassFill, borderRadius: radius.sm,
           padding: space(3), fontSize: 16, position: "relative", zIndex: 1,
-        }}
+        }, inputDir]}
       />
       <View style={{ flexDirection: "row", gap: space(2) }}>
         {current && (

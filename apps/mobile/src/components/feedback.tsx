@@ -5,6 +5,7 @@ import { createContext, useCallback, useContext, useRef, useState, type ReactNod
 import { useTranslation } from "react-i18next";
 import { Animated, Modal, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useDirection } from "@/lib/direction";
 import { success, warning } from "@/lib/haptics";
 import { radius, space, useColors } from "@/lib/theme";
 import { Button, Txt } from "./ui";
@@ -29,6 +30,7 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
   const c = useColors();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const direction = useDirection();
   const [toast, setToast] = useState<{ message: string; tone: ToastTone } | null>(null);
   const [dialog, setDialog] = useState<(ConfirmOptions & { resolve: (v: boolean) => void }) | null>(null);
   const [opacity] = useState(() => new Animated.Value(0));
@@ -78,7 +80,7 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
       <Modal visible={!!dialog} transparent animationType="fade" onRequestClose={() => close(false)}>
         <Pressable
           onPress={() => close(false)}
-          style={{ flex: 1, backgroundColor: c.overlay, alignItems: "center", justifyContent: "center", padding: space(6) }}
+          style={[{ flex: 1, backgroundColor: c.overlay, alignItems: "center", justifyContent: "center", padding: space(6) }, direction]}
         >
           <Pressable
             onPress={() => {}}

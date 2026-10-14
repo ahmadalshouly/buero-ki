@@ -6,6 +6,7 @@ import {
   type StyleProp, type TextInputProps, type TextStyle, type ViewStyle,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { useDirection, useIconFlip, useInputDir, useTextDir } from "@/lib/direction";
 import { tap } from "@/lib/haptics";
 import { daysUntil, formatDate } from "@/lib/i18n";
 import { makeStyles } from "@/lib/styles";
@@ -171,8 +172,9 @@ export function Txt({
   selectable?: boolean;
 }) {
   const c = useColors();
+  const dir = useTextDir(children);
   return (
-    <Text selectable={selectable} numberOfLines={numberOfLines} onPress={onPress} style={[font[variant], { color: c[tone] }, style]}>
+    <Text selectable={selectable} numberOfLines={numberOfLines} onPress={onPress} style={[font[variant], { color: c[tone] }, dir, style]}>
       {children}
     </Text>
   );
@@ -222,6 +224,8 @@ export function Button({
 }) {
   const s = useStyles();
   const { c } = s;
+  const dir = useTextDir(title);
+  const flip = useIconFlip(icon);
   const fg = { primary: c.accentInk, secondary: c.accent, ghost: c.accent, danger: c.danger }[variant];
   const bg = { primary: c.accent, secondary: c.accentSoft, ghost: "transparent", danger: c.dangerSoft }[variant];
   return (
@@ -242,8 +246,8 @@ export function Button({
         style,
       ]}
     >
-      {loading ? <ActivityIndicator color={fg} /> : icon ? <Ionicons name={icon} size={small ? 17 : 20} color={fg} /> : null}
-      <Text style={[s.buttonText, small && { fontSize: 15 }, { color: fg }]}>{title}</Text>
+      {loading ? <ActivityIndicator color={fg} /> : icon ? <Ionicons name={icon} size={small ? 17 : 20} color={fg} style={flip} /> : null}
+      <Text style={[s.buttonText, small && { fontSize: 15 }, { color: fg }, dir]}>{title}</Text>
     </Pressable>
   );
 }
@@ -252,10 +256,11 @@ export function IconButton({
   icon, onPress, label, color,
 }: { icon: IconName; onPress: () => void; label: string; color?: string }) {
   const c = useColors();
+  const flip = useIconFlip(icon);
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} hitSlop={12}
       style={({ pressed }) => [{ padding: 4 }, pressed && { opacity: 0.6 }]}>
-      <Ionicons name={icon} size={24} color={color ?? c.accent} />
+      <Ionicons name={icon} size={24} color={color ?? c.accent} style={flip} />
     </Pressable>
   );
 }
@@ -285,9 +290,16 @@ export function GlassIconButton({ icon, onPress, label }: { icon: IconName; onPr
 }
 
 export function Field({
-  label, hint, error, ...props
-}: TextInputProps & { label: string; hint?: string; error?: string | null }) {
+  label, hint, error, ltr, ...props
+}: TextInputProps & {
+  label: string;
+  hint?: string;
+  error?: string | null;
+  /** Keep typed text left-to-right whatever the UI language (emails, passwords, German text). */
+  ltr?: boolean;
+}) {
   const s = useStyles();
+  const dir = useInputDir();
   return (
     <View style={{ gap: space(1.5) }}>
       <Txt variant="small" tone="muted" style={{ fontWeight: "600", marginStart: space(1) }}>{label}</Txt>
@@ -295,12 +307,14 @@ export function Field({
         placeholderTextColor={s.c.faint}
         accessibilityLabel={label}
         {...props}
-        style={[s.input, props.multiline && s.multiline, error && s.inputError, props.style]}
+        style={[s.input, props.multiline && s.multiline, error && s.inputError, ltr ? LTR_INPUT : dir, props.style]}
       />
       {error ? <Txt variant="small" tone="danger" style={{ marginStart: space(1) }}>{error}</Txt> : hint ? <View style={{ marginStart: space(1) }}><Muted>{hint}</Muted></View> : null}
     </View>
   );
 }
+
+const LTR_INPUT: TextStyle = { textAlign: "left", writingDirection: "ltr" };
 
 export function Section({ title, children, action }: { title: string; children: ReactNode; action?: ReactNode }) {
   const s = useStyles();
@@ -326,11 +340,12 @@ function toneColors(c: Palette, tone: Tone) {
 
 export function Badge({ label, tone = "neutral", icon }: { label: string; tone?: Tone; icon?: IconName }) {
   const s = useStyles();
+  const dir = useTextDir(label);
   const p = toneColors(s.c, tone);
   return (
     <View style={[s.badge, { backgroundColor: p.bg }]}>
       {icon && <Ionicons name={icon} size={13} color={p.fg} />}
-      <Text style={[s.badgeText, { color: p.fg }]}>{label}</Text>
+      <Text style={[s.badgeText, { color: p.fg }, dir]}>{label}</Text>
     </View>
   );
 }
@@ -425,6 +440,7 @@ export function DemoBanner() {
 
 export function Chip({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
   const s = useStyles();
+  const dir = useTextDir(label);
   return (
     <Pressable
       onPress={() => {
@@ -435,7 +451,7 @@ export function Chip({ label, selected, onPress }: { label: string; selected: bo
       accessibilityState={{ selected }}
       style={[s.chip, selected && { backgroundColor: s.c.accent, borderColor: s.c.accent }]}
     >
-      <Text style={[s.chipText, selected && { color: s.c.accentInk }]}>{label}</Text>
+      <Text style={[s.chipText, selected && { color: s.c.accentInk }, dir]}>{label}</Text>
     </Pressable>
   );
 }
@@ -511,6 +527,7 @@ export function ListRow({
   chevron?: boolean;
 }) {
   const s = useStyles();
+  const flip = useIconFlip("chevron-forward");
   const body = (
     <>
       {icon && (
@@ -523,7 +540,7 @@ export function ListRow({
         {subtitle ? <Muted>{subtitle}</Muted> : null}
       </View>
       {right}
-      {chevron && <Ionicons name="chevron-forward" size={17} color={s.c.faint} style={{ opacity: 0.7 }} />}
+      {chevron && <Ionicons name="chevron-forward" size={17} color={s.c.faint} style={[{ opacity: 0.7 }, flip]} />}
     </>
   );
   if (!onPress) return <View style={s.listRow}>{body}</View>;
@@ -566,9 +583,10 @@ export function Sheet({
 }: { visible: boolean; onClose: () => void; title?: string; children: ReactNode }) {
   const s = useStyles();
   const insets = useSafeAreaInsets();
+  const direction = useDirection();
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
-      <Pressable style={s.sheetBackdrop} onPress={onClose} accessibilityLabel="Close">
+      <Pressable style={[s.sheetBackdrop, direction]} onPress={onClose} accessibilityLabel="Close">
         <Pressable style={[s.sheet, { paddingBottom: insets.bottom + space(4) }]} onPress={() => {}}>
           <GlassFill round={radius.lg} material="thick" />
           <View style={s.grabber} />

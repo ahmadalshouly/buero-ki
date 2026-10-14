@@ -2,6 +2,7 @@ import "@/lib/i18n";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import * as Notifications from "expo-notifications";
 import { router, Stack } from "expo-router";
+import { LocaleDirContext } from "expo-router/react-navigation";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
@@ -9,6 +10,7 @@ import { Platform, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { FeedbackProvider } from "@/components/feedback";
 import { ErrorBox, Loading } from "@/components/ui";
+import { useRtl } from "@/lib/direction";
 import { friendlyError } from "@/lib/errorText";
 import { LockGate } from "@/lib/lock";
 import { usePrefs } from "@/lib/prefs";
@@ -109,14 +111,18 @@ function Themed() {
   useEffect(() => {
     if (Platform.OS === "web") document.body.style.backgroundColor = c.bg;
   }, [c.bg]);
+  const rtl = useRtl();
   return (
-    <View style={{ flex: 1, backgroundColor: c.bg }}>
+    // Direction is set here, not only natively, so Arabic and Farsi lay out right-to-left at once.
+    <View style={{ flex: 1, backgroundColor: c.bg, direction: rtl ? "rtl" : "ltr" }}>
       <StatusBar style={scheme === "dark" ? "light" : "dark"} />
-      <FeedbackProvider>
-        <LockGate>
-          <RootStack />
-        </LockGate>
-      </FeedbackProvider>
+      <LocaleDirContext.Provider value={rtl ? "rtl" : "ltr"}>
+        <FeedbackProvider>
+          <LockGate>
+            <RootStack />
+          </LockGate>
+        </FeedbackProvider>
+      </LocaleDirContext.Provider>
     </View>
   );
 }

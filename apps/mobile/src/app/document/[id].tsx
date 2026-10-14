@@ -10,6 +10,7 @@ import {
   Badge, Button, Card, DueBadge, ErrorBox, IconButton, Muted, Screen, Section, Sheet, SkeletonList, Txt,
 } from "@/components/ui";
 import { friendlyError } from "@/lib/errorText";
+import { useIconFlip } from "@/lib/direction";
 import { formatDate } from "@/lib/i18n";
 import { errorMessage, useDeleteDocument, useDocument, usePageUrls, useRetryDocument } from "@/lib/queries";
 import { isDemo } from "@/lib/supabase";
@@ -21,6 +22,7 @@ export default function DocumentScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { t } = useTranslation();
   const c = useColors();
+  const flip = useIconFlip("arrow-forward-circle");
   const { confirm, toast } = useFeedback();
   const query = useDocument(id);
   const doc = query.data;
@@ -87,7 +89,7 @@ export default function DocumentScreen() {
             <Section title={t("document.todo")}>
               {a.actions.map((action, i) => (
                 <Card key={i} style={{ flexDirection: "row", gap: space(3) }}>
-                  <Ionicons name="arrow-forward-circle" size={24} color={c.accent} />
+                  <Ionicons name="arrow-forward-circle" size={24} color={c.accent} style={flip} />
                   <View style={{ flex: 1, gap: space(1) }}>
                     <Txt>{action.title}</Txt>
                     <DueBadge date={action.due_date} />

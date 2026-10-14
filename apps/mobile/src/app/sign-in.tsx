@@ -78,6 +78,7 @@ export default function SignIn() {
 
         <Field
           label={t("auth.email")}
+          ltr
           value={email}
           onChangeText={setEmail}
           keyboardType="email-address"
@@ -91,6 +92,7 @@ export default function SignIn() {
         />
         <Field
           label={t("auth.password")}
+          ltr
           value={password}
           onChangeText={setPassword}
           secureTextEntry
