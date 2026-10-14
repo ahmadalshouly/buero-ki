@@ -63,11 +63,12 @@ const useStyles = makeStyles((c) => ({
   demo: {
     flexDirection: "row",
     alignItems: "center",
-    gap: space(2),
+    alignSelf: "flex-start",
+    gap: space(1.5),
     backgroundColor: c.warnSoft,
-    borderRadius: radius.sm,
-    ...curve,
-    padding: space(3),
+    borderRadius: 999,
+    paddingVertical: space(1.5),
+    paddingHorizontal: space(3),
   },
   chip: {
     paddingHorizontal: space(3.5),
@@ -434,8 +435,8 @@ export function DemoBanner() {
   if (!isDemo) return null;
   return (
     <View style={s.demo}>
-      <Ionicons name="flask-outline" size={16} color={s.c.warn} />
-      <Txt variant="small" tone="warn" style={{ flex: 1 }}>{t("common.demo")}</Txt>
+      <Ionicons name="flask-outline" size={14} color={s.c.warn} />
+      <Txt variant="caption" tone="warn" style={{ flexShrink: 1, fontWeight: "500" }}>{t("common.demo")}</Txt>
     </View>
   );
 }
@@ -489,18 +490,19 @@ export function Segmented<T extends string>({
   );
 }
 
+/** A tinted rounded-square icon, like the symbols in iOS Settings and Files. */
 export function IconCircle({ name, tone = "accent", size = 40 }: { name: IconName; tone?: Tone; size?: number }) {
   const s = useStyles();
   const p = toneColors(s.c, tone);
   return (
-    <View style={[s.iconCircle, { width: size, height: size, borderRadius: size / 2, backgroundColor: p.bg }]}>
-      <Ionicons name={name} size={size / 2} color={p.fg} />
+    <View style={[s.iconCircle, curve, { width: size, height: size, borderRadius: Math.round(size * 0.3), backgroundColor: p.bg }]}>
+      <Ionicons name={name} size={Math.round(size * 0.5)} color={p.fg} />
     </View>
   );
 }
 
 /** A grouped list, like iOS settings. */
-export function Group({ children }: { children: ReactNode }) {
+export function Group({ children, inset = space(4) }: { children: ReactNode; /** Where row separators start, to line up with the text. */ inset?: number }) {
   const s = useStyles();
   const items = (Array.isArray(children) ? children : [children]).flat().filter(Boolean);
   return (
@@ -509,7 +511,7 @@ export function Group({ children }: { children: ReactNode }) {
       <View style={s.groupClip}>
         {items.map((child, i) => (
           <View key={i}>
-            {i > 0 && <View style={s.divider} />}
+            {i > 0 && <View style={[s.divider, { marginStart: inset }]} />}
             {child}
           </View>
         ))}
@@ -599,6 +601,43 @@ export function Sheet({
         </Pressable>
       </Pressable>
     </Modal>
+  );
+}
+
+/** Several figures side by side in one surface, split by hairlines. */
+export function StatGroup({ items }: { items: { label: string; value: string; tone?: Tone; icon?: IconName }[] }) {
+  const s = useStyles();
+  return (
+    <View style={[s.group, { flexDirection: "row" }]}>
+      <GlassFill />
+      {items.map((item, i) => (
+        <View key={item.label} style={{ flex: 1, flexDirection: "row" }}>
+          {i > 0 && <View style={{ width: StyleSheet.hairlineWidth, backgroundColor: s.c.line, marginVertical: space(3.5) }} />}
+          <StatCell {...item} />
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function StatCell({ label, value, tone = "neutral", icon }: { label: string; value: string; tone?: Tone; icon?: IconName }) {
+  const s = useStyles();
+  const dir = useTextDir(value);
+  const script = useScriptFont();
+  const p = toneColors(s.c, tone);
+  const color = tone === "neutral" ? s.c.ink : p.fg;
+  return (
+    <View style={{ flex: 1, paddingVertical: space(3.5), paddingHorizontal: space(3), gap: 2 }}>
+      {icon && <Ionicons name={icon} size={15} color={tone === "neutral" ? s.c.faint : p.fg} style={{ marginBottom: space(1) }} />}
+      <Text
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        style={script([font.title, { fontSize: 26, lineHeight: 31, color, fontVariant: ["tabular-nums"] }, dir])}
+      >
+        {value}
+      </Text>
+      <Txt variant="caption" tone="muted" numberOfLines={2}>{label}</Txt>
+    </View>
   );
 }
 

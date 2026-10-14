@@ -68,7 +68,7 @@ export function Markdown({ text, color }: { text: string; color?: string }) {
           return (
             <View key={i} style={{ flexDirection: "row", gap: space(2), paddingStart: space(1) }}>
               <Text style={script([font.body, { color: c.accent, fontWeight: "700" }])}>{block.marker}</Text>
-              <Text style={script([font.body, { color: ink, flex: 1 }, textDir(rtl, block.text)])}>
+              <Text style={script([font.body, { color: ink, flexShrink: 1, flexGrow: 1 }, textDir(rtl, block.text)])}>
                 <Inline text={block.text} rtl={rtl} />
               </Text>
             </View>

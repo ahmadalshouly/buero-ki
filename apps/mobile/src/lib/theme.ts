@@ -6,7 +6,7 @@ import { usePrefs } from "./prefs";
 const light = {
   bg: "#F2F2F7",
   /** Translucent surface for cards and grouped lists. */
-  card: "rgba(255, 255, 255, 0.55)",
+  card: "rgba(255, 255, 255, 0.72)",
   /** Opaque surface for dialogs, inputs and anything that must not show through. */
   solid: "#FFFFFF",
   /** Selected segment of a segmented control. */
@@ -17,7 +17,7 @@ const light = {
   faint: "#8E8E93",
   line: "rgba(60, 60, 67, 0.16)",
   /** Bright edge that catches the light on glass. */
-  glassEdge: "rgba(255, 255, 255, 0.75)",
+  glassEdge: "rgba(60, 60, 67, 0.08)",
   /** Fallback fill where real blur is not available (Android). */
   glassFill: "rgba(255, 255, 255, 0.86)",
   accent: "#007AFF",
@@ -30,14 +30,14 @@ const light = {
   success: "#248A3D",
   skeleton: "rgba(118, 118, 128, 0.14)",
   overlay: "rgba(0, 0, 0, 0.28)",
-  shadow: "rgba(31, 38, 64, 0.10)",
+  shadow: "rgba(16, 24, 40, 0.06)",
 };
 
 export type Palette = typeof light;
 
 const dark: Palette = {
   bg: "#000000",
-  card: "rgba(44, 44, 46, 0.45)",
+  card: "rgba(28, 28, 30, 0.72)",
   solid: "#1C1C1E",
   segment: "#636366",
   raised: "rgba(118, 118, 128, 0.24)",
@@ -62,22 +62,22 @@ const dark: Palette = {
 
 export const palettes = { light, dark };
 
-/** Soft colour washes painted behind the glass, so the blur has something to show. */
+/**
+ * The light behind the glass: the system grouped background with one soft
+ * glow of the tint colour at the top, so translucent surfaces have something
+ * to pick up without the screen turning colourful.
+ */
 export const washes = {
   light: {
-    base: "linear-gradient(160deg, #EDF3FC 0%, #F4F2F9 55%, #FAF4EE 100%)",
+    base: "linear-gradient(180deg, #EEF2F8 0%, #F2F2F7 38%, #F2F2F7 100%)",
     glow: [
-      "radial-gradient(circle at 92% 0%, rgba(0, 122, 255, 0.24) 0%, rgba(0, 122, 255, 0) 55%)",
-      "radial-gradient(circle at 0% 45%, rgba(175, 82, 222, 0.16) 0%, rgba(175, 82, 222, 0) 50%)",
-      "radial-gradient(circle at 80% 100%, rgba(255, 149, 0, 0.14) 0%, rgba(255, 149, 0, 0) 50%)",
+      "radial-gradient(ellipse 120% 55% at 50% 0%, rgba(0, 122, 255, 0.13) 0%, rgba(0, 122, 255, 0) 70%)",
     ],
   },
   dark: {
-    base: "linear-gradient(160deg, #04060C 0%, #08070F 55%, #0C0806 100%)",
+    base: "linear-gradient(180deg, #070A12 0%, #000000 40%, #000000 100%)",
     glow: [
-      "radial-gradient(circle at 92% 0%, rgba(10, 132, 255, 0.34) 0%, rgba(10, 132, 255, 0) 55%)",
-      "radial-gradient(circle at 0% 45%, rgba(191, 90, 242, 0.22) 0%, rgba(191, 90, 242, 0) 50%)",
-      "radial-gradient(circle at 80% 100%, rgba(255, 159, 10, 0.12) 0%, rgba(255, 159, 10, 0) 50%)",
+      "radial-gradient(ellipse 120% 55% at 50% 0%, rgba(10, 132, 255, 0.20) 0%, rgba(10, 132, 255, 0) 70%)",
     ],
   },
 };
@@ -99,11 +99,11 @@ export const space = (n: number) => n * 4;
 /** iOS draws rounded corners as continuous curves ("squircles"). */
 export const curve = { borderCurve: "continuous" as const };
 
-/** Soft, wide shadow that lifts glass off the backdrop. */
+/** A quiet shadow that lifts a surface just off the background. */
 export function lift(c: Palette) {
   return Platform.select({
     android: { elevation: 0 },
-    default: { shadowColor: c.shadow, shadowOpacity: 1, shadowRadius: 18, shadowOffset: { width: 0, height: 8 } },
+    default: { shadowColor: c.shadow, shadowOpacity: 1, shadowRadius: 12, shadowOffset: { width: 0, height: 4 } },
   });
 }
 
@@ -115,4 +115,5 @@ export const font = {
   body: { fontSize: 17, lineHeight: 23, letterSpacing: -0.41 },
   small: { fontSize: 15, lineHeight: 20, letterSpacing: -0.24 },
   label: { fontSize: 13, lineHeight: 18, fontWeight: "600" as const, letterSpacing: -0.08, textTransform: "uppercase" as const },
+  caption: { fontSize: 13, lineHeight: 18, letterSpacing: -0.08 },
 };
