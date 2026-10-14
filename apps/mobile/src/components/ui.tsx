@@ -6,6 +6,7 @@ import {
   type StyleProp, type TextInputProps, type TextStyle, type ViewStyle,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { useScriptFont } from "@/lib/fonts";
 import { LTR_INPUT, useDirection, useIconFlip, useInputDir, useTextDir } from "@/lib/direction";
 import { tap } from "@/lib/haptics";
 import { daysUntil, formatDate } from "@/lib/i18n";
@@ -173,8 +174,9 @@ export function Txt({
 }) {
   const c = useColors();
   const dir = useTextDir(children);
+  const script = useScriptFont();
   return (
-    <Text selectable={selectable} numberOfLines={numberOfLines} onPress={onPress} style={[font[variant], { color: c[tone] }, dir, style]}>
+    <Text selectable={selectable} numberOfLines={numberOfLines} onPress={onPress} style={script([font[variant], { color: c[tone] }, dir, style])}>
       {children}
     </Text>
   );
@@ -225,6 +227,7 @@ export function Button({
   const s = useStyles();
   const { c } = s;
   const dir = useTextDir(title);
+  const script = useScriptFont();
   const flip = useIconFlip(icon);
   const fg = { primary: c.accentInk, secondary: c.accent, ghost: c.accent, danger: c.danger }[variant];
   const bg = { primary: c.accent, secondary: c.accentSoft, ghost: "transparent", danger: c.dangerSoft }[variant];
@@ -247,7 +250,7 @@ export function Button({
       ]}
     >
       {loading ? <ActivityIndicator color={fg} /> : icon ? <Ionicons name={icon} size={small ? 17 : 20} color={fg} style={flip} /> : null}
-      <Text style={[s.buttonText, small && { fontSize: 15 }, { color: fg }, dir]}>{title}</Text>
+      <Text style={script([s.buttonText, small && { fontSize: 15 }, { color: fg }, dir])}>{title}</Text>
     </Pressable>
   );
 }
@@ -339,11 +342,12 @@ function toneColors(c: Palette, tone: Tone) {
 export function Badge({ label, tone = "neutral", icon }: { label: string; tone?: Tone; icon?: IconName }) {
   const s = useStyles();
   const dir = useTextDir(label);
+  const script = useScriptFont();
   const p = toneColors(s.c, tone);
   return (
     <View style={[s.badge, { backgroundColor: p.bg }]}>
       {icon && <Ionicons name={icon} size={13} color={p.fg} />}
-      <Text style={[s.badgeText, { color: p.fg }, dir]}>{label}</Text>
+      <Text style={script([s.badgeText, { color: p.fg }, dir])}>{label}</Text>
     </View>
   );
 }
@@ -439,6 +443,7 @@ export function DemoBanner() {
 export function Chip({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
   const s = useStyles();
   const dir = useTextDir(label);
+  const script = useScriptFont();
   return (
     <Pressable
       onPress={() => {
@@ -449,7 +454,7 @@ export function Chip({ label, selected, onPress }: { label: string; selected: bo
       accessibilityState={{ selected }}
       style={[s.chip, selected && { backgroundColor: s.c.accent, borderColor: s.c.accent }]}
     >
-      <Text style={[s.chipText, selected && { color: s.c.accentInk }, dir]}>{label}</Text>
+      <Text style={script([s.chipText, selected && { color: s.c.accentInk }, dir])}>{label}</Text>
     </Pressable>
   );
 }
@@ -458,6 +463,7 @@ export function Segmented<T extends string>({
   value, options, onChange,
 }: { value: T; options: { value: T; label: string }[]; onChange: (v: T) => void }) {
   const s = useStyles();
+  const script = useScriptFont();
   return (
     <View style={s.segmented} accessibilityRole="tablist">
       {options.map((o) => {
@@ -473,7 +479,7 @@ export function Segmented<T extends string>({
             }}
             style={[s.segment, on && s.segmentOn]}
           >
-            <Text numberOfLines={1} style={[font.small, { fontWeight: on ? "700" : "500", color: on ? s.c.ink : s.c.muted }]}>
+            <Text numberOfLines={1} style={script([font.small, { fontWeight: on ? "700" : "500", color: on ? s.c.ink : s.c.muted }])}>
               {o.label}
             </Text>
           </Pressable>
@@ -599,6 +605,7 @@ export function Sheet({
 export function StatTile({ label, value, tone = "neutral" }: { label: string; value: string; tone?: Tone }) {
   const s = useStyles();
   const dir = useTextDir(value);
+  const script = useScriptFont();
   const p = toneColors(s.c, tone);
   return (
     <View style={[s.card, { flex: 1, minWidth: 96, gap: 2 }]}>
@@ -606,7 +613,7 @@ export function StatTile({ label, value, tone = "neutral" }: { label: string; va
       <Text
         numberOfLines={1}
         adjustsFontSizeToFit
-        style={[font.title, { fontSize: 28, lineHeight: 34, color: tone === "neutral" ? s.c.ink : p.fg, fontVariant: ["tabular-nums"] }, dir]}
+        style={script([font.title, { fontSize: 28, lineHeight: 34, color: tone === "neutral" ? s.c.ink : p.fg, fontVariant: ["tabular-nums"] }, dir])}
       >
         {value}
       </Text>

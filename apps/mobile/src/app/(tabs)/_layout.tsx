@@ -6,6 +6,7 @@ import { Platform, StyleSheet, type ColorValue } from "react-native";
 import type { SFSymbol } from "sf-symbols-typescript";
 import { GlassFill } from "@/components/glass";
 import { useRtl } from "@/lib/direction";
+import { scriptFont } from "@/lib/fonts";
 import { useTasks } from "@/lib/queries";
 import { daysUntil } from "@/lib/i18n";
 import { useColors } from "@/lib/theme";
@@ -33,8 +34,10 @@ function NativeTabBar() {
   const c = useColors();
   const rtl = useRtl();
   const urgent = useUrgent();
+  const labelFont = scriptFont(rtl, { fontWeight: "500" })?.fontFamily;
   return (
     <NativeTabs
+      labelStyle={labelFont ? { fontFamily: labelFont } : undefined}
       tintColor={c.accent}
       badgeBackgroundColor={c.danger}
       minimizeBehavior="onScrollDown"

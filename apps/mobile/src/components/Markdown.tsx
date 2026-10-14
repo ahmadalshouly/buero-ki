@@ -2,6 +2,7 @@
 import { Fragment } from "react";
 import { Text, View } from "react-native";
 import { textDir, useRtl } from "@/lib/direction";
+import { scriptFont, useScriptFont } from "@/lib/fonts";
 import { font, space, useColors } from "@/lib/theme";
 
 export type MdBlock =
@@ -34,11 +35,15 @@ export function splitBold(text: string): { text: string; bold: boolean }[] {
   );
 }
 
-function Inline({ text }: { text: string }) {
+const BOLD = { fontWeight: "700" } as const;
+
+function Inline({ text, rtl }: { text: string; rtl: boolean }) {
+  // A bold run needs the bold face of the script font itself, not a synthesized bold.
+  const bold = scriptFont(rtl, BOLD) ?? BOLD;
   return (
     <>
       {splitBold(text).map((run, i) =>
-        run.bold ? <Text key={i} style={{ fontWeight: "700" }}>{run.text}</Text> : <Fragment key={i}>{run.text}</Fragment>
+        run.bold ? <Text key={i} style={bold}>{run.text}</Text> : <Fragment key={i}>{run.text}</Fragment>
       )}
     </>
   );
@@ -47,30 +52,31 @@ function Inline({ text }: { text: string }) {
 export function Markdown({ text, color }: { text: string; color?: string }) {
   const c = useColors();
   const rtl = useRtl();
+  const script = useScriptFont();
   const ink = color ?? c.ink;
   return (
     <View style={{ gap: space(2) }}>
       {parseMarkdown(text).map((block, i) => {
         if (block.kind === "heading") {
           return (
-            <Text key={i} style={[font.h3, { color: ink, marginTop: i ? space(2) : 0 }, textDir(rtl, block.text)]}>
-              <Inline text={block.text} />
+            <Text key={i} style={script([font.h3, { color: ink, marginTop: i ? space(2) : 0 }, textDir(rtl, block.text)])}>
+              <Inline text={block.text} rtl={rtl} />
             </Text>
           );
         }
         if (block.kind === "item") {
           return (
             <View key={i} style={{ flexDirection: "row", gap: space(2), paddingStart: space(1) }}>
-              <Text style={[font.body, { color: c.accent, fontWeight: "700" }]}>{block.marker}</Text>
-              <Text style={[font.body, { color: ink, flex: 1 }, textDir(rtl, block.text)]}>
-                <Inline text={block.text} />
+              <Text style={script([font.body, { color: c.accent, fontWeight: "700" }])}>{block.marker}</Text>
+              <Text style={script([font.body, { color: ink, flex: 1 }, textDir(rtl, block.text)])}>
+                <Inline text={block.text} rtl={rtl} />
               </Text>
             </View>
           );
         }
         return (
-          <Text key={i} style={[font.body, { color: ink }, textDir(rtl, block.text)]}>
-            <Inline text={block.text} />
+          <Text key={i} style={script([font.body, { color: ink }, textDir(rtl, block.text)])}>
+            <Inline text={block.text} rtl={rtl} />
           </Text>
         );
       })}

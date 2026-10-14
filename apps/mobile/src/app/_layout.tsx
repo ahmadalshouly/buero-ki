@@ -4,6 +4,7 @@ import * as Notifications from "expo-notifications";
 import { router, Stack } from "expo-router";
 import { LocaleDirContext } from "expo-router/react-navigation";
 import { StatusBar } from "expo-status-bar";
+import { useFonts } from "expo-font";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, View } from "react-native";
@@ -12,6 +13,7 @@ import { FeedbackProvider } from "@/components/feedback";
 import { ErrorBox, Loading } from "@/components/ui";
 import { useRtl } from "@/lib/direction";
 import { friendlyError } from "@/lib/errorText";
+import { SCRIPT_FONTS, scriptFont, setScriptFontsReady } from "@/lib/fonts";
 import { LockGate } from "@/lib/lock";
 import { usePrefs } from "@/lib/prefs";
 import { persister, queryClient, shouldPersist, useTasks } from "@/lib/queries";
@@ -48,6 +50,7 @@ function RootStack() {
   const { profile, loading, error, refetch } = useMe();
   const { t } = useTranslation();
   const c = useColors();
+  const titleFont = scriptFont(useRtl(), { fontWeight: "600" })?.fontFamily;
   const scheme = useScheme();
   if (!ready || (signedIn && loading)) {
     return <View style={{ flex: 1, backgroundColor: c.bg, justifyContent: "center" }}><Loading /></View>;
@@ -72,7 +75,7 @@ function RootStack() {
             ? { headerTransparent: true, headerBlurEffect: scheme === "dark" ? "systemChromeMaterialDark" : "systemChromeMaterialLight" }
             : { headerStyle: { backgroundColor: c.bg } }),
           headerTintColor: c.accent,
-          headerTitleStyle: { color: c.ink, fontWeight: "600" },
+          headerTitleStyle: titleFont ? { color: c.ink, fontFamily: titleFont } : { color: c.ink, fontWeight: "600" },
           headerShadowVisible: false,
           headerBackButtonDisplayMode: "minimal",
           contentStyle: { backgroundColor: c.bg },
@@ -129,6 +132,10 @@ function Themed() {
 }
 
 export default function RootLayout() {
+  // The files are bundled, so this is quick; without them Arabic falls back to the system font.
+  const [fontsLoaded, fontError] = useFonts(SCRIPT_FONTS);
+  setScriptFontsReady(fontsLoaded);
+  if (!fontsLoaded && !fontError) return null;
   return (
     <SafeAreaProvider>
       <PersistQueryClientProvider
