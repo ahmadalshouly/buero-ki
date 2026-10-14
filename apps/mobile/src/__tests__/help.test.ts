@@ -1,7 +1,16 @@
 import { demoApi } from "../lib/demo";
-import { directionsUrl, formatDistance, HELP_DIRECTORIES, HELP_GROUPS, helpForCases, helpForCategory, sortForLanguage, telUrl } from "../lib/help";
+import {
+  directionsUrl, formatDistance, HELP_DIRECTORIES, HELP_GROUPS, helpForCases, helpForCategory, helpParams, helpTitle, sortForLanguage, specialtiesFor,
+  telUrl,
+} from "../lib/help";
 import { CATEGORIES, HELP_KINDS, type HelpPlace } from "../lib/types";
 import en from "../locales/en";
+
+// A minimal t() over the English messages: looks up a dotted key and fills {{placeholders}}.
+const t = (key: string, opts?: Record<string, string>) => {
+  const found = key.split(".").reduce<unknown>((o, k) => (o as Record<string, unknown> | undefined)?.[k], en);
+  return typeof found === "string" ? found.replace(/{{(\w+)}}/g, (_, k) => opts?.[k] ?? "") : key;
+};
 
 const place = (id: string, distance_m: number, languages: string[] = []): HelpPlace => ({
   id, kind: "doctor", name: id, lat: 52.5, lon: 13.4, distance_m, address: null, phone: null, email: null, website: null,
@@ -25,13 +34,28 @@ describe("help catalog", () => {
     }
   });
 
-  it("suggests help for every case category, without repeats across cases", () => {
+  it("suggests help for every case category, with the area of law for lawyers, without repeats across cases", () => {
     for (const c of CATEGORIES) expect(helpForCategory(c).length).toBeGreaterThan(0);
-    expect(helpForCategory("housing")[0]).toBe("tenant");
-    expect(helpForCategory("auslaenderbehoerde")[0]).toBe("migration");
+    expect(helpForCategory("housing")).toEqual([{ kind: "tenant" }, { kind: "lawyer", specialty: "tenancy" }]);
+    expect(helpForCategory("auslaenderbehoerde")[1]).toEqual({ kind: "lawyer", specialty: "migration" });
     const mixed = helpForCases(["jobcenter", "housing", "jobcenter"]);
-    expect(new Set(mixed).size).toBe(mixed.length);
-    expect(mixed).toEqual(["social", "lawyer", "debt", "tenant"]);
+    expect(mixed.map((s) => `${s.kind}:${s.specialty ?? ""}`)).toEqual(["social:", "lawyer:social", "debt:", "tenant:"]);
+  });
+
+  it("puts the search the letter analysis advised first", () => {
+    const list = helpForCategory("jobcenter", { kind: "lawyer", specialty: "social" });
+    expect(list[0]).toEqual({ kind: "lawyer", specialty: "social" });
+    expect(list.filter((s) => s.kind === "lawyer")).toHaveLength(1);
+    expect(helpParams(list[0], "c1")).toEqual({ kind: "lawyer", specialty: "social", caseId: "c1" });
+  });
+
+  it("names every lawyer and doctor type, and only lawyers and doctors have types", () => {
+    for (const kind of HELP_KINDS) {
+      for (const s of specialtiesFor(kind)) expect(helpTitle(t, { kind, specialty: s })).not.toMatch(/help\./);
+      if (kind !== "lawyer" && kind !== "doctor") expect(specialtiesFor(kind)).toEqual([]);
+    }
+    expect(helpTitle(t, { kind: "lawyer", specialty: "tenancy" })).toBe("Lawyer for tenancy law");
+    expect(helpTitle(t, { kind: "doctor", specialty: "paediatrics" })).toBe("Paediatrician");
   });
 });
 

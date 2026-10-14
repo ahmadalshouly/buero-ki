@@ -2,10 +2,10 @@ import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { DemoBanner, Group, ListRow, Muted, Screen, Section, Txt } from "@/components/ui";
 import { WherePicker } from "@/components/help";
-import { HELP_GROUPS, HELP_ICONS, helpForCases, useHelpWhere } from "@/lib/help";
+import { HELP_GROUPS, HELP_ICONS, helpForCases, helpParams, helpTitle, useHelpWhere } from "@/lib/help";
 import { useCases } from "@/lib/queries";
 import { useMe } from "@/lib/session";
-import type { HelpKind } from "@/lib/types";
+import type { HelpSuggestion } from "@/lib/types";
 
 export default function Help() {
   const { t } = useTranslation();
@@ -14,13 +14,13 @@ export default function Help() {
   const cases = useCases();
   const suggested = helpForCases((cases.data ?? []).filter((x) => x.status !== "closed").map((x) => x.category));
 
-  const row = (kind: HelpKind) => (
+  const row = (s: HelpSuggestion) => (
     <ListRow
-      key={kind}
-      icon={HELP_ICONS[kind]}
-      title={t(`help.kind.${kind}`)}
-      subtitle={t(`help.kindHint.${kind}`)}
-      onPress={() => router.push({ pathname: "/help/[kind]", params: { kind } })}
+      key={`${s.kind}:${s.specialty ?? ""}`}
+      icon={HELP_ICONS[s.kind]}
+      title={helpTitle(t, s)}
+      subtitle={s.specialty ? undefined : t(`help.kindHint.${s.kind}`)}
+      onPress={() => router.push({ pathname: "/help/[kind]", params: helpParams(s) })}
     />
   );
 
@@ -40,7 +40,7 @@ export default function Help() {
 
       {HELP_GROUPS.map((g) => (
         <Section key={g.key} title={t(`help.group.${g.key}`)}>
-          <Group>{g.kinds.map(row)}</Group>
+          <Group>{g.kinds.map((kind) => row({ kind }))}</Group>
         </Section>
       ))}
     </Screen>

@@ -71,11 +71,11 @@ async function geocode(place: string, logError: (msg: string, data: Record<strin
   throw answered ? notFound() : unavailable();
 }
 
-async function google(kind: HelpKind, center: Center, radiusKm: number): Promise<Place[]> {
+async function google(kind: HelpKind, center: Center, radiusKm: number, specialty?: string): Promise<Place[]> {
   const res = await fetch("https://places.googleapis.com/v1/places:searchText", {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-Goog-Api-Key": GOOGLE_KEY, "X-Goog-FieldMask": GOOGLE_FIELDS },
-    body: JSON.stringify(googleRequest(kind, center, radiusKm)),
+    body: JSON.stringify(googleRequest(kind, center, radiusKm, specialty)),
     signal: AbortSignal.timeout(10_000),
   });
   if (!res.ok) throw new Error(`google ${res.status}: ${(await res.text()).slice(0, 200)}`);
@@ -96,8 +96,8 @@ async function overpassAt(url: string, query: string): Promise<unknown> {
   return data;
 }
 
-async function osm(kind: HelpKind, center: Center, radiusKm: number): Promise<Place[]> {
-  const query = overpassQuery(kind, center.lat, center.lon, radiusKm);
+async function osm(kind: HelpKind, center: Center, radiusKm: number, specialty?: string): Promise<Place[]> {
+  const query = overpassQuery(kind, center.lat, center.lon, radiusKm, 150, specialty);
   const ask = () => Promise.any(OVERPASS.map((url) => overpassAt(url, query)));
   // Busy servers often answer the next request; one more round is worth the wait.
   const data = await ask().catch(async () => {
@@ -108,23 +108,23 @@ async function osm(kind: HelpKind, center: Center, radiusKm: number): Promise<Pl
 }
 
 Deno.serve(handler("find-help", PlacesInput, async (ctx) => {
-  const { kind, place, radius_km } = ctx.input;
+  const { kind, place, radius_km, specialty } = ctx.input;
   const center: Center = ctx.input.lat !== undefined && ctx.input.lon !== undefined
     ? { lat: coarse(ctx.input.lat), lon: coarse(ctx.input.lon), label: null }
     : await cached(`geo:${place!.toLowerCase()}`, () => geocode(place!, ctx.logError));
 
   const result = await cached<{ source: Source; places: Place[] }>(
-    `${kind}:${coarse(center.lat)}:${coarse(center.lon)}:${radius_km}`,
+    `${kind}:${specialty ?? ""}:${coarse(center.lat)}:${coarse(center.lon)}:${radius_km}`,
     async () => {
       if (GOOGLE_KEY) {
         try {
-          return { source: "google", places: await google(kind, center, radius_km) };
+          return { source: "google", places: await google(kind, center, radius_km, specialty) };
         } catch (error) {
           ctx.logError("google failed, trying OpenStreetMap", { error: error instanceof Error ? error.message : String(error) });
         }
       }
       try {
-        return { source: "osm", places: await osm(kind, center, radius_km) };
+        return { source: "osm", places: await osm(kind, center, radius_km, specialty) };
       } catch (error) {
         const reasons = error instanceof AggregateError ? error.errors.map(String) : [String(error)];
         ctx.logError("openstreetmap failed", { reasons });
@@ -133,6 +133,6 @@ Deno.serve(handler("find-help", PlacesInput, async (ctx) => {
     },
   );
   // Positions are not logged; the count is enough to see whether a kind finds anything.
-  ctx.log("found", { kind, radius_km, source: result.source, count: result.places.length, by: place ? "place" : "position" });
+  ctx.log("found", { kind, specialty, radius_km, source: result.source, count: result.places.length, by: place ? "place" : "position" });
   return { center, ...result };
 }, { requireConsent: false }));

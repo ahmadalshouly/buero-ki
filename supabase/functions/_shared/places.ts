@@ -18,6 +18,43 @@ export const HELP_KINDS = [
 ] as const;
 export type HelpKind = (typeof HELP_KINDS)[number];
 
+// Lawyers and doctors are searched by type: nobody needs every lawyer or every doctor.
+// Doctor keys are OpenStreetMap healthcare:speciality values.
+export const LAWYER_SPECIALTIES = [
+  "migration",
+  "social",
+  "tenancy",
+  "labour",
+  "family",
+  "criminal",
+  "traffic",
+  "tax",
+  "insolvency",
+  "contract",
+  "inheritance",
+  "medical",
+] as const;
+export const DOCTOR_SPECIALTIES = [
+  "general",
+  "paediatrics",
+  "gynaecology",
+  "ophthalmology",
+  "otolaryngology",
+  "dermatology",
+  "orthopaedics",
+  "internal",
+  "neurology",
+  "psychiatry",
+  "urology",
+  "cardiology",
+] as const;
+export const SPECIALTIES = [...new Set([...LAWYER_SPECIALTIES, ...DOCTOR_SPECIALTIES])] as [string, ...string[]];
+export type Specialty = (typeof LAWYER_SPECIALTIES)[number] | (typeof DOCTOR_SPECIALTIES)[number];
+
+export function specialtiesFor(kind: HelpKind): readonly string[] {
+  return kind === "lawyer" ? LAWYER_SPECIALTIES : kind === "doctor" ? DOCTOR_SPECIALTIES : [];
+}
+
 // Overpass filters per kind. Each entry is one `nwr…` statement without the area filter.
 // Name searches use word stems without the first letter instead of a case-insensitive match:
 // "chuldner" finds Schuldnerberatung and Schuldner- und Insolvenzberatung, and the busy public
@@ -54,7 +91,10 @@ export const PlacesInput = z.strictObject({
   // A city, district or postcode in Germany, used when there is no position.
   place: z.string().trim().min(2).max(120).optional(),
   radius_km: z.number().min(1).max(25).default(5),
-}).refine((v) => (v.lat !== undefined && v.lon !== undefined) || !!v.place, { message: "Give a position or a place" });
+  // The type of lawyer or doctor; other kinds have none.
+  specialty: z.enum(SPECIALTIES).optional(),
+}).refine((v) => (v.lat !== undefined && v.lon !== undefined) || !!v.place, { message: "Give a position or a place" })
+  .refine((v) => !v.specialty || specialtiesFor(v.kind).includes(v.specialty), { message: "This kind has no such type" });
 export type PlacesInput = z.infer<typeof PlacesInput>;
 
 export interface Place {
@@ -91,9 +131,18 @@ export function bbox(lat: number, lon: number, radiusKm: number): string {
   return `${r(lat - dLat)},${r(lon - dLon)},${r(lat + dLat)},${r(lon + dLon)}`;
 }
 
-export function overpassQuery(kind: HelpKind, lat: number, lon: number, radiusKm: number, limit = 150): string {
+/** OpenStreetMap filters for a kind. A doctor's type narrows the search; lawyers carry no type there. */
+function filtersFor(kind: HelpKind, specialty?: string): string[] {
+  if (kind === "doctor" && specialty) {
+    const s = `["healthcare:speciality"~"${specialty}"]`;
+    return [`["amenity"="doctors"]${s}`, `["healthcare"="doctor"]${s}`];
+  }
+  return FILTERS[kind];
+}
+
+export function overpassQuery(kind: HelpKind, lat: number, lon: number, radiusKm: number, limit = 150, specialty?: string): string {
   const box = `(${bbox(coarse(lat), coarse(lon), radiusKm)})`;
-  const parts = FILTERS[kind].map((f) => `nwr${f}${box};`).join("");
+  const parts = filtersFor(kind, specialty).map((f) => `nwr${f}${box};`).join("");
   return `[out:json][timeout:15];(${parts});out center tags ${limit};`;
 }
 
@@ -214,9 +263,36 @@ export const GOOGLE_FIELDS = [
   "places.websiteUri", "places.regularOpeningHours.weekdayDescriptions", "places.accessibilityOptions", "places.businessStatus",
 ].join(",");
 
-export function googleRequest(kind: HelpKind, center: { lat: number; lon: number }, radiusKm: number) {
+const GOOGLE_SPECIALTY_TERMS: Record<Specialty, string> = {
+  migration: "Rechtsanwalt Ausländerrecht",
+  social: "Rechtsanwalt Sozialrecht",
+  tenancy: "Rechtsanwalt Mietrecht",
+  labour: "Rechtsanwalt Arbeitsrecht",
+  family: "Rechtsanwalt Familienrecht",
+  criminal: "Rechtsanwalt Strafrecht",
+  traffic: "Rechtsanwalt Verkehrsrecht",
+  tax: "Rechtsanwalt Steuerrecht",
+  insolvency: "Rechtsanwalt Insolvenzrecht",
+  contract: "Rechtsanwalt Vertragsrecht",
+  inheritance: "Rechtsanwalt Erbrecht",
+  medical: "Rechtsanwalt Medizinrecht",
+  general: "Hausarzt",
+  paediatrics: "Kinderarzt",
+  gynaecology: "Frauenarzt",
+  ophthalmology: "Augenarzt",
+  otolaryngology: "HNO-Arzt",
+  dermatology: "Hautarzt",
+  orthopaedics: "Orthopäde",
+  internal: "Internist",
+  neurology: "Neurologe",
+  psychiatry: "Psychiater",
+  urology: "Urologe",
+  cardiology: "Kardiologe",
+};
+
+export function googleRequest(kind: HelpKind, center: { lat: number; lon: number }, radiusKm: number, specialty?: string) {
   return {
-    textQuery: GOOGLE_TERMS[kind],
+    textQuery: (specialty && GOOGLE_SPECIALTY_TERMS[specialty as Specialty]) || GOOGLE_TERMS[kind],
     languageCode: "de",
     regionCode: "DE",
     pageSize: 20,
