@@ -88,6 +88,7 @@ function RootStack() {
         <Stack.Protected guard={signedIn && !onboarded}>
           <Stack.Screen name="onboarding" options={{ headerShown: false }} />
         </Stack.Protected>
+        <Stack.Screen name="auth" options={{ headerShown: false }} />
         <Stack.Protected guard={!signedIn}>
           <Stack.Screen name="sign-in" options={{ headerShown: false }} />
         </Stack.Protected>

@@ -1,3 +1,4 @@
+import * as Linking from "expo-linking";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { KeyboardAvoidingView, Platform, View } from "react-native";
@@ -32,7 +33,7 @@ export default function SignIn() {
     setError(null);
     const { error } = await supabase!.auth.signInWithOtp({
       email: email.trim().toLowerCase(),
-      options: { shouldCreateUser: true, data: { language: initialLanguage } },
+      options: { shouldCreateUser: true, data: { language: initialLanguage }, emailRedirectTo: Linking.createURL("auth") },
     });
     setBusy(false);
     if (error) {
@@ -85,19 +86,19 @@ export default function SignIn() {
               label={t("auth.code")}
               value={code}
               onChangeText={(v) => {
-                const digits = v.replace(/\D/g, "").slice(0, 6);
+                const digits = v.replace(/\D/g, "").slice(0, 8);
                 setCode(digits);
-                if (digits.length === 6) verify(digits);
+                if (digits.length === 8) verify(digits);
               }}
               keyboardType="number-pad"
               autoComplete="one-time-code"
               textContentType="oneTimeCode"
-              maxLength={6}
+              maxLength={8}
               placeholder="123456"
               autoFocus
               style={{ fontSize: 24, letterSpacing: 8, textAlign: "center" }}
             />
-            <Button title={t("auth.verify")} onPress={() => verify()} loading={busy} disabled={code.length !== 6} />
+            <Button title={t("auth.verify")} onPress={() => verify()} loading={busy} disabled={code.length < 6} />
             <Button
               variant="ghost"
               title={cooldown > 0 ? t("auth.resendIn", { seconds: cooldown }) : t("auth.resend")}

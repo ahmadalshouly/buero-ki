@@ -16,6 +16,8 @@ export const supabase: SupabaseClient | null = isDemo
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: false,
+      // The sign-in email link comes back to the app with a one-time code (see app/auth.tsx).
+      flowType: "pkce",
     },
   });
 
