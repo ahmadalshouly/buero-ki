@@ -66,7 +66,9 @@ Scan the QR code with the Expo Go app on your phone, or press `w` for the browse
 
 ## Connect Supabase and Claude
 
-**Quick way:** with the [Supabase CLI](https://supabase.com/docs/guides/cli) installed, run
+**From GitHub:** add the repository secrets `SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_PASSWORD` and `ANTHROPIC_API_KEY`, then run the **Deploy backend** workflow (Actions tab). It does everything below, including the sign-in email, and runs again whenever `supabase/` changes.
+
+**From your computer:** with the [Supabase CLI](https://supabase.com/docs/guides/cli) installed, run
 
 ```bash
 ./scripts/setup-backend.sh <project-ref>
