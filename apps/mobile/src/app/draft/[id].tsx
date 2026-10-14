@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { Linking, Share, TextInput, View } from "react-native";
 import { useFeedback } from "@/components/feedback";
 import { Badge, Button, Card, ErrorBox, IconButton, Muted, Screen, Section, Sheet, SkeletonList, Txt } from "@/components/ui";
-import { useLtrText } from "@/lib/direction";
+import { LTR_INPUT, useLtrText } from "@/lib/direction";
 import { friendlyError } from "@/lib/errorText";
 import { formatDate } from "@/lib/i18n";
 import { placeholders } from "@/lib/letter";
@@ -125,7 +125,7 @@ export default function DraftScreen() {
               multiline
               accessibilityLabel={t("draft.german")}
               style={{
-                minHeight: 320, textAlignVertical: "top", ...ltrText, fontSize: 16, lineHeight: 23,
+                minHeight: 320, textAlignVertical: "top", ...LTR_INPUT, fontSize: 16, lineHeight: 23,
                 color: c.ink, backgroundColor: c.glassFill, borderColor: c.accent, borderWidth: 1, borderRadius: radius.md, borderCurve: "continuous", padding: space(4),
               }}
             />
