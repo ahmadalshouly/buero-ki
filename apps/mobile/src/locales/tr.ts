@@ -271,6 +271,7 @@ const tr: Locale = {
     suggestAppointment: "Randevuya gelemiyorum, yeni bir tarihe ihtiyacım var.",
     generate: "Taslak yaz",
     generating: "Taslağınız yazılıyor…",
+    generatingHint: "Bu bir dakika kadar sürebilir. Bu ekranı kapatabilirsiniz; taslak hazır olduğunda dosyada görünür.",
     german: "Gönderilecek Almanca metin",
     translation: "Sizin dilinizde",
     notes: "Göndermeden önce",

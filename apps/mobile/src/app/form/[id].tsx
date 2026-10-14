@@ -9,7 +9,7 @@ import { Markdown } from "@/components/Markdown";
 import {
   Badge, Button, Card, Chip, DemoBanner, ErrorBox, Footer, IconButton, Muted, Screen, Section, Segmented, Sheet, SkeletonList, Txt,
 } from "@/components/ui";
-import { useInputDir } from "@/lib/direction";
+import { useInputDir, useLtrText } from "@/lib/direction";
 import { friendlyError } from "@/lib/errorText";
 import { formAnswersText, formFileName, formProgress, formSheetHtml, groupFields, isFilled } from "@/lib/formSheet";
 import { errorMessage, useForm, useFormActions, useLearnFacts } from "@/lib/queries";
@@ -21,12 +21,13 @@ import type { CaseForm, FormField } from "@/lib/types";
 type Filter = "all" | "missing";
 
 function FieldCard({ field, onChange }: { field: FormField; onChange: (value: string | null) => void }) {
+  const ltrText = useLtrText();
   const { t } = useTranslation();
   const c = useColors();
   const filled = isFilled(field);
   const input = {
     color: c.ink, backgroundColor: c.bg, borderColor: filled ? c.line : c.warn, borderWidth: 1, borderRadius: radius.sm,
-    paddingHorizontal: space(3), paddingVertical: space(2.5), fontSize: 16, writingDirection: "ltr" as const, textAlign: "left" as const,
+    paddingHorizontal: space(3), paddingVertical: space(2.5), fontSize: 16, ...ltrText,
     // Keeps the input above the card's glass layer on the web, where it would otherwise blur the text.
     position: "relative" as const, zIndex: 1,
   };
@@ -35,7 +36,7 @@ function FieldCard({ field, onChange }: { field: FormField; onChange: (value: st
   return (
     <Card style={{ gap: space(2) }}>
       <View style={{ flexDirection: "row", alignItems: "flex-start", gap: space(2) }}>
-        <Txt variant="h3" selectable style={{ flex: 1, writingDirection: "ltr", textAlign: "left" }}>{field.label_de}</Txt>
+        <Txt variant="h3" selectable style={[{ flex: 1 }, ltrText]}>{field.label_de}</Txt>
         {field.required && !filled && <Badge tone="warn" label={t("form.required")} />}
         {filled && field.type !== "signature" && <Ionicons name="checkmark-circle" size={20} color={c.success} />}
       </View>
@@ -95,6 +96,7 @@ type Mode = "questions" | "story";
  * the person can still tell BüroKI about changes.
  */
 function Ask({ form, busy, onSend }: { form: CaseForm; busy: boolean; onSend: (text: string) => Promise<string | null> }) {
+  const ltrText = useLtrText();
   const { t } = useTranslation();
   const c = useColors();
   const inputDir = useInputDir();
@@ -140,7 +142,7 @@ function Ask({ form, busy, onSend }: { form: CaseForm; busy: boolean; onSend: (t
       </View>
       {current ? (
         <View style={{ gap: space(1) }}>
-          <Txt variant="small" tone="muted" style={{ writingDirection: "ltr", textAlign: "left" }}>{current.label_de}</Txt>
+          <Txt variant="small" tone="muted" style={ltrText}>{current.label_de}</Txt>
           <Txt variant="h3">{current.question ?? current.explanation}</Txt>
         </View>
       ) : (
@@ -202,6 +204,7 @@ function Progress({ filled, total }: { filled: number; total: number }) {
 }
 
 export default function FormScreen() {
+  const ltrText = useLtrText();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { t } = useTranslation();
   const c = useColors();
@@ -374,7 +377,7 @@ export default function FormScreen() {
       {header}
       <DemoBanner />
       <View style={{ gap: space(1.5) }}>
-        <Txt variant="h2" selectable style={{ writingDirection: "ltr", textAlign: "left" }}>{form.title_de ?? form.file_name}</Txt>
+        <Txt variant="h2" selectable style={ltrText}>{form.title_de ?? form.file_name}</Txt>
         {form.title && form.title !== form.title_de && <Muted>{form.title}</Muted>}
         <View style={{ flexDirection: "row", gap: space(2), flexWrap: "wrap" }}>
           <Badge icon={form.fillable ? "document-text-outline" : "camera-outline"} label={form.fillable ? t("form.fillable") : t("form.scanned")} />
@@ -399,7 +402,7 @@ export default function FormScreen() {
       {groupFields(shown).map((g, i) => (
         <View key={`${g.title}-${i}`} style={{ gap: space(3) }}>
           {(g.title || g.page) && (
-            <Txt variant="label" tone="muted" style={{ writingDirection: "ltr", textAlign: "left" }}>
+            <Txt variant="label" tone="muted" style={ltrText}>
               {[g.page ? t("form.sheetPage") + " " + g.page : null, g.title].filter(Boolean).join(" · ")}
             </Txt>
           )}

@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { Platform, StyleSheet, type ColorValue } from "react-native";
 import type { SFSymbol } from "sf-symbols-typescript";
 import { GlassFill } from "@/components/glass";
+import { useRtl } from "@/lib/direction";
 import { useTasks } from "@/lib/queries";
 import { daysUntil } from "@/lib/i18n";
 import { useColors } from "@/lib/theme";
@@ -29,9 +30,16 @@ function useUrgent() {
 function NativeTabBar() {
   const { t } = useTranslation();
   const c = useColors();
+  const rtl = useRtl();
   const urgent = useUrgent();
   return (
-    <NativeTabs tintColor={c.accent} badgeBackgroundColor={c.danger} minimizeBehavior="onScrollDown">
+    <NativeTabs
+      tintColor={c.accent}
+      badgeBackgroundColor={c.danger}
+      minimizeBehavior="onScrollDown"
+      // The native tab bar ignores the JavaScript layout direction, so tell it directly.
+      unstable_nativeProps={{ direction: rtl ? "rtl" : "ltr" }}
+    >
       {TABS.map((tab) => (
         <NativeTabs.Trigger key={tab.name} name={tab.name} contentStyle={{ backgroundColor: c.bg }}>
           <NativeTabs.Trigger.Label>{t(tab.label)}</NativeTabs.Trigger.Label>

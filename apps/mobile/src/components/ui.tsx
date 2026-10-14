@@ -6,7 +6,7 @@ import {
   type StyleProp, type TextInputProps, type TextStyle, type ViewStyle,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import { useDirection, useIconFlip, useInputDir, useTextDir } from "@/lib/direction";
+import { useDirection, useIconFlip, useInputDir, useLtrText, useTextDir } from "@/lib/direction";
 import { tap } from "@/lib/haptics";
 import { daysUntil, formatDate } from "@/lib/i18n";
 import { makeStyles } from "@/lib/styles";
@@ -300,6 +300,7 @@ export function Field({
 }) {
   const s = useStyles();
   const dir = useInputDir();
+  const ltrText = useLtrText();
   return (
     <View style={{ gap: space(1.5) }}>
       <Txt variant="small" tone="muted" style={{ fontWeight: "600", marginStart: space(1) }}>{label}</Txt>
@@ -307,14 +308,12 @@ export function Field({
         placeholderTextColor={s.c.faint}
         accessibilityLabel={label}
         {...props}
-        style={[s.input, props.multiline && s.multiline, error && s.inputError, ltr ? LTR_INPUT : dir, props.style]}
+        style={[s.input, props.multiline && s.multiline, error && s.inputError, ltr ? ltrText : dir, props.style]}
       />
       {error ? <Txt variant="small" tone="danger" style={{ marginStart: space(1) }}>{error}</Txt> : hint ? <View style={{ marginStart: space(1) }}><Muted>{hint}</Muted></View> : null}
     </View>
   );
 }
-
-const LTR_INPUT: TextStyle = { textAlign: "left", writingDirection: "ltr" };
 
 export function Section({ title, children, action }: { title: string; children: ReactNode; action?: ReactNode }) {
   const s = useStyles();
@@ -600,6 +599,7 @@ export function Sheet({
 
 export function StatTile({ label, value, tone = "neutral" }: { label: string; value: string; tone?: Tone }) {
   const s = useStyles();
+  const dir = useTextDir(value);
   const p = toneColors(s.c, tone);
   return (
     <View style={[s.card, { flex: 1, minWidth: 96, gap: 2 }]}>
@@ -607,7 +607,7 @@ export function StatTile({ label, value, tone = "neutral" }: { label: string; va
       <Text
         numberOfLines={1}
         adjustsFontSizeToFit
-        style={[font.title, { fontSize: 28, lineHeight: 34, color: tone === "neutral" ? s.c.ink : p.fg, fontVariant: ["tabular-nums"] }]}
+        style={[font.title, { fontSize: 28, lineHeight: 34, color: tone === "neutral" ? s.c.ink : p.fg, fontVariant: ["tabular-nums"] }, dir]}
       >
         {value}
       </Text>

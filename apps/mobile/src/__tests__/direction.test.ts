@@ -10,7 +10,8 @@ describe("textDir", () => {
   });
 
   it("keeps Latin-only text left-to-right but on the reading side", () => {
-    expect(textDir(true, "anlagevm_ba033055.pdf")).toEqual({ writingDirection: "ltr", textAlign: "right" });
+    // React Native swaps left and right inside an RTL layout, so "left" lands on the right edge.
+    expect(textDir(true, "anlagevm_ba033055.pdf")).toEqual({ writingDirection: "ltr", textAlign: "left" });
   });
 
   it("treats numbers and nested elements as part of the UI language", () => {

@@ -39,9 +39,11 @@ export default function NewDraft() {
   if (create.isPending) {
     return (
       <Screen scroll={false}>
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: space(4) }}>
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: space(4), padding: space(6) }}>
           <ActivityIndicator size="large" color={c.accent} />
-          <Txt variant="h2">{t("draft.generating")}</Txt>
+          <Txt variant="h2" style={{ textAlign: "center" }}>{t("draft.generating")}</Txt>
+          <Txt variant="small" tone="muted" style={{ textAlign: "center" }}>{t("draft.generatingHint")}</Txt>
+          <Button variant="ghost" title={t("common.close")} onPress={() => router.back()} />
         </View>
       </Screen>
     );
