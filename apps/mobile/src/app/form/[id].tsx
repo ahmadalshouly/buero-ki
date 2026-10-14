@@ -9,7 +9,7 @@ import { Markdown } from "@/components/Markdown";
 import {
   Badge, Button, Card, Chip, DemoBanner, ErrorBox, Footer, IconButton, Muted, Screen, Section, Segmented, Sheet, SkeletonList, Txt,
 } from "@/components/ui";
-import { useInputDir, useLtrText } from "@/lib/direction";
+import { LTR_INPUT, useInputDir, useLtrText } from "@/lib/direction";
 import { friendlyError } from "@/lib/errorText";
 import { formAnswersText, formFileName, formProgress, formSheetHtml, groupFields, isFilled } from "@/lib/formSheet";
 import { errorMessage, useForm, useFormActions, useLearnFacts } from "@/lib/queries";
@@ -27,7 +27,7 @@ function FieldCard({ field, onChange }: { field: FormField; onChange: (value: st
   const filled = isFilled(field);
   const input = {
     color: c.ink, backgroundColor: c.bg, borderColor: filled ? c.line : c.warn, borderWidth: 1, borderRadius: radius.sm,
-    paddingHorizontal: space(3), paddingVertical: space(2.5), fontSize: 16, ...ltrText,
+    paddingHorizontal: space(3), paddingVertical: space(2.5), fontSize: 16, ...LTR_INPUT,
     // Keeps the input above the card's glass layer on the web, where it would otherwise blur the text.
     position: "relative" as const, zIndex: 1,
   };
