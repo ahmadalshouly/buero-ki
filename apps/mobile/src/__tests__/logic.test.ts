@@ -1,3 +1,4 @@
+import { authParams } from "@/lib/authLink";
 import { parseMarkdown, splitBold } from "../components/Markdown";
 import { bucketOf, isIsoDate } from "../lib/dates";
 import { ApiError, validatePages } from "../lib/errors";
@@ -149,5 +150,19 @@ Amina Haddad`;
   it("makes a safe file name", () => {
     expect(letterFileName("Widerspruch gegen Bescheid vom 1.10.", new Date("2026-10-14T10:00:00Z")))
       .toBe("2026-10-14_Widerspruch-gegen-Bescheid-vom-1-10.pdf");
+  });
+});
+
+describe("authParams", () => {
+  it("reads the PKCE code from the query", () => {
+    expect(authParams("exp://192.168.1.5:8081/--/auth?code=abc")).toEqual({ code: "abc" });
+  });
+  it("reads tokens and errors from the fragment", () => {
+    expect(authParams("bueroki://auth#access_token=a&refresh_token=r")).toEqual({ access_token: "a", refresh_token: "r" });
+    expect(authParams("bueroki://auth#error=access_denied&error_description=Email+link+is+invalid+or+has+expired").error_description)
+      .toBe("Email link is invalid or has expired");
+  });
+  it("handles no URL", () => {
+    expect(authParams(null)).toEqual({});
   });
 });
