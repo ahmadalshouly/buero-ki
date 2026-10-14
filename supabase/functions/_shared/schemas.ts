@@ -7,8 +7,17 @@ import { HELP_KINDS, SPECIALTIES } from "./places.ts";
 export const MAX_PAGES = 10;
 const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"] as const;
 
+/** Whose letter it is. BüroKI only reads letters addressed to the signed-in person. */
+export const OWNERSHIP = ["person", "someone_else", "unsure"] as const;
+
 export const Analysis = z.strictObject({
   readable: z.boolean().describe("False if the document is too blurry or incomplete to understand."),
+  addressed_to: z.string().nullable().describe(
+    "Name of the person or people the letter is addressed to, exactly as printed in the address field or salutation. Null if it names no one.",
+  ),
+  belongs_to: z.enum(OWNERSHIP).describe(
+    "Whose letter this is, compared with the person's name: 'person' if it is theirs, 'someone_else' if it is clearly addressed to another adult, 'unsure' if their name is unknown or you cannot tell.",
+  ),
   title_de: z.string().describe("The document's own German title or subject line, e.g. 'Aufforderung zur Mitwirkung'."),
   sender: z.string().nullable().describe("Authority or company that sent it."),
   document_date: z.string().nullable().describe("Date printed on the document, YYYY-MM-DD."),

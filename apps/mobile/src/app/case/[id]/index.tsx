@@ -228,6 +228,8 @@ export default function CaseScreen() {
               </View>
             )}
             {(d.status === "analyzing" || d.status === "uploaded") && <Muted>{t("case.reading")}</Muted>}
+            {d.status === "needs_owner" && <Txt tone="accent">{t("document.whoseTitle")}</Txt>}
+            {d.status === "not_owner" && <Txt tone="warn">{t("document.notYoursTitle")}</Txt>}
           </Card>
         ))
       )}

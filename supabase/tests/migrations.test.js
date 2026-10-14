@@ -170,6 +170,16 @@ test("sent emails are counted per person and cannot be erased or faked for other
   await assert.rejects(as(AMINA, "update public.profiles set contact_email = 'not an email' where id = $1", [AMINA]), /check constraint/);
 });
 
+test("a letter can wait for its owner or be declined, keeping only whom it is addressed to", async () => {
+  const caseId = (await as(AMINA, "select id from public.cases limit 1")).rows[0].id;
+  const doc = (await as(AMINA, "insert into public.documents (case_id, storage_path, mime_type) values ($1, 'p', 'application/pdf') returning id", [caseId])).rows[0];
+  await as(AMINA, "update public.documents set status = 'needs_owner', addressed_to = 'Frau Fatima Noori' where id = $1", [doc.id]);
+  await as(AMINA, "update public.documents set status = 'not_owner' where id = $1", [doc.id]);
+  const { rows } = await as(AMINA, "select status, addressed_to from public.documents where id = $1", [doc.id]);
+  assert.deepEqual(rows[0], { status: "not_owner", addressed_to: "Frau Fatima Noori" });
+  await assert.rejects(as(AMINA, "update public.documents set status = 'borrowed' where id = $1", [doc.id]), /invalid input value/);
+});
+
 test("deleting the login removes all of the person's data", async () => {
   await db.exec(`delete from auth.users where id = '${AMINA}'`);
   for (const table of ["profiles", "cases", "documents", "forms", "tasks", "drafts", "user_facts", "sent_emails"]) {

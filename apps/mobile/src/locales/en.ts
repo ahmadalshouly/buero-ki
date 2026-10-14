@@ -249,6 +249,13 @@ const en = {
     delete: "Delete letter",
     deleteConfirm: "Delete this letter?",
     deleteText: "The photos and the explanation are deleted. Tasks from this letter stay.",
+    addressedTo: "Addressed to: {{name}}",
+    notYoursTitle: "This letter is not addressed to you",
+    notYoursText: "BüroKI only reads your own letters, so other people's private data stays private. The person this letter is for can make their own free BüroKI account and add it there.",
+    whoseTitle: "Is this letter yours?",
+    whoseText: "BüroKI only reads your own letters. Tip: add your name in Settings, then BüroKI can check this by itself.",
+    mine: "Yes, it is mine",
+    notMine: "No, it is someone else's",
   },
   draft: {
     pdf: "Save as PDF",
