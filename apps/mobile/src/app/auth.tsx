@@ -1,6 +1,8 @@
 import { Redirect } from "expo-router";
+import { useSession } from "@/lib/session";
 
-// Old sign-in links pointed here. Send them to the start, which picks sign-in or the app.
+// Old sign-in links pointed here. Send them on to sign-in or into the app.
 export default function AuthRedirect() {
-  return <Redirect href="/" />;
+  const { signedIn } = useSession();
+  return <Redirect href={signedIn ? "/" : "/sign-in"} />;
 }
