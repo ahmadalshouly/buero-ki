@@ -178,7 +178,7 @@ export function useDeleteDocument(caseId: string) {
 export function useAddForm(caseId: string) {
   const invalidate = useInvalidate();
   return useMutation({
-    mutationFn: (pages: PickedFile[]) => api.addForm(caseId, pages),
+    mutationFn: ({ pages, situation }: { pages: PickedFile[]; situation?: string }) => api.addForm(caseId, pages, situation),
     onSettled: () => invalidate(caseId),
   });
 }
@@ -310,11 +310,14 @@ export function useSendMessage(caseId: string) {
   });
 }
 
-/** Asks for suggestions after a chat answer. Runs in the background, so failures stay quiet. */
+/**
+ * Asks for suggestions after a chat answer, or about what the person told a form (text).
+ * Runs in the background, so failures stay quiet.
+ */
 export function useLearnFacts(caseId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: () => api.learnFacts(caseId),
+    mutationFn: (text: string | void) => api.learnFacts(caseId, text || undefined),
     onSuccess: (facts) => {
       if (facts.length) qc.invalidateQueries({ queryKey: keys.facts });
     },

@@ -1,4 +1,5 @@
-// After a chat answer, suggests lasting facts about the person worth remembering.
+// After a chat answer, or after the person tells a form something about themselves,
+// suggests lasting facts about the person worth remembering.
 // Suggestions are stored as pending; the app asks the person to keep or ignore each
 // one, and only kept facts are ever given to the agent.
 import { z } from "npm:zod@4.6.7";
@@ -10,7 +11,12 @@ import { FactSuggestions } from "../_shared/schemas.ts";
 const RECENT_MESSAGES = 4;
 const MAX_SUGGESTIONS = 3;
 
-const Input = z.strictObject({ case_id: z.uuid() });
+const Input = z.strictObject({
+  case_id: z.uuid(),
+  // What the person told a form (their situation, or an answer to one of its questions).
+  // Without it, the latest chat messages of the case are used.
+  text: z.string().trim().min(1).max(4000).optional(),
+});
 
 Deno.serve(handler("learn-facts", Input, async (ctx) => {
   const { supabase, input, profile, userId } = ctx;
@@ -23,7 +29,7 @@ Deno.serve(handler("learn-facts", Input, async (ctx) => {
   ]);
   if (settings.data?.memory_enabled === false) return { facts: [] };
 
-  const messages = (recent.data ?? []).reverse();
+  const messages = input.text ? [{ role: "user", content: input.text }] : (recent.data ?? []).reverse();
   const lastUser = [...messages].reverse().find((m) => m.role === "user");
   // "ok thanks" and the like never carry a fact; skip the call.
   if (!lastUser || lastUser.content.trim().length < 12) return { facts: [] };
@@ -44,7 +50,9 @@ Rules:
       "Already remembered or suggested:",
       ...(facts.length ? facts.map((f) => `- id ${f.id} [${f.category}, ${f.status}] ${f.fact}`) : ["- nothing yet"]),
       "",
-      "Latest conversation (oldest first):",
+      input.text
+        ? "What the person told BüroKI while filling in a form (a question from the form may come before their answer):"
+        : "Latest conversation (oldest first):",
       ...messages.map((m) => `<${m.role}>\n${m.content}\n</${m.role}>`),
     ].join("\n"),
     schema: FactSuggestions,

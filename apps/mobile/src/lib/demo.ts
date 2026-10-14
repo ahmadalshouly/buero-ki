@@ -381,7 +381,7 @@ export const demoApi: Api = {
     const f = find(state.forms, key);
     return { ...f, fields: f.fields.map((x) => ({ ...x })) };
   },
-  async addForm(caseId, pages) {
+  async addForm(caseId, pages, situation) {
     validatePages(pages);
     spend("fill-form");
     await wait(1800);
@@ -392,6 +392,7 @@ export const demoApi: Api = {
       page_paths: [],
       mime_type: pages[0].mimeType,
       file_name: pages[0].name,
+      situation: situation?.trim() || null,
       status: "ready",
       fillable: false,
       title_de: "Antrag auf Bürgergeld (Demo)",
@@ -405,6 +406,11 @@ export const demoApi: Api = {
       created_at: now(),
       updated_at: now(),
     };
+    // The demo reads a date from the situation the way the real agent reads everything.
+    const date = situation?.match(/\d{1,2}\.\d{1,2}\.\d{4}/)?.[0];
+    if (date) {
+      form.fields = form.fields.map((x) => (x.type === "date" && !x.value ? { ...x, value: date, source_note: "From what you told me", question: null } : x));
+    }
     state.forms.push(form);
     touch(caseId);
     return form;
@@ -572,7 +578,18 @@ Mit freundlichen Grüßen
   async listFacts() {
     return [...state.facts];
   },
-  async learnFacts(caseId) {
+  async learnFacts(caseId, text) {
+    if (text) {
+      // What the person told a form: the demo offers to remember the answer itself.
+      const said = (text.match(/The person's answer: ([\s\S]+)$/)?.[1] ?? text).trim();
+      if (said.length < 3 || state.profile.memory_enabled === false) return [];
+      const fact: UserFact = {
+        id: id(), category: "other", fact: `You told me: ${said.slice(0, 200)}`, status: "pending",
+        case_id: caseId, replaces_id: null, source: "agent", created_at: now(), decided_at: null,
+      };
+      state.facts.push(fact);
+      return [fact];
+    }
     // Demo mode suggests one sample fact after the first real question.
     const asked = state.messages.some((m) => m.case_id === caseId && m.role === "user" && m.content.trim().length >= 12);
     if (state.factSuggested || !asked || state.profile.memory_enabled === false) return [];

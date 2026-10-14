@@ -40,8 +40,11 @@ export interface Api {
 
   listForms(caseId: string): Promise<CaseForm[]>;
   getForm(id: string): Promise<CaseForm>;
-  /** Uploads the form, then has the agent list and pre-fill its fields. Resolves when that is done. */
-  addForm(caseId: string, pages: PickedFile[]): Promise<CaseForm>;
+  /**
+   * Uploads the form, then has the agent list and pre-fill its fields, using what the person
+   * wrote about their situation. Resolves when that is done.
+   */
+  addForm(caseId: string, pages: PickedFile[], situation?: string): Promise<CaseForm>;
   retryForm(id: string): Promise<CaseForm>;
   saveFormFields(id: string, fields: FormField[]): Promise<void>;
   /** The person tells the agent something in their own words; it fills the matching fields. */
@@ -76,8 +79,8 @@ export interface Api {
 
   /** Kept facts and suggestions still waiting for the person's answer. */
   listFacts(): Promise<UserFact[]>;
-  /** Asks the agent whether the latest chat turn holds something worth remembering. */
-  learnFacts(caseId: string): Promise<UserFact[]>;
+  /** Asks the agent whether the latest chat turn, or what the person told a form (text), holds something worth remembering. */
+  learnFacts(caseId: string, text?: string): Promise<UserFact[]>;
   keepFact(id: string): Promise<void>;
   /** Deletes a fact for good: ignoring a suggestion and forgetting a kept fact are the same. */
   forgetFact(id: string): Promise<void>;
@@ -285,7 +288,7 @@ function supabaseApi(db: SupabaseClient): Api {
     async getForm(id) {
       return must(await db.from("forms").select("*").eq("id", id).single());
     },
-    async addForm(caseId, pages) {
+    async addForm(caseId, pages, situation) {
       validatePages(pages);
       const paths = await upload(caseId, pages, "form-");
       const form = must(await db.from("forms").insert({
@@ -294,6 +297,7 @@ function supabaseApi(db: SupabaseClient): Api {
         page_paths: paths,
         mime_type: pages[0].mimeType,
         file_name: pages[0].name,
+        situation: situation?.trim() || null,
       }).select().single()) as CaseForm;
       return readForm(form.id);
     },
@@ -378,8 +382,8 @@ function supabaseApi(db: SupabaseClient): Api {
     async listFacts() {
       return must(await db.from("user_facts").select("*").order("created_at", { ascending: true }));
     },
-    async learnFacts(caseId) {
-      const res = await invoke<{ facts: UserFact[] }>(db, "learn-facts", { case_id: caseId });
+    async learnFacts(caseId, text) {
+      const res = await invoke<{ facts: UserFact[] }>(db, "learn-facts", text ? { case_id: caseId, text } : { case_id: caseId });
       return res.facts;
     },
     async keepFact(id) {

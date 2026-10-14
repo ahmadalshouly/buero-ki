@@ -110,6 +110,8 @@ export interface CaseForm {
   page_paths: string[];
   mime_type: string;
   file_name: string | null;
+  /** What the person told BüroKI about their situation when adding the form. */
+  situation: string | null;
   status: "uploaded" | "analyzing" | "ready" | "failed";
   /** The PDF has real form fields, so it can be returned filled in. */
   fillable: boolean;
