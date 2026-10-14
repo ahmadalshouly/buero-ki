@@ -154,7 +154,7 @@ export interface SearchResult {
   at: string;
 }
 
-export type AgentFunction = "analyze-document" | "draft-reply" | "case-chat";
+export type AgentFunction = "analyze-document" | "draft-reply" | "case-chat" | "fill-form";
 
 export interface UsageToday {
   plan: Plan;

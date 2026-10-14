@@ -169,6 +169,7 @@ export default function Settings() {
           <StatTile label={t("settings.usageLetters")} value={u ? `${u.used["analyze-document"]}/${u.limits["analyze-document"]}` : "–"} />
           <StatTile label={t("settings.usageDrafts")} value={u ? `${u.used["draft-reply"]}/${u.limits["draft-reply"]}` : "–"} />
           <StatTile label={t("settings.usageChat")} value={u ? `${u.used["case-chat"]}/${u.limits["case-chat"]}` : "–"} />
+          <StatTile label={t("settings.usageForms")} value={u ? `${u.used["fill-form"]}/${u.limits["fill-form"]}` : "–"} />
         </View>
       </Section>
 

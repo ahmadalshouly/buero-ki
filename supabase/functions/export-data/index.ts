@@ -3,7 +3,7 @@
 import { z } from "npm:zod@4.6.7";
 import { handler } from "../_shared/http.ts";
 
-const TABLES = ["cases", "documents", "tasks", "drafts", "messages", "ai_usage", "audit_log"] as const;
+const TABLES = ["cases", "documents", "forms", "tasks", "drafts", "messages", "ai_usage", "audit_log"] as const;
 const LINK_SECONDS = 60 * 60;
 
 Deno.serve(handler("export-data", z.strictObject({}), async ({ supabase, userId }) => {
@@ -17,8 +17,9 @@ Deno.serve(handler("export-data", z.strictObject({}), async ({ supabase, userId 
     data[t] = rows[i].data;
   });
 
-  const paths = ((data.documents ?? []) as { storage_path: string; page_paths: string[] | null }[])
-    .flatMap((d) => (d.page_paths?.length ? d.page_paths : [d.storage_path]));
+  type Stored = { storage_path: string; page_paths: string[] | null; filled_path?: string | null };
+  const paths = ([...(data.documents as Stored[] ?? []), ...(data.forms as Stored[] ?? [])])
+    .flatMap((d) => [...(d.page_paths?.length ? d.page_paths : [d.storage_path]), ...(d.filled_path ? [d.filled_path] : [])]);
   let files: { path: string; url: string | null }[] = [];
   if (paths.length) {
     const { data: signed } = await supabase.storage.from("documents").createSignedUrls(paths, LINK_SECONDS);

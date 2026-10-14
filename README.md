@@ -89,7 +89,7 @@ It links the project, creates the database, stores the Anthropic key as a functi
 3. Add your Anthropic API key and deploy the functions:
    ```bash
    supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
-   supabase functions deploy analyze-document draft-reply case-chat export-data delete-account
+   supabase functions deploy analyze-document draft-reply case-chat fill-form export-data delete-account
    ```
 4. Sign-in uses a 6-digit email code. In the Supabase dashboard go to **Authentication > Email Templates > Magic Link** and make sure the template includes `{{ .Token }}`, for example: `Your BüroKI code is {{ .Token }}`.
 5. Copy `apps/mobile/.env.example` to `apps/mobile/.env` and fill in the project URL and publishable key from **Project Settings > API**. Restart `npx expo start`.

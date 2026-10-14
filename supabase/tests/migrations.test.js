@@ -98,6 +98,24 @@ test("the timeline, search and audit log reflect what happened", async () => {
   assert.equal((await as(BORIS, "select * from public.audit_log")).rows.length, 0);
 });
 
+test("forms are private, keep their fields and show in the timeline", async () => {
+  const caseId = (await as(AMINA, "select id from public.cases")).rows[0].id;
+  const fields = JSON.stringify([{ key: "name", label_de: "Familienname", value: "Amina" }]);
+  await as(AMINA, "insert into public.forms (case_id, storage_path, mime_type, title_de, fields) values ($1, 'a/b/f.pdf', 'application/pdf', 'Hauptantrag', $2)", [caseId, fields]);
+  await assert.rejects(
+    as(BORIS, "insert into public.forms (case_id, storage_path, mime_type) values ($1, 'x', 'application/pdf')", [caseId]),
+    /row-level security/,
+  );
+  assert.equal((await as(BORIS, "select id from public.forms")).rows.length, 0);
+  const before = (await as(AMINA, "select updated_at from public.forms")).rows[0].updated_at;
+  await as(AMINA, "update public.forms set status = 'ready'");
+  const form = (await as(AMINA, "select fields, updated_at from public.forms")).rows[0];
+  assert.equal(form.fields[0].value, "Amina");
+  assert.ok(form.updated_at >= before);
+  const kinds = (await as(AMINA, "select kind from public.case_timeline where kind = 'form'")).rows;
+  assert.equal(kinds.length, 1);
+});
+
 test("usage is counted per function and cannot be erased by the user", async () => {
   await as(AMINA, "insert into public.ai_usage (function_name, model, input_tokens) values ('case-chat', 'm', 10), ('case-chat', 'm', 5)");
   assert.equal((await as(AMINA, "select public.ai_calls_last_day('case-chat') n")).rows[0].n, 2);
@@ -108,7 +126,7 @@ test("usage is counted per function and cannot be erased by the user", async () 
 
 test("deleting the login removes all of the person's data", async () => {
   await db.exec(`delete from auth.users where id = '${AMINA}'`);
-  for (const table of ["profiles", "cases", "documents", "tasks", "drafts"]) {
+  for (const table of ["profiles", "cases", "documents", "forms", "tasks", "drafts"]) {
     const { rows } = await db.query(`select count(*)::int n from public.${table} where ${table === "profiles" ? "id" : "user_id"} = $1`, [AMINA]);
     assert.equal(rows[0].n, 0, table);
   }

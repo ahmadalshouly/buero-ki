@@ -210,7 +210,7 @@ export const demoApi: Api = {
   },
   async getUsage() {
     const since = Date.now() - 86400000;
-    const used = { "analyze-document": 0, "draft-reply": 0, "case-chat": 0 } as Record<AgentFunction, number>;
+    const used = { "analyze-document": 0, "draft-reply": 0, "case-chat": 0, "fill-form": 0 } as Record<AgentFunction, number>;
     for (const u of state.usage) if (u.at > since) used[u.fn]++;
     return { plan: state.profile.plan, used, limits: DAILY_LIMITS[state.profile.plan] };
   },

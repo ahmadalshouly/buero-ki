@@ -107,7 +107,7 @@ function supabaseApi(db: SupabaseClient): Api {
       const profile = await api.getProfile();
       const since = new Date(Date.now() - 86400000).toISOString();
       const rows = must(await db.from("ai_usage").select("function_name").gte("created_at", since));
-      const used = { "analyze-document": 0, "draft-reply": 0, "case-chat": 0 } as Record<AgentFunction, number>;
+      const used = { "analyze-document": 0, "draft-reply": 0, "case-chat": 0, "fill-form": 0 } as Record<AgentFunction, number>;
       for (const r of rows as { function_name: AgentFunction }[]) if (r.function_name in used) used[r.function_name]++;
       return { plan: profile.plan, used, limits: DAILY_LIMITS[profile.plan] ?? DAILY_LIMITS.free };
     },

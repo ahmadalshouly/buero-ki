@@ -2,12 +2,12 @@
 import type { Usage } from "./anthropic.ts";
 import { type Ctx, HttpError, type Profile } from "./http.ts";
 
-export type AgentFunction = "analyze-document" | "draft-reply" | "case-chat";
+export type AgentFunction = "analyze-document" | "draft-reply" | "case-chat" | "fill-form";
 
 export const DAILY_LIMITS: Record<Profile["plan"], Record<AgentFunction, number>> = {
-  free: { "analyze-document": 10, "draft-reply": 10, "case-chat": 40 },
-  plus: { "analyze-document": 60, "draft-reply": 60, "case-chat": 300 },
-  org: { "analyze-document": 300, "draft-reply": 300, "case-chat": 1500 },
+  free: { "analyze-document": 10, "draft-reply": 10, "case-chat": 40, "fill-form": 20 },
+  plus: { "analyze-document": 60, "draft-reply": 60, "case-chat": 300, "fill-form": 120 },
+  org: { "analyze-document": 300, "draft-reply": 300, "case-chat": 1500, "fill-form": 600 },
 };
 
 export function limitFor(plan: Profile["plan"], fn: AgentFunction): number {
