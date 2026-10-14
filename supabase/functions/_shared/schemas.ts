@@ -66,7 +66,8 @@ export const FIELD_TYPES = ["text", "date", "number", "checkbox", "choice", "sig
 export const FormField = z.strictObject({
   key: z.string().describe("Short unique id for the field, e.g. 'p1_familienname'. Unique within the form."),
   pdf_field: z.string().nullable().describe("Exact name of the matching fillable PDF field from the list given, or null."),
-  page: z.number().int().nullable().describe("Page number, starting at 1."),
+  // A plain number: structured outputs reject the min/max bounds zod adds to .int().
+  page: z.number().nullable().describe("Page number, starting at 1."),
   section: z.string().nullable().describe("German section heading the field belongs to, as printed."),
   label_de: z.string().describe("The field's German label as printed on the form."),
   explanation: z.string().describe("One short sentence in the user's language: what to put here."),

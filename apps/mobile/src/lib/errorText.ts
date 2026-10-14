@@ -1,7 +1,7 @@
 import type { TFunction } from "i18next";
 import { ApiError } from "./errors";
 
-const TRANSLATED = ["limit", "consent", "busy", "offline"] as const;
+const TRANSLATED = ["limit", "consent", "busy", "offline", "upstream"] as const;
 
 /** Shows our own translated text for errors people can act on, and the server text otherwise. */
 export function friendlyError(error: unknown, t: TFunction): string {

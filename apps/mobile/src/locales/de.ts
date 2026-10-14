@@ -24,6 +24,7 @@ const de: Locale = {
     consent: "Bitte erlaube zuerst die KI-Verarbeitung in den Einstellungen.",
     busy: "Der Assistent ist gerade beschäftigt. Bitte versuch es in einer Minute nochmal.",
     offline: "Keine Internetverbindung. Bitte versuch es nochmal, wenn du online bist.",
+    upstream: "Der Assistent ist gerade nicht erreichbar. Bitte versuche es noch einmal.",
   },
   auth: {
     title: "Anmelden",
@@ -403,6 +404,12 @@ const de: Locale = {
     todayTitle: "Frist heute",
   },
   form: {
+    questionsTitle: "BüroKI braucht deine Antworten",
+    questionOf: "{{n}} von {{total}}",
+    answerPlaceholder: "Deine Antwort, in jeder Sprache",
+    skip: "Überspringen",
+    answer: "Antworten",
+    askSkippedAgain: "Übersprungene Fragen noch einmal stellen",
     title: "Formular",
     addTitle: "Formular ausfüllen",
     intro: "Fotografiere jede Seite des Formulars oder wähle das PDF. Am besten ist ein PDF von der Website der Behörde: Dann bekommst du dasselbe PDF ausgefüllt zurück.",

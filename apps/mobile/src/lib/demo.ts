@@ -423,6 +423,12 @@ export const demoApi: Api = {
     const f = find(state.forms, key);
     const date = message.match(/\d{1,2}\.\d{1,2}\.\d{4}/)?.[0];
     const updated: string[] = [];
+    // A guided question names its field; the demo writes the answer into it as given.
+    const asked = message.match(/\(key ([^)]+)\)[\s\S]*The person's answer: ([\s\S]+)$/);
+    if (asked && !date) {
+      f.fields = f.fields.map((x) => (x.key === asked[1] ? { ...x, value: asked[2].trim(), source_note: "From your answer", question: null } : x));
+      updated.push(asked[1]);
+    }
     if (date) {
       f.fields = f.fields.map((x) => (x.type === "date" && !x.value ? { ...x, value: date, source_note: "From your answer", question: null } : x));
       updated.push(...f.fields.filter((x) => x.value === date).map((x) => x.key));
@@ -430,7 +436,7 @@ export const demoApi: Api = {
     return {
       form: await demoApi.getForm(key),
       reply: updated.length
-        ? "Demo mode: I put the date into the birth date field."
+        ? "Demo mode: I filled in your answer."
         : "Demo mode: in the real app I fill every field your message answers. Try a date like 01.02.1990.",
       updated,
     };

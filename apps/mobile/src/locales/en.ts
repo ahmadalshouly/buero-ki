@@ -22,6 +22,7 @@ const en = {
     consent: "Please allow AI processing in Settings first.",
     busy: "The assistant is busy. Please try again in a minute.",
     offline: "No internet connection. Please try again when you are online.",
+    upstream: "The assistant is unavailable right now. Please try again.",
   },
   auth: {
     title: "Sign in",
@@ -401,6 +402,12 @@ const en = {
     todayTitle: "Deadline today",
   },
   form: {
+    questionsTitle: "BüroKI needs your answers",
+    questionOf: "{{n}} of {{total}}",
+    answerPlaceholder: "Your answer, in any language",
+    skip: "Skip",
+    answer: "Answer",
+    askSkippedAgain: "Ask the skipped questions again",
     title: "Form",
     addTitle: "Fill a form",
     intro: "Photograph every page of the form, or pick the PDF. A PDF downloaded from the office's website works best: BüroKI can then give you back the same PDF, filled in.",

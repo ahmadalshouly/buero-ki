@@ -24,6 +24,7 @@ const tr: Locale = {
     consent: "Lütfen önce Ayarlar'dan yapay zekâ ile işlemeye izin verin.",
     busy: "Asistan şu anda meşgul. Lütfen bir dakika sonra tekrar deneyin.",
     offline: "İnternet bağlantısı yok. Lütfen çevrimiçi olduğunuzda tekrar deneyin.",
+    upstream: "Asistan şu anda kullanılamıyor. Lütfen tekrar dene.",
   },
   auth: {
     title: "Giriş yap",
@@ -403,6 +404,12 @@ const tr: Locale = {
     todayTitle: "Son tarih bugün",
   },
   form: {
+    questionsTitle: "BüroKI'nin cevaplarına ihtiyacı var",
+    questionOf: "{{n}} / {{total}}",
+    answerPlaceholder: "Cevabın, istediğin dilde",
+    skip: "Atla",
+    answer: "Cevapla",
+    askSkippedAgain: "Atlanan soruları tekrar sor",
     title: "Form",
     addTitle: "Form doldur",
     intro: "Formun her sayfasının fotoğrafını çek veya PDF'i seç. En iyisi kurumun sitesinden indirilen PDF'tir: BüroKI sana aynı PDF'i doldurulmuş olarak geri verir.",
