@@ -5,7 +5,7 @@
 // input alignment, and arrows that point "forward".
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { I18nManager, type TextStyle, type ViewStyle } from "react-native";
+import { Platform, type TextStyle, type ViewStyle } from "react-native";
 import { isRtl } from "./i18n";
 
 export function useRtl(): boolean {
@@ -19,10 +19,14 @@ export function useDirection(): ViewStyle {
 }
 
 const RTL_TEXT: TextStyle = { writingDirection: "rtl" };
+// Inside a right-to-left layout React Native on iOS and Android swaps textAlign
+// "left" and "right" (they act as start and end), so the right edge is "left"
+// there. The web keeps them literal.
+const RIGHT_EDGE: TextStyle["textAlign"] = Platform.OS === "web" ? "right" : "left";
 // Latin-only text (German letter titles, names, file names) inside an RTL screen keeps
 // its own left-to-right order, so punctuation and ellipses land on the right end,
 // while still lining up on the reading side.
-const LATIN_IN_RTL: TextStyle = { writingDirection: "ltr", textAlign: "right" };
+const LATIN_IN_RTL: TextStyle = { writingDirection: "ltr", textAlign: RIGHT_EDGE };
 const RTL_CHARS = /[\u0590-\u08FF\uFB1D-\uFDFF\uFE70-\uFEFF]/;
 const LETTERS = /[A-Za-z\u00C0-\u024F\u0400-\u04FF]/;
 
@@ -43,18 +47,23 @@ export function useTextDir(content?: ReactNode): TextStyle | null {
 export function textDir(rtl: boolean, content?: ReactNode): TextStyle | null {
   if (!rtl) return null;
   const text = plainText(content);
-  if (text !== null && !RTL_CHARS.test(text) && LETTERS.test(text)) {
-    // With the native RTL switch on, leave alignment to the layout direction.
-    return I18nManager.isRTL ? { writingDirection: "ltr" } : LATIN_IN_RTL;
-  }
+  if (text !== null && !RTL_CHARS.test(text) && LETTERS.test(text)) return LATIN_IN_RTL;
   return RTL_TEXT;
 }
 
-/** Text inputs ignore writingDirection on iOS, so align typed text to the reading side. */
+const LTR_BLOCK: TextStyle = { writingDirection: "ltr", textAlign: "left" };
+const LTR_BLOCK_IN_RTL: TextStyle = { writingDirection: "ltr", textAlign: Platform.OS === "web" ? "left" : "right" };
+
+/** German documents (letters, form fields) read left-to-right on the left edge whatever the UI language. */
+export function useLtrText(): TextStyle {
+  return useRtl() ? LTR_BLOCK_IN_RTL : LTR_BLOCK;
+}
+
+const RTL_INPUT: TextStyle = { textAlign: RIGHT_EDGE, writingDirection: "rtl" };
+
+/** Aligns typed text to the reading side; inputs don't follow writingDirection alone. */
 export function useInputDir(): TextStyle | null {
-  const rtl = useRtl();
-  if (rtl && !I18nManager.isRTL) return { textAlign: "right", writingDirection: "rtl" };
-  return null;
+  return useRtl() ? RTL_INPUT : null;
 }
 
 const FLIP: ViewStyle = { transform: [{ scaleX: -1 }] };

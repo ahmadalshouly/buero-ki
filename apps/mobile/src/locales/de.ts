@@ -271,6 +271,7 @@ const de: Locale = {
     suggestAppointment: "Ich kann nicht zum Termin kommen und brauche einen neuen Termin.",
     generate: "Entwurf schreiben",
     generating: "Dein Entwurf wird geschrieben…",
+    generatingHint: "Das kann bis zu einer Minute dauern. Du kannst diesen Bildschirm schließen; der Entwurf erscheint im Fall, sobald er fertig ist.",
     german: "Deutscher Text zum Senden",
     translation: "In deiner Sprache",
     notes: "Vor dem Senden",

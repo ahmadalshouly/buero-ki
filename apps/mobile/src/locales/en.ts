@@ -269,6 +269,7 @@ const en = {
     suggestAppointment: "I cannot come to the appointment and need a new date.",
     generate: "Write draft",
     generating: "Writing your draft…",
+    generatingHint: "This can take up to a minute. You can close this screen; the draft appears in the case when it is ready.",
     german: "German text to send",
     translation: "In your language",
     notes: "Before you send",
