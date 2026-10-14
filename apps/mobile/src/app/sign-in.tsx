@@ -1,56 +1,62 @@
-import * as Linking from "expo-linking";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { KeyboardAvoidingView, Platform, View } from "react-native";
-import { Button, ErrorBox, Field, Screen, Txt } from "@/components/ui";
+import { Button, ErrorBox, Field, Muted, Screen, Segmented, Txt } from "@/components/ui";
 import { initialLanguage } from "@/lib/i18n";
 import { supabase } from "@/lib/supabase";
 import { space } from "@/lib/theme";
 
-const RESEND_SECONDS = 60;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const MIN_PASSWORD = 8;
+
+type Mode = "signIn" | "signUp";
 
 export default function SignIn() {
   const { t } = useTranslation();
+  const [mode, setMode] = useState<Mode>("signIn");
   const [email, setEmail] = useState("");
-  const [code, setCode] = useState("");
-  const [step, setStep] = useState<"email" | "code">("email");
+  const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [cooldown, setCooldown] = useState(0);
+  const [notice, setNotice] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (cooldown <= 0) return;
-    const timer = setTimeout(() => setCooldown(cooldown - 1), 1000);
-    return () => clearTimeout(timer);
-  }, [cooldown]);
+  const cleanEmail = email.trim().toLowerCase();
+  const validEmail = EMAIL.test(cleanEmail);
+  const validPassword = password.length >= MIN_PASSWORD;
+  const ready = validEmail && (mode === "signIn" ? password.length > 0 : validPassword);
 
-  const validEmail = EMAIL.test(email.trim());
-
-  async function sendCode() {
-    if (!validEmail) return;
-    setBusy(true);
-    setError(null);
-    const { error } = await supabase!.auth.signInWithOtp({
-      email: email.trim().toLowerCase(),
-      options: { shouldCreateUser: true, data: { language: initialLanguage }, emailRedirectTo: Linking.createURL("auth") },
-    });
-    setBusy(false);
-    if (error) {
-      setError(error.message);
-      return;
-    }
-    setStep("code");
-    setCode("");
-    setCooldown(RESEND_SECONDS);
+  function friendly(message: string): string {
+    if (/invalid login credentials/i.test(message)) return t("auth.wrongPassword");
+    if (/already registered|already been registered|user already exists/i.test(message)) return t("auth.emailTaken");
+    if (/email not confirmed/i.test(message)) return t("auth.confirmEmail");
+    return message;
   }
 
-  async function verify(token = code) {
+  async function submit() {
+    if (!ready || busy) return;
     setBusy(true);
     setError(null);
-    const { error } = await supabase!.auth.verifyOtp({ email: email.trim().toLowerCase(), token: token.trim(), type: "email" });
+    setNotice(null);
+    if (mode === "signIn") {
+      const { error } = await supabase!.auth.signInWithPassword({ email: cleanEmail, password });
+      if (error) setError(friendly(error.message));
+    } else {
+      const { data, error } = await supabase!.auth.signUp({
+        email: cleanEmail,
+        password,
+        options: { data: { language: initialLanguage } },
+      });
+      if (error) setError(friendly(error.message));
+      // With email confirmation switched on in Supabase there is no session yet.
+      else if (!data.session) setNotice(t("auth.confirmEmail"));
+    }
     setBusy(false);
-    if (error) setError(error.message);
+  }
+
+  function switchMode(next: Mode) {
+    setMode(next);
+    setError(null);
+    setNotice(null);
   }
 
   return (
@@ -61,54 +67,51 @@ export default function SignIn() {
           <Txt variant="h3">{t("common.tagline")}</Txt>
         </View>
 
-        {step === "email" ? (
-          <>
-            <Txt tone="muted">{t("auth.intro")}</Txt>
-            <Field
-              label={t("auth.email")}
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoComplete="email"
-              textContentType="emailAddress"
-              placeholder="name@example.com"
-              returnKeyType="send"
-              onSubmitEditing={sendCode}
-              error={email.length > 4 && !validEmail && email.includes("@") ? t("auth.emailInvalid") : null}
-            />
-            <Button title={t("auth.sendCode")} onPress={sendCode} loading={busy} disabled={!validEmail} />
-          </>
-        ) : (
-          <>
-            <Txt tone="muted">{t("auth.codeSent", { email: email.trim() })}</Txt>
-            <Field
-              label={t("auth.code")}
-              value={code}
-              onChangeText={(v) => {
-                const digits = v.replace(/\D/g, "").slice(0, 8);
-                setCode(digits);
-                if (digits.length === 8) verify(digits);
-              }}
-              keyboardType="number-pad"
-              autoComplete="one-time-code"
-              textContentType="oneTimeCode"
-              maxLength={8}
-              placeholder="123456"
-              autoFocus
-              style={{ fontSize: 24, letterSpacing: 8, textAlign: "center" }}
-            />
-            <Button title={t("auth.verify")} onPress={() => verify()} loading={busy} disabled={code.length < 6} />
-            <Button
-              variant="ghost"
-              title={cooldown > 0 ? t("auth.resendIn", { seconds: cooldown }) : t("auth.resend")}
-              onPress={sendCode}
-              disabled={cooldown > 0 || busy}
-            />
-            <Button variant="ghost" title={t("auth.changeEmail")} onPress={() => setStep("email")} />
-          </>
-        )}
+        <Segmented<Mode>
+          value={mode}
+          onChange={switchMode}
+          options={[
+            { value: "signIn", label: t("auth.signInTab") },
+            { value: "signUp", label: t("auth.signUpTab") },
+          ]}
+        />
+
+        <Field
+          label={t("auth.email")}
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoCorrect={false}
+          autoComplete="email"
+          textContentType={mode === "signUp" ? "username" : "emailAddress"}
+          placeholder="name@example.com"
+          returnKeyType="next"
+          error={email.length > 4 && !validEmail && email.includes("@") ? t("auth.emailInvalid") : null}
+        />
+        <Field
+          label={t("auth.password")}
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          autoCapitalize="none"
+          autoCorrect={false}
+          autoComplete={mode === "signUp" ? "new-password" : "current-password"}
+          textContentType={mode === "signUp" ? "newPassword" : "password"}
+          returnKeyType="go"
+          onSubmitEditing={submit}
+          hint={mode === "signUp" ? t("auth.passwordHint", { count: MIN_PASSWORD }) : undefined}
+          error={mode === "signUp" && password.length > 0 && !validPassword ? t("auth.passwordHint", { count: MIN_PASSWORD }) : null}
+        />
+        <Button
+          title={mode === "signIn" ? t("auth.signIn") : t("auth.createAccount")}
+          onPress={submit}
+          loading={busy}
+          disabled={!ready}
+        />
+
         {error && <ErrorBox message={error} />}
+        {notice && <Muted>{notice}</Muted>}
         <Txt variant="small" tone="faint" style={{ textAlign: "center" }}>{t("auth.privacy")}</Txt>
       </Screen>
     </KeyboardAvoidingView>

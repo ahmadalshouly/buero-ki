@@ -1,17 +1,13 @@
 name: Build apps
 
-# Builds an installable Android APK and an iOS Simulator app on every push to main,
-# on version tags and on demand. With Supabase secrets set, the apps connect to your
-# project; without them they start in demo mode.
+# Builds an installable Android APK and an iOS Simulator app, only when started by hand
+# (Actions > Build apps > Run workflow). For now the app is tested in Expo Go.
 #
 # Repository secrets (Settings > Secrets and variables > Actions), all optional:
 #   EXPO_PUBLIC_SUPABASE_URL, EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY  connect the apps
 #   EXPO_TOKEN                                                      also start signed EAS builds for real iPhones and the stores
 
 on:
-  push:
-    branches: [main]
-    tags: ["v*"]
   workflow_dispatch:
 
 concurrency:

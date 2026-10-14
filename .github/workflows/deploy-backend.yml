@@ -74,6 +74,8 @@ jobs:
           }
           # The sign-in link may open the app: Expo Go (exp://) and the installed app (bueroki://).
           patch '{"uri_allow_list": "bueroki://**,exp://**,http://localhost:8081/**"}'
+          # Sign-up with email and password signs people in at once, without a confirmation email.
+          patch '{"mailer_autoconfirm": true, "password_min_length": 8}'
           # Also put the code in the email. Free projects on the built-in mailer can't change
           # templates; the app then signs in through the link alone.
           template='<h2>BüroKI</h2><p><a href="{{ .ConfirmationURL }}">Anmelden / Sign in</a></p><p>Code: <b style="font-size:24px;letter-spacing:4px">{{ .Token }}</b></p>'
