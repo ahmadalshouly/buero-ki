@@ -17,7 +17,7 @@ Deno.test("output schemas are strict JSON Schema with every field required", () 
 
 Deno.test("analysis schema accepts a realistic answer and rejects extra keys", () => {
   const ok = {
-    readable: true, title_de: "Aufforderung zur Mitwirkung", sender: "Jobcenter Berlin Mitte", document_date: "2026-10-01",
+    readable: true, addressed_to: "Herrn Ahmad Alshouly", belongs_to: "person", title_de: "Aufforderung zur Mitwirkung", sender: "Jobcenter Berlin Mitte", document_date: "2026-10-01",
     document_type: "Request for documents", summary: "They need your bank statements.", explanation: "## What is this letter\n...",
     actions: [{ title: "Send bank statements", due_date: "2026-10-20", how_due_date_was_found: "bis zum 20.10.2026" }],
     key_terms: [{ term_de: "Mitwirkungspflicht", meaning: "Duty to cooperate" }], amounts: [],
@@ -28,6 +28,8 @@ Deno.test("analysis schema accepts a realistic answer and rejects extra keys", (
   assert(Analysis.safeParse(ok).success);
   assert(!Analysis.safeParse({ ...ok, extra: 1 }).success);
   assert(!Analysis.safeParse({ ...ok, urgency: "urgent" }).success);
+  assert(Analysis.safeParse({ ...ok, addressed_to: null, belongs_to: "unsure" }).success);
+  assert(!Analysis.safeParse({ ...ok, belongs_to: "neighbour" }).success);
 });
 
 Deno.test("pageBlock maps PDFs and images and rejects other files", () => {

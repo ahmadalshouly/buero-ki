@@ -251,6 +251,13 @@ const tr: Locale = {
     delete: "Mektubu sil",
     deleteConfirm: "Bu mektup silinsin mi?",
     deleteText: "Fotoğraflar ve açıklama silinir. Bu mektuptan gelen görevler kalır.",
+    addressedTo: "Alıcı: {{name}}",
+    notYoursTitle: "Bu mektup size gönderilmemiş",
+    notYoursText: "BüroKI yalnızca sizin kendi mektuplarınızı okur, böylece başkalarının özel bilgileri gizli kalır. Mektubun sahibi kendi ücretsiz BüroKI hesabını açıp mektubu orada ekleyebilir.",
+    whoseTitle: "Bu mektup sizin mi?",
+    whoseText: "BüroKI yalnızca sizin kendi mektuplarınızı okur. İpucu: Ayarlar'a adınızı ekleyin, BüroKI bunu kendisi kontrol edebilsin.",
+    mine: "Evet, benim",
+    notMine: "Hayır, başkasının",
   },
   draft: {
     pdf: "PDF olarak kaydet",
