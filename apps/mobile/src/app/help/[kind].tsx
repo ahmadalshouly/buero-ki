@@ -104,7 +104,7 @@ export default function HelpResults() {
         </Section>
       )}
 
-      <Muted>{t(query.data?.source === "google" ? "help.attributionGoogle" : "help.attribution")}</Muted>
+      {query.data && <Muted>{t(query.data.source === "google" ? "help.attributionGoogle" : "help.attribution")}</Muted>}
     </Screen>
   );
 }

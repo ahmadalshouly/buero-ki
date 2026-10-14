@@ -269,3 +269,21 @@ export function overpassFailed(data: unknown): string | null {
   const remark = (data as { remark?: string })?.remark;
   return remark && /error|timed out|out of memory/i.test(remark) ? remark : null;
 }
+
+// Finding a typed city or postcode with Google, so a search with a key never depends on Nominatim,
+// which often turns away requests from shared servers.
+export const GOOGLE_GEOCODE_FIELDS = "places.location,places.displayName,places.formattedAddress";
+
+export function googleGeocodeRequest(place: string) {
+  return { textQuery: `${place}, Deutschland`, languageCode: "de", regionCode: "DE", pageSize: 1 };
+}
+
+export function parseGoogleGeocode(data: unknown): Center | null {
+  const hit = (data as { places?: { location?: { latitude: number; longitude: number }; displayName?: { text?: string } }[] })
+    ?.places?.[0];
+  const lat = hit?.location?.latitude;
+  const lon = hit?.location?.longitude;
+  if (typeof lat !== "number" || typeof lon !== "number") return null;
+  if (!PlacesInput.shape.lat.safeParse(lat).success || !PlacesInput.shape.lon.safeParse(lon).success) return null;
+  return { lat, lon, label: hit?.displayName?.text || null };
+}

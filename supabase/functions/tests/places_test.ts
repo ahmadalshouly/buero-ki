@@ -1,6 +1,7 @@
 import { assert, assertEquals, assertMatch } from "jsr:@std/assert@1";
 import {
-  coarse, distanceM, googleRequest, HELP_KINDS, overpassFailed, overpassQuery, parseGeocode, parseGooglePlaces, parsePlaces, PlacesInput,
+  coarse, distanceM, googleGeocodeRequest, googleRequest, HELP_KINDS, overpassFailed, overpassQuery, parseGeocode, parseGoogleGeocode,
+  parseGooglePlaces, parsePlaces, PlacesInput,
 } from "../_shared/places.ts";
 
 const center = { lat: 52.4811, lon: 13.4353 }; // Berlin-Neukölln
@@ -125,4 +126,12 @@ Deno.test("google request searches the German term near a rounded position", () 
 Deno.test("an Overpass answer that ran out of time counts as failed", () => {
   assertEquals(overpassFailed({ elements: [], remark: "runtime error: Query timed out in \"query\" at line 1 after 16 seconds." }) !== null, true);
   assertEquals(overpassFailed({ elements: [] }), null);
+});
+
+Deno.test("google finds a typed place in Germany and keeps its name", () => {
+  assertEquals(googleGeocodeRequest("12043").textQuery, "12043, Deutschland");
+  assertEquals(parseGoogleGeocode({ places: [{ location: { latitude: 52.48, longitude: 13.43 }, displayName: { text: "Neukölln" } }] }),
+    { lat: 52.48, lon: 13.43, label: "Neukölln" });
+  assertEquals(parseGoogleGeocode({ places: [{ location: { latitude: 40.7, longitude: -74 } }] }), null);
+  assertEquals(parseGoogleGeocode({}), null);
 });
