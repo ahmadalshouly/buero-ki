@@ -3,6 +3,7 @@ import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Switch, TextInput, View } from "react-native";
+import { PendingFacts } from "@/components/FactSuggestions";
 import { useFeedback } from "@/components/feedback";
 import { Markdown } from "@/components/Markdown";
 import {
@@ -11,8 +12,9 @@ import {
 import { useInputDir } from "@/lib/direction";
 import { friendlyError } from "@/lib/errorText";
 import { formFileName, formProgress, formSheetHtml, groupFields, isFilled } from "@/lib/formSheet";
-import { errorMessage, useForm, useFormActions } from "@/lib/queries";
+import { errorMessage, useForm, useFormActions, useLearnFacts } from "@/lib/queries";
 import { downloadPdf, htmlToPdf } from "@/lib/savePdf";
+import { useMe } from "@/lib/session";
 import { radius, space, useColors } from "@/lib/theme";
 import type { CaseForm, FormField } from "@/lib/types";
 
@@ -35,6 +37,7 @@ function FieldCard({ field, onChange }: { field: FormField; onChange: (value: st
       <View style={{ flexDirection: "row", alignItems: "flex-start", gap: space(2) }}>
         <Txt variant="h3" selectable style={{ flex: 1, writingDirection: "ltr", textAlign: "left" }}>{field.label_de}</Txt>
         {field.required && !filled && <Badge tone="warn" label={t("form.required")} />}
+        {filled && field.type !== "signature" && <Ionicons name="checkmark-circle" size={20} color={c.success} />}
       </View>
       <Muted>{field.explanation}</Muted>
 
@@ -83,21 +86,26 @@ function FieldCard({ field, onChange }: { field: FormField; onChange: (value: st
   );
 }
 
+type Mode = "questions" | "story";
+
 /**
- * Asks the person, one at a time, for everything the agent could not fill in. Answers go
- * through the agent so they land in the right fields, in German and in the form's format.
- * When nothing is left to ask, the person can still tell BüroKI anything in their own words.
+ * Gets what the agent could not fill in from the person: one question at a time, or
+ * everything at once in their own words. Answers go through the agent so they land in
+ * the right fields, in German and in the form's format. When nothing is left to ask,
+ * the person can still tell BüroKI about changes.
  */
 function Ask({ form, busy, onSend }: { form: CaseForm; busy: boolean; onSend: (text: string) => Promise<string | null> }) {
   const { t } = useTranslation();
   const c = useColors();
   const inputDir = useInputDir();
+  const [mode, setMode] = useState<Mode>("questions");
   const [text, setText] = useState("");
   const [reply, setReply] = useState<string | null>(null);
   const [skipped, setSkipped] = useState<string[]>([]);
   const open = form.fields.filter((f) => !isFilled(f) && f.type !== "signature");
   const queue = open.filter((f) => !skipped.includes(f.key));
-  const current = queue[0];
+  const story = mode === "story" || open.length === 0;
+  const current = story ? undefined : queue[0];
 
   async function send() {
     const message = current
@@ -107,14 +115,27 @@ function Ask({ form, busy, onSend }: { form: CaseForm; busy: boolean; onSend: (t
     if (answer !== null) {
       setReply(answer);
       setText("");
+      // After telling everything at once, go on with whatever is still missing.
+      if (mode === "story") setMode("questions");
     }
   }
 
+  const title = open.length === 0 ? t("form.askTitle") : story ? t("form.storyTitle") : current ? t("form.questionsTitle") : t("form.questionsDone");
   return (
-    <Card style={{ gap: space(2.5), backgroundColor: c.accentSoft, borderColor: c.accentSoft }}>
+    <Card style={{ gap: space(3), backgroundColor: c.accentSoft, borderColor: c.accentSoft }}>
+      {open.length > 0 && (
+        <Segmented<Mode>
+          value={mode}
+          onChange={(m) => {
+            setMode(m);
+            setText("");
+          }}
+          options={[{ value: "questions", label: t("form.modeQuestions") }, { value: "story", label: t("form.modeStory") }]}
+        />
+      )}
       <View style={{ flexDirection: "row", gap: space(2), alignItems: "center" }}>
-        <Ionicons name={current ? "help-circle-outline" : "chatbubble-ellipses-outline"} size={20} color={c.accent} />
-        <Txt variant="h3" style={{ flex: 1 }}>{current ? t("form.questionsTitle") : t("form.askTitle")}</Txt>
+        <Ionicons name={story ? "chatbubble-ellipses-outline" : "help-circle-outline"} size={20} color={c.accent} />
+        <Txt variant="h3" style={{ flex: 1 }}>{title}</Txt>
         {current && <Muted>{t("form.questionOf", { n: open.length - queue.length + 1, total: open.length })}</Muted>}
       </View>
       {current ? (
@@ -123,36 +144,60 @@ function Ask({ form, busy, onSend }: { form: CaseForm; busy: boolean; onSend: (t
           <Txt variant="h3">{current.question ?? current.explanation}</Txt>
         </View>
       ) : (
-        <Muted>{open.length ? t("form.askText", { count: open.length }) : t("form.askTextDone")}</Muted>
+        <Muted>{open.length === 0 ? t("form.askTextDone") : story ? t("form.storyText") : t("form.questionsDoneText")}</Muted>
       )}
-      <TextInput
-        value={text}
-        onChangeText={setText}
-        multiline
-        placeholder={current ? t("form.answerPlaceholder") : t("form.askPlaceholder")}
-        placeholderTextColor={c.faint}
-        accessibilityLabel={current?.question ?? t("form.askTitle")}
-        style={[{
-          minHeight: current ? 48 : 72, textAlignVertical: "top", color: c.ink, backgroundColor: c.glassFill, borderRadius: radius.sm,
-          padding: space(3), fontSize: 16, position: "relative", zIndex: 1,
-        }, inputDir]}
-      />
-      <View style={{ flexDirection: "row", gap: space(2) }}>
-        {current && (
-          <Button small style={{ flex: 1 }} variant="secondary" title={t("form.skip")} disabled={busy}
-            onPress={() => {
-              setSkipped([...skipped, current.key]);
-              setText("");
-            }} />
-        )}
-        <Button small style={{ flex: 1 }} icon="sparkles" title={current ? t("form.answer") : t("form.askSend")} onPress={send}
-          loading={busy} disabled={!text.trim()} />
-      </View>
-      {!current && skipped.length > 0 && open.length > 0 && (
-        <Button small variant="ghost" title={t("form.askSkippedAgain")} onPress={() => setSkipped([])} />
+      {(story || current) && (
+        <>
+          <TextInput
+            value={text}
+            onChangeText={setText}
+            multiline
+            placeholder={current ? t("form.answerPlaceholder") : t("form.askPlaceholder")}
+            placeholderTextColor={c.faint}
+            accessibilityLabel={current?.question ?? title}
+            style={[{
+              minHeight: current ? 48 : 120, textAlignVertical: "top", color: c.ink, backgroundColor: c.glassFill, borderRadius: radius.sm,
+              padding: space(3), fontSize: 16, position: "relative", zIndex: 1,
+            }, inputDir]}
+          />
+          <View style={{ flexDirection: "row", gap: space(2) }}>
+            {current && (
+              <Button small style={{ flex: 1 }} variant="secondary" title={t("form.skip")} disabled={busy}
+                onPress={() => {
+                  setSkipped([...skipped, current.key]);
+                  setText("");
+                }} />
+            )}
+            <Button small style={{ flex: 1 }} icon="sparkles" title={current ? t("form.answer") : t("form.askSend")} onPress={send}
+              loading={busy} disabled={!text.trim()} />
+          </View>
+        </>
       )}
-      {reply && <Txt>{reply}</Txt>}
+      {!story && !current && (
+        <Button small variant="secondary" title={t("form.askSkippedAgain")} onPress={() => setSkipped([])} />
+      )}
+      {reply && (
+        <View style={{ flexDirection: "row", gap: space(2), alignItems: "flex-start" }}>
+          <Ionicons name="sparkles" size={16} color={c.accent} style={{ marginTop: 3 }} />
+          <Txt style={{ flex: 1 }}>{reply}</Txt>
+        </View>
+      )}
     </Card>
+  );
+}
+
+/** How much of the form is filled, as a bar and a count. */
+function Progress({ filled, total }: { filled: number; total: number }) {
+  const { t } = useTranslation();
+  const c = useColors();
+  const share = total ? filled / total : 1;
+  return (
+    <View style={{ gap: space(1.5) }}>
+      <View style={{ height: 6, borderRadius: 3, backgroundColor: c.line, overflow: "hidden" }}>
+        <View style={{ width: `${Math.round(share * 100)}%`, height: 6, borderRadius: 3, backgroundColor: share === 1 ? c.success : c.accent }} />
+      </View>
+      <Txt variant="small" tone="muted">{t("form.progress", { filled, total })}</Txt>
+    </View>
   );
 }
 
@@ -164,6 +209,8 @@ export default function FormScreen() {
   const query = useForm(id);
   const form = query.data;
   const actions = useFormActions(form);
+  const { profile } = useMe();
+  const learn = useLearnFacts(form?.case_id ?? "");
   const [draft, setDraft] = useState<FormField[] | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
   const [menu, setMenu] = useState(false);
@@ -222,7 +269,9 @@ export default function FormScreen() {
   const fields = draft ?? form.fields;
   const current: CaseForm = { ...form, fields };
   const progress = formProgress(fields);
-  const shown = filter === "missing" ? fields.filter((f) => !isFilled(f)) : fields;
+  // Missing means missing in the saved form, so a field does not vanish while it is being typed in.
+  const savedMissing = new Set(form.fields.filter((f) => !isFilled(f)).map((f) => f.key));
+  const shown = filter === "missing" ? fields.filter((f) => savedMissing.has(f.key)) : fields;
   const busy = actions.save.isPending || actions.answer.isPending || exporting;
 
   function change(key: string, value: string | null) {
@@ -245,6 +294,8 @@ export default function FormScreen() {
     if (!(await saveDraft())) return null;
     try {
       const res = await actions.answer.mutateAsync(text);
+      // Anything new the person said about themselves is offered to remember, never kept silently.
+      if (profile?.memory_enabled !== false) learn.mutate(text);
       return res.reply;
     } catch (e) {
       toast(friendlyError(e, t), "error");
@@ -312,21 +363,21 @@ export default function FormScreen() {
         <Txt variant="h2" selectable style={{ writingDirection: "ltr", textAlign: "left" }}>{form.title_de ?? form.file_name}</Txt>
         {form.title && form.title !== form.title_de && <Muted>{form.title}</Muted>}
         <View style={{ flexDirection: "row", gap: space(2), flexWrap: "wrap" }}>
-          <Badge tone={progress.filled === progress.total ? "accent" : "neutral"} icon="checkmark-done"
-            label={t("form.progress", { filled: progress.filled, total: progress.total })} />
           <Badge icon={form.fillable ? "document-text-outline" : "camera-outline"} label={form.fillable ? t("form.fillable") : t("form.scanned")} />
         </View>
       </View>
-      {form.summary && <Txt>{form.summary}</Txt>}
+      <Progress filled={progress.filled} total={progress.total} />
+      {form.summary && <Muted>{form.summary}</Muted>}
 
       <Ask form={current} busy={actions.answer.isPending || actions.save.isPending} onSend={answer} />
+      <PendingFacts caseId={form.case_id} />
 
       <Segmented
         value={filter}
         onChange={setFilter}
         options={[
           { value: "all", label: t("form.all") },
-          { value: "missing", label: `${t("form.missing")} ${progress.total - progress.filled || ""}`.trim() },
+          { value: "missing", label: `${t("form.missing")} ${savedMissing.size || ""}`.trim() },
         ]}
       />
 

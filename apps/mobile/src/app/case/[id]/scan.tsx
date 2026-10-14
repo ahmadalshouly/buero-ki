@@ -4,11 +4,12 @@ import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ActivityIndicator, View } from "react-native";
-import { Button, Card, DemoBanner, ErrorBox, Footer, IconButton, Muted, Screen, Txt } from "@/components/ui";
+import { Button, Card, DemoBanner, ErrorBox, Field, Footer, IconButton, Muted, Screen, Txt } from "@/components/ui";
 import { MAX_PAGES } from "@/lib/api";
 import { friendlyError } from "@/lib/errorText";
 import { choosePdf, choosePhotos, PermissionDenied, takePhoto } from "@/lib/pick";
-import { errorMessage, useAddDocument, useAddForm } from "@/lib/queries";
+import { errorMessage, useAddDocument, useAddForm, useLearnFacts } from "@/lib/queries";
+import { useMe } from "@/lib/session";
 import { radius, space, useColors } from "@/lib/theme";
 import type { PickedFile } from "@/lib/types";
 
@@ -19,9 +20,12 @@ export default function Scan() {
   const { t } = useTranslation();
   const c = useColors();
   const [pages, setPages] = useState<PickedFile[]>([]);
+  const [situation, setSituation] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const { profile } = useMe();
   const addLetter = useAddDocument(id);
   const addForm = useAddForm(id);
+  const learn = useLearnFacts(id);
   const add = isForm ? addForm : addLetter;
 
   const isPdf = pages[0]?.mimeType === "application/pdf";
@@ -56,10 +60,14 @@ export default function Scan() {
 
   function analyze() {
     setError(null);
-    add.mutate(pages, {
-      onSuccess: (item) => router.replace(isForm ? `/form/${item.id}` : `/document/${item.id}`),
-      onError: (e) => setError(friendlyError(e, t)),
-    });
+    const done = {
+      onSuccess: (item: { id: string }) => router.replace(isForm ? `/form/${item.id}` : `/document/${item.id}`),
+      onError: (e: unknown) => setError(friendlyError(e, t)),
+    };
+    if (!isForm) return addLetter.mutate(pages, done);
+    addForm.mutate({ pages, situation }, done);
+    // New things the person said about themselves are offered to remember on the form screen.
+    if (situation.trim() && profile?.memory_enabled !== false) learn.mutate(situation.trim());
   }
 
   if (add.isPending) {
@@ -114,6 +122,17 @@ export default function Scan() {
             <Button variant="secondary" icon="document-outline" title={t("case.choosePdf")} onPress={() => pick(choosePdf, true)} />
           )}
         </View>
+      )}
+      {isForm && pages.length > 0 && (
+        <Field
+          label={t("form.situationLabel")}
+          hint={t("form.situationHint")}
+          placeholder={t("form.situationPlaceholder")}
+          value={situation}
+          onChangeText={setSituation}
+          multiline
+          maxLength={4000}
+        />
       )}
       <View style={{ flexDirection: "row", gap: space(2), alignItems: "center" }}>
         <Ionicons name="bulb-outline" size={18} color={c.muted} />

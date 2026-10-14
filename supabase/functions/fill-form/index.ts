@@ -27,12 +27,13 @@ interface FormRow {
   page_paths: string[] | null;
   mime_type: string;
   fillable: boolean;
+  situation: string | null;
   fields: FormField[];
 }
 
 async function loadForm(ctx: Ctx<Input>): Promise<FormRow> {
   const { data, error } = await ctx.supabase.from("forms")
-    .select("id, case_id, storage_path, page_paths, mime_type, fillable, fields").eq("id", ctx.input.form_id).single();
+    .select("id, case_id, storage_path, page_paths, mime_type, fillable, situation, fields").eq("id", ctx.input.form_id).single();
   if (error || !data) throw new HttpError(404, "Form not found", "not_found");
   return data as FormRow;
 }
@@ -90,6 +91,9 @@ async function analyze(ctx: Ctx<Input>) {
       : "\n\nThe form is a scan or photo without fillable fields. Set pdf_field to null.";
 
     const context = await personContext(ctx, form.case_id);
+    const situation = form.situation?.trim()
+      ? `\n\nWhat the person told you about their situation, in their own words. Use it to fill every field it answers:\n<situation>\n${form.situation.trim()}\n</situation>`
+      : "";
     const { data: result, usage } = await generateJson({
       system: `Task: help the person fill in the attached German form (${paths.length} file${paths.length > 1 ? "s" : ""}, in order).
 List every field the person has to fill in, in the order of the form, and pre-fill every value that the person's data below supports. Write values in German, exactly as they belong on the form.
@@ -98,7 +102,7 @@ Write explanations, questions, notes, the summary and the instructions in ${lang
 Today's date is ${today()}. Use it for date fields such as 'Datum' next to the signature.`,
       content: [
         ...files.map((f) => pageBlock(f.mime, encodeBase64(f.bytes))),
-        { type: "text", text: `The person's data:\n\n${context}${fieldList}\n\nList the form's fields now.` },
+        { type: "text", text: `The person's data:\n\n${context}${situation}${fieldList}\n\nList the form's fields now.` },
       ],
       schema: FormAnalysis,
       effort: "medium",

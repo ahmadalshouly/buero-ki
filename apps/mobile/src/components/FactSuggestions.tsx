@@ -13,11 +13,8 @@ import type { ChatMessage } from "@/lib/types";
  * Nothing is used by the agent until the person keeps it.
  */
 export function FactSuggestions({ caseId, messages }: { caseId: string; messages: ChatMessage[] | undefined }) {
-  const { t } = useTranslation();
   const { profile } = useMe();
-  const facts = useFacts();
   const learn = useLearnFacts(caseId);
-  const decide = useDecideFact();
   const lastAnswer = messages && (messages.filter((m) => m.role === "assistant" && !m.id.startsWith("pending")).at(-1)?.id ?? null);
   // undefined until the list loads; answers already there when the chat opened were handled before.
   const seen = useRef<string | null | undefined>(undefined);
@@ -36,6 +33,14 @@ export function FactSuggestions({ caseId, messages }: { caseId: string; messages
     }
   }, [lastAnswer, learnEnabled, mutate]);
 
+  return <PendingFacts caseId={caseId} />;
+}
+
+/** Each suggestion from this case still waiting for an answer, with Remember / Don't remember. */
+export function PendingFacts({ caseId }: { caseId: string }) {
+  const { t } = useTranslation();
+  const facts = useFacts();
+  const decide = useDecideFact();
   const pending = (facts.data ?? []).filter((f) => f.status === "pending" && f.case_id === caseId);
   if (!pending.length) return null;
 
