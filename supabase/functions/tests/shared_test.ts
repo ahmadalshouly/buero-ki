@@ -21,7 +21,7 @@ Deno.test("analysis schema accepts a realistic answer and rejects extra keys", (
     document_type: "Request for documents", summary: "They need your bank statements.", explanation: "## What is this letter\n...",
     actions: [{ title: "Send bank statements", due_date: "2026-10-20", how_due_date_was_found: "bis zum 20.10.2026" }],
     key_terms: [{ term_de: "Mitwirkungspflicht", meaning: "Duty to cooperate" }], amounts: [],
-    urgency: "high", needs_advice: false, advice_reason: null, reference_number: "123A456789",
+    urgency: "high", needs_advice: false, advice_reason: null, advice_search: null, reference_number: "123A456789",
     case_summary: "Bürgergeld application in progress.", new_facts: [{ key: "bg_number", value: "123A456789" }],
     about_person: [{ category: "housing", fact: "Your address is Hauptstraße 5, 10115 Berlin.", replaces_id: null }],
   };

@@ -6,7 +6,8 @@ import { DAILY_LIMITS } from "./limits";
 import { sseParser } from "./sse";
 import { isDemo, supabase, supabaseKey, supabaseUrl } from "./supabase";
 import type {
-  AgentFunction, Case, CaseDocument, CaseForm, CaseStatus, ChatMessage, Draft, FormField, HelpKind, HelpResult, HelpWhere, NewCase, PickedFile,
+  AgentFunction, Case, CaseDocument, CaseForm, CaseStatus, ChatMessage, Draft, FormField, HelpKind, HelpResult, HelpSpecialty, HelpWhere, NewCase,
+  PickedFile,
   Profile, SearchResult, Task, TimelineItem, UsageToday, UserFact,
 } from "./types";
 
@@ -80,7 +81,7 @@ export interface Api {
   search(q: string): Promise<SearchResult[]>;
 
   /** Doctors, lawyers and Beratungsstellen near a position or place, nearest first. */
-  findHelp(kind: HelpKind, where: HelpWhere, radiusKm?: number): Promise<HelpResult>;
+  findHelp(kind: HelpKind, where: HelpWhere, radiusKm?: number, specialty?: HelpSpecialty): Promise<HelpResult>;
 
   /** Kept facts and suggestions still waiting for the person's answer. */
   listFacts(): Promise<UserFact[]>;
@@ -388,8 +389,8 @@ function supabaseApi(db: SupabaseClient): Api {
       return must(await db.rpc("search_everything", { q: term }));
     },
 
-    async findHelp(kind, where, radiusKm = 5) {
-      return invoke<HelpResult>(db, "find-help", { kind, ...where, radius_km: radiusKm });
+    async findHelp(kind, where, radiusKm = 5, specialty) {
+      return invoke<HelpResult>(db, "find-help", { kind, ...where, radius_km: radiusKm, ...(specialty ? { specialty } : {}) });
     },
 
     async listFacts() {

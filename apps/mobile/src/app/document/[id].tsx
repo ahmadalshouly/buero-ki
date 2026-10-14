@@ -13,7 +13,7 @@ import {
 import { friendlyError } from "@/lib/errorText";
 import { useIconFlip } from "@/lib/direction";
 import { formatDate } from "@/lib/i18n";
-import { helpForCategory } from "@/lib/help";
+import { helpForCategory, helpParams } from "@/lib/help";
 import { errorMessage, useCase, useDeleteDocument, useDocument, usePageUrls, useRetryDocument } from "@/lib/queries";
 import { isDemo } from "@/lib/supabase";
 import { radius, space, useColors } from "@/lib/theme";
@@ -117,7 +117,7 @@ export default function DocumentScreen() {
               <Button small variant="secondary" icon="help-buoy-outline" title={t("help.findAdvice")}
                 onPress={() => router.push({
                   pathname: "/help/[kind]",
-                  params: { kind: helpForCategory(theCase.data?.category ?? "other")[0], caseId: doc.case_id },
+                  params: helpParams(helpForCategory(theCase.data?.category ?? "other", a.advice_search)[0], doc.case_id),
                 })} />
             </Card>
           )}

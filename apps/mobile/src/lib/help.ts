@@ -4,7 +4,10 @@ import { Platform } from "react-native";
 import { useSyncExternalStore } from "react";
 import type { IconName } from "@/components/ui";
 import { getPrefs, setPrefs } from "./prefs";
-import type { CaseCategory, HelpKind, HelpPlace, HelpWhere } from "./types";
+import {
+  type CaseCategory, DOCTOR_SPECIALTIES, type HelpKind, type HelpPlace, type HelpSpecialty, type HelpSuggestion, type HelpWhere,
+  LAWYER_SPECIALTIES,
+} from "./types";
 
 export const HELP_GROUPS: { key: "health" | "legal" | "advice"; kinds: HelpKind[] }[] = [
   { key: "advice", kinds: ["migration", "social", "debt", "tenant", "consumer", "tax", "patient"] },
@@ -42,29 +45,51 @@ export const HELP_DIRECTORIES: Partial<Record<HelpKind, { label: string; url: st
   patient: [{ label: "upd", url: "https://www.patientenberatung.de/" }],
 };
 
-// The kinds of help that usually fit a matter, best first.
-const FOR_CATEGORY: Record<CaseCategory, HelpKind[]> = {
-  jobcenter: ["social", "lawyer", "debt"],
-  auslaenderbehoerde: ["migration", "lawyer"],
-  familienkasse: ["social", "migration"],
-  krankenkasse: ["patient", "social"],
-  finanzamt: ["tax", "social"],
-  buergeramt: ["migration", "social"],
-  housing: ["tenant", "lawyer"],
-  work: ["lawyer", "migration"],
-  school: ["social", "migration"],
-  other: ["migration", "social"],
-};
-
-export function helpForCategory(category: CaseCategory): HelpKind[] {
-  return FOR_CATEGORY[category] ?? FOR_CATEGORY.other;
+/** The types a kind is searched by: areas of law for lawyers, specialties for doctors. */
+export function specialtiesFor(kind: HelpKind): readonly HelpSpecialty[] {
+  return kind === "lawyer" ? LAWYER_SPECIALTIES : kind === "doctor" ? DOCTOR_SPECIALTIES : [];
 }
 
-/** Kinds that fit any of the person's open cases, without repeats, in case order. */
-export function helpForCases(categories: CaseCategory[], max = 4): HelpKind[] {
-  const out: HelpKind[] = [];
-  for (const c of categories) for (const k of helpForCategory(c)) if (!out.includes(k)) out.push(k);
+// The help that usually fits a matter, best first. Lawyers come with the area of law the matter belongs to.
+const FOR_CATEGORY: Record<CaseCategory, HelpSuggestion[]> = {
+  jobcenter: [{ kind: "social" }, { kind: "lawyer", specialty: "social" }, { kind: "debt" }],
+  auslaenderbehoerde: [{ kind: "migration" }, { kind: "lawyer", specialty: "migration" }],
+  familienkasse: [{ kind: "social" }, { kind: "migration" }, { kind: "lawyer", specialty: "social" }],
+  krankenkasse: [{ kind: "patient" }, { kind: "social" }, { kind: "lawyer", specialty: "social" }],
+  finanzamt: [{ kind: "tax" }, { kind: "lawyer", specialty: "tax" }],
+  buergeramt: [{ kind: "migration" }, { kind: "social" }],
+  housing: [{ kind: "tenant" }, { kind: "lawyer", specialty: "tenancy" }],
+  work: [{ kind: "lawyer", specialty: "labour" }, { kind: "migration" }],
+  school: [{ kind: "social" }, { kind: "migration" }],
+  other: [{ kind: "migration" }, { kind: "social" }],
+};
+
+const same = (a: HelpSuggestion, b: HelpSuggestion) => a.kind === b.kind && (a.specialty ?? null) === (b.specialty ?? null);
+
+/** Help for a case: the search the letter analysis advised first, then what fits the case category. */
+export function helpForCategory(category: CaseCategory, advised?: HelpSuggestion | null): HelpSuggestion[] {
+  const out: HelpSuggestion[] = advised ? [{ kind: advised.kind, specialty: advised.specialty ?? null }] : [];
+  for (const s of FOR_CATEGORY[category] ?? FOR_CATEGORY.other) if (!out.some((o) => same(o, s))) out.push(s);
+  return out;
+}
+
+/** Help that fits any of the person's open cases, without repeats, in case order. */
+export function helpForCases(categories: CaseCategory[], max = 4): HelpSuggestion[] {
+  const out: HelpSuggestion[] = [];
+  for (const c of categories) for (const s of helpForCategory(c)) if (!out.some((o) => same(o, s))) out.push(s);
   return out.slice(0, max);
+}
+
+/** Route params for the results screen. */
+export function helpParams(s: HelpSuggestion, caseId?: string): Record<string, string> {
+  return { kind: s.kind, ...(s.specialty ? { specialty: s.specialty } : {}), ...(caseId ? { caseId } : {}) };
+}
+
+/** "Lawyer for tenancy law" or "Paediatrician" for a typed search, else the kind's name. */
+export function helpTitle(t: (key: string, opts?: Record<string, string>) => string, s: HelpSuggestion): string {
+  if (!s.specialty) return t(`help.kind.${s.kind}`);
+  if (s.kind === "lawyer") return t("help.lawyerFor", { area: t(`help.law.${s.specialty}`) });
+  return t(`help.doctorType.${s.specialty}`);
 }
 
 /** Places that say they speak the language come first; the rest keep their distance order. */

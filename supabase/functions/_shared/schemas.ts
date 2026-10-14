@@ -2,6 +2,7 @@
 import type Anthropic from "npm:@anthropic-ai/sdk@0.133.0";
 import { z } from "npm:zod@4.6.7";
 import { HttpError } from "./http.ts";
+import { HELP_KINDS, SPECIALTIES } from "./places.ts";
 
 export const MAX_PAGES = 10;
 const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"] as const;
@@ -32,6 +33,16 @@ export const Analysis = z.strictObject({
   urgency: z.enum(["low", "medium", "high"]),
   needs_advice: z.boolean().describe("True if the person should get advice from a Beratungsstelle or lawyer."),
   advice_reason: z.string().nullable().describe("Why advice is recommended, in the user's language."),
+  advice_search: z.strictObject({
+    kind: z.enum(HELP_KINDS).describe(
+      "doctor, dentist, psychotherapy, lawyer, or an advice centre: migration (Migrationsberatung), social (Sozialberatung), debt (Schuldnerberatung), tenant (Mieterverein), consumer (Verbraucherzentrale), tax (Lohnsteuerhilfeverein), patient (Patientenberatung).",
+    ),
+    specialty: z.enum(SPECIALTIES).nullable().describe(
+      "For a lawyer, the area of law: migration, social (Jobcenter, Krankenkasse, Rente), tenancy, labour, family, criminal, traffic, tax, insolvency, contract, inheritance, medical. For a doctor: general, paediatrics, gynaecology, ophthalmology, otolaryngology, dermatology, orthopaedics, internal, neurology, psychiatry, urology, cardiology. Null for other kinds.",
+    ),
+  }).nullable().describe(
+    "When needs_advice is true: the best kind of help to look for nearby. A free advice centre is often enough; choose a lawyer for objections with deadlines, court letters, criminal matters or lost benefits. Null when no advice is needed.",
+  ),
   reference_number: z.string().nullable().describe("Aktenzeichen, BG-Nummer, Kundennummer or similar, exactly as printed."),
   case_summary: z.string().describe("Updated summary of the whole case after this document, 2 to 4 sentences in the user's language."),
   new_facts: z.array(z.strictObject({ key: z.string(), value: z.string() }))

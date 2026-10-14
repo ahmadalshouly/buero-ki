@@ -67,6 +67,8 @@ export interface Analysis {
   urgency: "low" | "medium" | "high";
   needs_advice: boolean;
   advice_reason: string | null;
+  /** The search that fits the advice; missing on letters read before it existed. */
+  advice_search?: HelpSuggestion | null;
   reference_number: string | null;
   amounts?: { label: string; amount_eur: number }[];
   about_person?: { category: FactCategory; fact: string; replaces_id: string | null }[];
@@ -242,6 +244,24 @@ export const HELP_KINDS = [
   "doctor", "dentist", "psychotherapy", "lawyer", "migration", "social", "debt", "tenant", "consumer", "tax", "patient",
 ] as const;
 export type HelpKind = (typeof HELP_KINDS)[number];
+
+/** Lawyers and doctors are searched by type (area of law, medical specialty). */
+export const LAWYER_SPECIALTIES = [
+  "migration", "social", "tenancy", "labour", "family", "criminal", "traffic", "tax", "insolvency", "contract", "inheritance", "medical",
+] as const;
+export const DOCTOR_SPECIALTIES = [
+  "general", "paediatrics", "gynaecology", "ophthalmology", "otolaryngology", "dermatology", "orthopaedics", "internal", "neurology",
+  "psychiatry", "urology", "cardiology",
+] as const;
+export type LawyerSpecialty = (typeof LAWYER_SPECIALTIES)[number];
+export type DoctorSpecialty = (typeof DOCTOR_SPECIALTIES)[number];
+export type HelpSpecialty = LawyerSpecialty | DoctorSpecialty;
+
+/** A search to offer: a kind of help, and for lawyers and doctors the type. */
+export interface HelpSuggestion {
+  kind: HelpKind;
+  specialty?: HelpSpecialty | null;
+}
 
 /** Where to look: the phone's position, or a city, district or postcode. */
 export type HelpWhere = { lat: number; lon: number } | { place: string };
