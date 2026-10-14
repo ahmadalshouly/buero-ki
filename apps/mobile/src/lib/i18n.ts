@@ -61,6 +61,12 @@ export function formatDate(iso: string | null | undefined, lang = i18n.language)
   return d.toLocaleDateString(locale, { day: "numeric", month: "short", year: "numeric" });
 }
 
+/** Today's weekday and date, such as "Wednesday, 14 October", in the UI language. */
+export function todayLabel(lang = i18n.language): string {
+  const locale = lang === "en" ? "en-GB" : lang;
+  return new Date().toLocaleDateString(locale, { weekday: "long", day: "numeric", month: "long" });
+}
+
 /** Days from today until an ISO date; negative when it is in the past. */
 export function daysUntil(iso: string): number {
   const today = new Date();

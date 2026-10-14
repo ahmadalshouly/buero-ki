@@ -5,9 +5,9 @@ import { useTranslation } from "react-i18next";
 import { ActivityIndicator, View } from "react-native";
 import { useFeedback } from "@/components/feedback";
 import { PendingFacts } from "@/components/FactSuggestions";
-import { TaskRow } from "@/components/TaskRow";
+import { TASK_ROW_INSET, TaskRow } from "@/components/TaskRow";
 import {
-  Badge, Button, Card, DemoBanner, EmptyState, ErrorBox, IconButton, IconCircle, type IconName, Muted, Screen, Section,
+  Badge, Button, Card, DemoBanner, EmptyState, ErrorBox, Group, IconButton, IconCircle, type IconName, Muted, Screen, Section,
   Segmented, Sheet, SkeletonList, Txt,
 } from "@/components/ui";
 import { categoryIcon } from "@/lib/categories";
@@ -228,6 +228,8 @@ export default function CaseScreen() {
               </View>
             )}
             {(d.status === "analyzing" || d.status === "uploaded") && <Muted>{t("case.reading")}</Muted>}
+            {d.status === "needs_owner" && <Txt tone="accent">{t("document.whoseTitle")}</Txt>}
+            {d.status === "not_owner" && <Txt tone="warn">{t("document.notYoursTitle")}</Txt>}
           </Card>
         ))
       )}
@@ -254,7 +256,9 @@ export default function CaseScreen() {
       {tab === "tasks" && (
         <View style={{ gap: space(3) }}>
           {tasks.isPending ? <SkeletonList rows={2} /> : !tasks.data?.length ? <Muted>{t("case.noTasks")}</Muted> : (
-            tasks.data.map((task) => <TaskRow key={task.id} task={task} onLongPress={() => deleteTask(task)} />)
+            <Group inset={TASK_ROW_INSET}>
+              {tasks.data.map((task) => <TaskRow key={task.id} task={task} onLongPress={() => deleteTask(task)} />)}
+            </Group>
           )}
           <Button variant="secondary" icon="add" title={t("case.addTask")} onPress={() => router.push(`/case/${id}/task`)} />
         </View>

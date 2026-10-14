@@ -36,6 +36,8 @@ export interface Api {
   /** Uploads the pages, then has the agent read them. Resolves when the analysis is done. */
   addDocument(caseId: string, pages: PickedFile[]): Promise<CaseDocument>;
   retryDocument(id: string): Promise<CaseDocument>;
+  /** The person's answer when BüroKI asked whether a letter is theirs. */
+  answerOwner(id: string, owner: "mine" | "not_mine"): Promise<CaseDocument>;
   deleteDocument(id: string): Promise<void>;
 
   listForms(caseId: string): Promise<CaseForm[]>;
@@ -281,6 +283,10 @@ function supabaseApi(db: SupabaseClient): Api {
       return analyze(doc.id);
     },
     retryDocument: analyze,
+    async answerOwner(id, owner) {
+      await invoke(db, "analyze-document", { document_id: id, owner });
+      return api.getDocument(id);
+    },
     async deleteDocument(id) {
       const doc = await api.getDocument(id);
       await db.storage.from("documents").remove(doc.page_paths?.length ? doc.page_paths : [doc.storage_path]);

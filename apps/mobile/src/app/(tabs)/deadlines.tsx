@@ -2,8 +2,8 @@ import { router } from "expo-router";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
-import { TaskRow } from "@/components/TaskRow";
-import { Button, DemoBanner, EmptyState, ErrorBox, Screen, Section, SkeletonList, Txt } from "@/components/ui";
+import { TASK_ROW_INSET, TaskRow } from "@/components/TaskRow";
+import { Button, DemoBanner, EmptyState, ErrorBox, Group, Screen, Section, SkeletonList, Txt } from "@/components/ui";
 import { bucketOf, type Bucket } from "@/lib/dates";
 import { errorMessage, useCases, useTasks } from "@/lib/queries";
 import { space } from "@/lib/theme";
@@ -37,11 +37,11 @@ export default function Deadlines() {
           if (!items.length) return null;
           return (
             <Section key={bucket} title={`${t(`deadlines.${bucket}`)} (${items.length})`}>
-              <View style={{ gap: space(3) }}>
+              <Group inset={TASK_ROW_INSET}>
                 {items.map((task) => (
                   <TaskRow key={task.id} task={task} caseTitle={caseTitle(task.case_id)} onOpen={() => router.push(`/case/${task.case_id}`)} />
                 ))}
-              </View>
+              </Group>
             </Section>
           );
         })
@@ -56,9 +56,9 @@ export default function Deadlines() {
       )}
       {showDone && (
         <Section title={t("deadlines.done")}>
-          <View style={{ gap: space(3) }}>
+          <Group inset={TASK_ROW_INSET}>
             {done.map((task) => <TaskRow key={task.id} task={task} caseTitle={caseTitle(task.case_id)} />)}
-          </View>
+          </Group>
         </Section>
       )}
     </Screen>

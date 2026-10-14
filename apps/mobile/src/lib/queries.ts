@@ -185,6 +185,18 @@ export function useRetryDocument(caseId: string) {
   });
 }
 
+export function useAnswerOwner(caseId: string) {
+  const qc = useQueryClient();
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: ({ id, owner }: { id: string; owner: "mine" | "not_mine" }) => api.answerOwner(id, owner),
+    onSettled: (_d, _e, { id }) => {
+      qc.invalidateQueries({ queryKey: keys.document(id) });
+      invalidate(caseId);
+    },
+  });
+}
+
 export function useDeleteDocument(caseId: string) {
   const invalidate = useInvalidate();
   return useMutation({ mutationFn: (id: string) => api.deleteDocument(id), onSuccess: () => invalidate(caseId) });

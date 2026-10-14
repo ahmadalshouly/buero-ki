@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import { useFeedback } from "@/components/feedback";
 import {
-  Button, Chip, DemoBanner, Field, Group, ListRow, Muted, Screen, Section, Segmented, Sheet, StatTile, SwitchRow, Txt,
+  Button, Chip, DemoBanner, Field, Group, ListRow, Muted, Screen, Section, Segmented, Sheet, StatGroup, SwitchRow, Txt,
 } from "@/components/ui";
 import { api, TERMS_VERSION } from "@/lib/api";
 import { formatDate, setLanguage } from "@/lib/i18n";
@@ -166,12 +166,14 @@ export default function Settings() {
       )}
 
       <Section title={t("settings.usage")} action={u ? <Muted>{t("settings.plan", { plan: u.plan })}</Muted> : undefined}>
-        <View style={{ flexDirection: "row", gap: space(3), flexWrap: "wrap" }}>
-          <StatTile label={t("settings.usageLetters")} value={u ? `${u.used["analyze-document"]}/${u.limits["analyze-document"]}` : "–"} />
-          <StatTile label={t("settings.usageDrafts")} value={u ? `${u.used["draft-reply"]}/${u.limits["draft-reply"]}` : "–"} />
-          <StatTile label={t("settings.usageChat")} value={u ? `${u.used["case-chat"]}/${u.limits["case-chat"]}` : "–"} />
-          <StatTile label={t("settings.usageForms")} value={u ? `${u.used["fill-form"]}/${u.limits["fill-form"]}` : "–"} />
-        </View>
+        <StatGroup
+          items={[
+            { label: t("settings.usageLetters"), value: u ? `${u.used["analyze-document"]}/${u.limits["analyze-document"]}` : "–" },
+            { label: t("settings.usageDrafts"), value: u ? `${u.used["draft-reply"]}/${u.limits["draft-reply"]}` : "–" },
+            { label: t("settings.usageChat"), value: u ? `${u.used["case-chat"]}/${u.limits["case-chat"]}` : "–" },
+            { label: t("settings.usageForms"), value: u ? `${u.used["fill-form"]}/${u.limits["fill-form"]}` : "–" },
+          ]}
+        />
       </Section>
 
       <Section title={t("settings.privacy")}>

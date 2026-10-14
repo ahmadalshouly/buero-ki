@@ -14,7 +14,7 @@ import { friendlyError } from "@/lib/errorText";
 import { useIconFlip } from "@/lib/direction";
 import { formatDate } from "@/lib/i18n";
 import { helpForCategory } from "@/lib/help";
-import { errorMessage, useCase, useDeleteDocument, useDocument, usePageUrls, useRetryDocument } from "@/lib/queries";
+import { errorMessage, useAnswerOwner, useCase, useDeleteDocument, useDocument, usePageUrls, useRetryDocument } from "@/lib/queries";
 import { isDemo } from "@/lib/supabase";
 import { radius, space, useColors } from "@/lib/theme";
 
@@ -32,6 +32,7 @@ export default function DocumentScreen() {
   const [menu, setMenu] = useState(false);
   const pages = usePageUrls(id, showPages && !isDemo);
   const retry = useRetryDocument(doc?.case_id ?? "");
+  const answer = useAnswerOwner(doc?.case_id ?? "");
   const theCase = useCase(doc?.case_id ?? "");
   const remove = useDeleteDocument(doc?.case_id ?? "");
 
@@ -46,7 +47,7 @@ export default function DocumentScreen() {
   }
 
   const a = doc.analysis;
-  const reading = doc.status === "analyzing" || doc.status === "uploaded" || retry.isPending;
+  const reading = doc.status === "analyzing" || doc.status === "uploaded" || retry.isPending || answer.isPending;
 
   return (
     <Screen refreshing={query.isRefetching} onRefresh={() => query.refetch()}>
@@ -81,6 +82,29 @@ export default function DocumentScreen() {
           <ErrorBox message={retry.error ? friendlyError(retry.error, t) : doc.error ?? t("case.failed")} />
           <Button icon="refresh" title={t("common.retry")} onPress={() => retry.mutate(doc.id)} />
         </>
+      )}
+
+      {doc.status === "needs_owner" && !answer.isPending && (
+        <Card style={{ gap: space(2) }}>
+          <Txt variant="h3">{t("document.whoseTitle")}</Txt>
+          {doc.addressed_to && <Txt selectable>{t("document.addressedTo", { name: doc.addressed_to })}</Txt>}
+          <Muted>{t("document.whoseText")}</Muted>
+          {answer.error && <ErrorBox message={friendlyError(answer.error, t)} />}
+          <Button icon="checkmark" title={t("document.mine")} onPress={() => answer.mutate({ id: doc.id, owner: "mine" })} />
+          <Button variant="secondary" icon="close" title={t("document.notMine")} onPress={() => answer.mutate({ id: doc.id, owner: "not_mine" })} />
+        </Card>
+      )}
+
+      {doc.status === "not_owner" && (
+        <Card style={{ gap: space(2), backgroundColor: c.warnSoft, borderColor: c.warnSoft }}>
+          <View style={{ flexDirection: "row", gap: space(2), alignItems: "center" }}>
+            <Ionicons name="person-remove" size={20} color={c.warn} />
+            <Txt variant="h3" tone="warn" style={{ flex: 1 }}>{t("document.notYoursTitle")}</Txt>
+          </View>
+          {doc.addressed_to && <Txt selectable>{t("document.addressedTo", { name: doc.addressed_to })}</Txt>}
+          <Txt>{t("document.notYoursText")}</Txt>
+          <Button small variant="secondary" icon="trash-outline" title={t("document.delete")} onPress={del} />
+        </Card>
       )}
 
       {a && doc.status === "ready" && (

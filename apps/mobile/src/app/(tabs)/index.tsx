@@ -3,12 +3,12 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import {
-  Button, Card, DemoBanner, EmptyState, ErrorBox, GlassIconButton, IconCircle, Muted, Screen, Section, Sheet,
-  SkeletonList, StatTile, Txt,
+  Button, DemoBanner, EmptyState, ErrorBox, GlassIconButton, Group, Muted, Screen, Section, Sheet,
+  SkeletonList, StatGroup, Txt,
 } from "@/components/ui";
-import { TaskRow } from "@/components/TaskRow";
-import { categoryIcon } from "@/lib/categories";
-import { daysUntil, formatDate } from "@/lib/i18n";
+import { CASE_ROW_INSET, CaseRow } from "@/components/CaseRow";
+import { TASK_ROW_INSET, TaskRow } from "@/components/TaskRow";
+import { daysUntil, formatDate, todayLabel } from "@/lib/i18n";
 import { errorMessage, useCases, useTasks } from "@/lib/queries";
 import { useMe } from "@/lib/session";
 import { space } from "@/lib/theme";
@@ -54,7 +54,7 @@ export default function Today() {
     <Screen padTop refreshing={refreshing} onRefresh={refresh}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: space(3) }}>
         <View style={{ flex: 1, gap: space(1) }}>
-          <Txt variant="label" tone="accent">BüroKI</Txt>
+          <Txt variant="label" tone="muted">{todayLabel()}</Txt>
           <Txt variant="title">{hello}</Txt>
         </View>
         <GlassIconButton icon="search" label={t("home.search")} onPress={() => router.push("/search")} />
@@ -66,11 +66,13 @@ export default function Today() {
       <Txt tone="muted">
         {attention ? t("home.summaryCount", { count: attention }) : t("home.summaryNone")}
       </Txt>
-      <View style={{ flexDirection: "row", gap: space(3), flexWrap: "wrap" }}>
-        <StatTile label={t("home.overdue")} value={String(overdue.length)} tone={overdue.length ? "danger" : "neutral"} />
-        <StatTile label={t("home.thisWeek")} value={String(week.length)} tone={week.length ? "warn" : "neutral"} />
-        <StatTile label={t("home.openCases")} value={String(activeCases.length)} tone="accent" />
-      </View>
+      <StatGroup
+        items={[
+          { label: t("home.overdue"), value: String(overdue.length), tone: overdue.length ? "danger" : "neutral", icon: "alert-circle" },
+          { label: t("home.thisWeek"), value: String(week.length), tone: week.length ? "warn" : "neutral", icon: "calendar" },
+          { label: t("home.openCases"), value: String(activeCases.length), tone: "accent", icon: "folder-open" },
+        ]}
+      />
 
       <View style={{ flexDirection: "row", gap: space(2) }}>
         <Button style={{ flex: 1 }} icon="camera-outline" title={t("home.addLetter")} onPress={addLetter} />
@@ -82,9 +84,11 @@ export default function Today() {
         action={all.length > 0 ? <Button small variant="ghost" title={t("home.seeAll")} onPress={() => router.push("/deadlines")} /> : undefined}
       >
         {tasks.isPending ? <SkeletonList rows={2} /> : upcoming.length ? (
-          upcoming.map((task) => (
-            <TaskRow key={task.id} task={task} caseTitle={caseTitle(task.case_id)} onOpen={() => router.push(`/case/${task.case_id}`)} />
-          ))
+          <Group inset={TASK_ROW_INSET}>
+            {upcoming.map((task) => (
+              <TaskRow key={task.id} task={task} caseTitle={caseTitle(task.case_id)} onOpen={() => router.push(`/case/${task.case_id}`)} />
+            ))}
+          </Group>
         ) : (
           <Muted>{t("home.noDeadlines")}</Muted>
         )}
@@ -97,33 +101,30 @@ export default function Today() {
         {cases.isPending ? <SkeletonList rows={2} /> : activeCases.length === 0 ? (
           <EmptyState icon="folder-open-outline" title={t("home.noCases")} />
         ) : (
-          activeCases.slice(0, 3).map((x) => (
-            <Card key={x.id} onPress={() => router.push(`/case/${x.id}`)} style={{ flexDirection: "row", alignItems: "center", gap: space(3) }}>
-              <IconCircle name={categoryIcon(x.category)} />
-              <View style={{ flex: 1, gap: 2 }}>
-                <Txt variant="h3">{x.title}</Txt>
-                <Muted numberOfLines={2}>{x.summary ?? x.authority ?? t(`category.${x.category}`)}</Muted>
-                <Txt variant="small" tone="faint">{t("cases.updated", { date: formatDate(x.updated_at) })}</Txt>
-              </View>
-            </Card>
-          ))
+          <Group inset={CASE_ROW_INSET}>
+            {activeCases.slice(0, 3).map((x) => (
+              <CaseRow key={x.id} item={x} subtitle={x.summary ?? x.authority ?? t(`category.${x.category}`)} onPress={() => router.push(`/case/${x.id}`)}>
+                <Txt variant="caption" tone="faint">{t("cases.updated", { date: formatDate(x.updated_at) })}</Txt>
+              </CaseRow>
+            ))}
+          </Group>
         )}
       </Section>
 
       <Sheet visible={choosing} onClose={() => setChoosing(false)} title={t("home.chooseCase")}>
-        {activeCases.map((x) => (
-          <Card
-            key={x.id}
-            onPress={() => {
-              setChoosing(false);
-              router.push(`/case/${x.id}/scan`);
-            }}
-            style={{ flexDirection: "row", alignItems: "center", gap: space(3) }}
-          >
-            <IconCircle name={categoryIcon(x.category)} size={34} />
-            <Txt variant="h3" style={{ flex: 1 }}>{x.title}</Txt>
-          </Card>
-        ))}
+        <Group inset={CASE_ROW_INSET}>
+          {activeCases.map((x) => (
+            <CaseRow
+              key={x.id}
+              item={x}
+              subtitle={x.authority}
+              onPress={() => {
+                setChoosing(false);
+                router.push(`/case/${x.id}/scan`);
+              }}
+            />
+          ))}
+        </Group>
       </Sheet>
     </Screen>
   );
