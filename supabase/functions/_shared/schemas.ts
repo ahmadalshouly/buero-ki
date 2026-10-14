@@ -120,6 +120,6 @@ export const FactSuggestions = z.strictObject({
     category: z.enum(FACT_CATEGORIES),
     fact: z.string().describe("One short sentence in the user's language, addressed to them, e.g. 'You live in Berlin-Neukölln with your wife and two children.'"),
     replaces_id: z.string().nullable().describe("id of a remembered fact this one corrects or updates, else null."),
-  })).describe("At most 3 new facts. Empty if nothing new and lasting was said."),
+  })).describe("At most a few new facts. Empty if nothing new and lasting was said."),
 });
 export type FactSuggestions = z.infer<typeof FactSuggestions>;

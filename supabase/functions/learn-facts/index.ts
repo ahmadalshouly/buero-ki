@@ -10,6 +10,8 @@ import { FactSuggestions } from "../_shared/schemas.ts";
 
 const RECENT_MESSAGES = 4;
 const MAX_SUGGESTIONS = 3;
+// A finished form holds a lot about the person at once.
+const MAX_FORM_SUGGESTIONS = 6;
 
 // Where the text came from. Without text, the latest chat messages of the case are used.
 const SOURCES = {
@@ -37,6 +39,7 @@ Deno.serve(handler("learn-facts", Input, async (ctx) => {
   ]);
   if (settings.data?.memory_enabled === false) return { facts: [] };
 
+  const max = input.text && (input.source ?? "form") === "form" ? MAX_FORM_SUGGESTIONS : MAX_SUGGESTIONS;
   const messages = input.text ? [{ role: "user", content: input.text }] : (recent.data ?? []).reverse();
   const lastUser = [...messages].reverse().find((m) => m.role === "user");
   // "ok thanks" and the like never carry a fact; skip the call.
@@ -52,7 +55,7 @@ Rules:
 - Skip passing details, feelings, questions, one-off plans, and anything already remembered or already suggested (listed below), even if worded differently.
 - If the person corrects or updates a remembered fact (for example a new address), suggest the new fact and set replaces_id to the old fact's id.
 - Do not suggest health details, religion, ethnicity, political views or sexual orientation unless the person stated it and it clearly matters for their paperwork (for example a disability for a Schwerbehindertenausweis); use category "health" for those.
-- At most ${MAX_SUGGESTIONS} facts. Usually there is nothing new; then return an empty list.
+- At most ${max} facts. Usually there is nothing new; then return an empty list.
 - Write each fact in ${languageName(profile.language)}, as one short sentence addressed to the person ("You ...").`,
     content: [
       "Already remembered or suggested:",
@@ -68,7 +71,7 @@ Rules:
   await recordUsage(ctx, "learn-facts", usage);
 
   const knownIds = new Set(facts.filter((f) => f.status === "kept").map((f) => f.id));
-  const rows = data.facts.slice(0, MAX_SUGGESTIONS).map((f) => ({
+  const rows = data.facts.slice(0, max).map((f) => ({
     user_id: userId,
     case_id: input.case_id,
     origin: input.text ? input.source ?? "form" : "chat",

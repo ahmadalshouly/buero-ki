@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { Linking, Share, TextInput, View } from "react-native";
 import { useFeedback } from "@/components/feedback";
 import { Badge, Button, Card, ErrorBox, IconButton, Muted, Screen, Section, Sheet, SkeletonList, Txt } from "@/components/ui";
+import { useLtrText } from "@/lib/direction";
 import { formatDate } from "@/lib/i18n";
 import { placeholders } from "@/lib/letter";
 import { exportLetterPdf } from "@/lib/printLetter";
@@ -19,6 +20,7 @@ function emailIn(text: string | null | undefined): string {
 }
 
 export default function DraftScreen() {
+  const ltrText = useLtrText();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { t } = useTranslation();
   const c = useColors();
@@ -122,7 +124,7 @@ export default function DraftScreen() {
               multiline
               accessibilityLabel={t("draft.german")}
               style={{
-                minHeight: 320, textAlignVertical: "top", writingDirection: "ltr", textAlign: "left", fontSize: 16, lineHeight: 23,
+                minHeight: 320, textAlignVertical: "top", ...ltrText, fontSize: 16, lineHeight: 23,
                 color: c.ink, backgroundColor: c.glassFill, borderColor: c.accent, borderWidth: 1, borderRadius: radius.md, borderCurve: "continuous", padding: space(4),
               }}
             />
@@ -133,7 +135,7 @@ export default function DraftScreen() {
           </>
         ) : (
           <Card>
-            <Txt selectable style={{ writingDirection: "ltr", textAlign: "left" }}>{draft.body_de}</Txt>
+            <Txt selectable style={ltrText}>{draft.body_de}</Txt>
           </Card>
         )}
       </Section>

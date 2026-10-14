@@ -1,5 +1,5 @@
 import { demoApi } from "../lib/demo";
-import { formFileName, formProgress, formSheetHtml, groupFields, isFilled } from "../lib/formSheet";
+import { formAnswersText, formFileName, formProgress, formSheetHtml, groupFields, isFilled } from "../lib/formSheet";
 import type { CaseForm, FormField } from "../lib/types";
 
 const field = (over: Partial<FormField>): FormField => ({
@@ -23,6 +23,11 @@ describe("form helpers", () => {
   it("counts signatures as done and blank values as missing", () => {
     expect(isFilled(fields[1])).toBe(false);
     expect(formProgress(fields)).toEqual({ total: 4, filled: 3, missingRequired: 1 });
+  });
+
+  it("lists only filled answers for the agent to suggest what to remember", () => {
+    const text = formAnswersText({ title_de: "Hauptantrag", file_name: null, fields });
+    expect(text).toBe('I filled in the form "Hauptantrag" with these answers:\n- Name: Amina\n- Name: true');
   });
 
   it("groups fields by section in form order", () => {
