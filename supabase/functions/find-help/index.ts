@@ -4,8 +4,8 @@
 // No AI is involved, so it does not need the AI consent.
 import { handler, HttpError } from "../_shared/http.ts";
 import {
-  type Center, coarse, GOOGLE_FIELDS, googleRequest, type HelpKind, overpassFailed, overpassQuery, parseGeocode, parseGooglePlaces,
-  parsePlaces, type Place, PlacesInput,
+  type Center, coarse, GOOGLE_FIELDS, GOOGLE_GEOCODE_FIELDS, googleGeocodeRequest, googleRequest, type HelpKind, overpassFailed,
+  overpassQuery, parseGeocode, parseGoogleGeocode, parseGooglePlaces, parsePlaces, type Place, PlacesInput,
 } from "../_shared/places.ts";
 
 // Overpass and Nominatim ask every app to name itself.
@@ -35,13 +35,40 @@ function cached<T>(key: string, load: () => Promise<T>): Promise<T> {
 
 const unavailable = () => new HttpError(502, "The map service is unavailable right now. Please try again.", "upstream");
 
-async function geocode(place: string): Promise<Center> {
+const notFound = () => new HttpError(404, "We could not find this place in Germany.", "place_not_found");
+
+async function nominatim(place: string): Promise<Center | null> {
   const url = `${NOMINATIM}?${new URLSearchParams({ q: place, countrycodes: "de", format: "json", limit: "1", "accept-language": "de" })}`;
-  const res = await fetch(url, { headers: { "User-Agent": USER_AGENT }, signal: AbortSignal.timeout(10_000) }).catch(() => null);
-  if (!res?.ok) throw unavailable();
-  const center = parseGeocode(await res.json());
-  if (!center) throw new HttpError(404, "We could not find this place in Germany.", "place_not_found");
-  return center;
+  const res = await fetch(url, { headers: { "User-Agent": USER_AGENT }, signal: AbortSignal.timeout(10_000) });
+  if (!res.ok) throw new Error(`nominatim ${res.status}`);
+  return parseGeocode(await res.json());
+}
+
+async function googleGeocode(place: string): Promise<Center | null> {
+  const res = await fetch("https://places.googleapis.com/v1/places:searchText", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Goog-Api-Key": GOOGLE_KEY, "X-Goog-FieldMask": GOOGLE_GEOCODE_FIELDS },
+    body: JSON.stringify(googleGeocodeRequest(place)),
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!res.ok) throw new Error(`google ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  return parseGoogleGeocode(await res.json());
+}
+
+/** Finds a typed place: with Google when there is a key, else (or when Google fails) with Nominatim. */
+async function geocode(place: string, logError: (msg: string, data: Record<string, unknown>) => void): Promise<Center> {
+  const lookups = GOOGLE_KEY ? [googleGeocode, nominatim] : [nominatim];
+  let answered = false;
+  for (const lookup of lookups) {
+    try {
+      const center = await lookup(place);
+      answered = true;
+      if (center) return center;
+    } catch (error) {
+      logError("place lookup failed", { error: error instanceof Error ? error.message : String(error) });
+    }
+  }
+  throw answered ? notFound() : unavailable();
 }
 
 async function google(kind: HelpKind, center: Center, radiusKm: number): Promise<Place[]> {
@@ -84,7 +111,7 @@ Deno.serve(handler("find-help", PlacesInput, async (ctx) => {
   const { kind, place, radius_km } = ctx.input;
   const center: Center = ctx.input.lat !== undefined && ctx.input.lon !== undefined
     ? { lat: coarse(ctx.input.lat), lon: coarse(ctx.input.lon), label: null }
-    : await cached(`geo:${place!.toLowerCase()}`, () => geocode(place!));
+    : await cached(`geo:${place!.toLowerCase()}`, () => geocode(place!, ctx.logError));
 
   const result = await cached<{ source: Source; places: Place[] }>(
     `${kind}:${coarse(center.lat)}:${coarse(center.lon)}:${radius_km}`,
