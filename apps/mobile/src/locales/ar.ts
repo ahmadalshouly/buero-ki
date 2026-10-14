@@ -420,6 +420,12 @@ const ar: Locale = {
     todayTitle: "موعد نهائي اليوم",
   },
   form: {
+    questionsTitle: "يحتاج BüroKI إلى إجاباتك",
+    questionOf: "{{n}} من {{total}}",
+    answerPlaceholder: "إجابتك، بأي لغة",
+    skip: "تخطٍّ",
+    answer: "إجابة",
+    askSkippedAgain: "اطرح الأسئلة التي تخطيتها مرة أخرى",
     title: "نموذج",
     addTitle: "تعبئة نموذج",
     intro: "صوّر كل صفحة من النموذج أو اختر ملف PDF. الأفضل ملف PDF من موقع الدائرة: عندها يعيده لك BüroKI نفسه معبّأً.",

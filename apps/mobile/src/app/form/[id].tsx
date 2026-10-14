@@ -82,15 +82,26 @@ function FieldCard({ field, onChange }: { field: FormField; onChange: (value: st
   );
 }
 
+/**
+ * Asks the person, one at a time, for everything the agent could not fill in. Answers go
+ * through the agent so they land in the right fields, in German and in the form's format.
+ * When nothing is left to ask, the person can still tell BüroKI anything in their own words.
+ */
 function Ask({ form, busy, onSend }: { form: CaseForm; busy: boolean; onSend: (text: string) => Promise<string | null> }) {
   const { t } = useTranslation();
   const c = useColors();
   const [text, setText] = useState("");
   const [reply, setReply] = useState<string | null>(null);
-  const missing = form.fields.filter((f) => !isFilled(f)).length;
+  const [skipped, setSkipped] = useState<string[]>([]);
+  const open = form.fields.filter((f) => !isFilled(f) && f.type !== "signature");
+  const queue = open.filter((f) => !skipped.includes(f.key));
+  const current = queue[0];
 
   async function send() {
-    const answer = await onSend(text.trim());
+    const message = current
+      ? `Question for the field "${current.label_de}" (key ${current.key}): ${current.question ?? current.explanation}\nThe person's answer: ${text.trim()}`
+      : text.trim();
+    const answer = await onSend(message);
     if (answer !== null) {
       setReply(answer);
       setText("");
@@ -100,23 +111,44 @@ function Ask({ form, busy, onSend }: { form: CaseForm; busy: boolean; onSend: (t
   return (
     <Card style={{ gap: space(2.5), backgroundColor: c.accentSoft, borderColor: c.accentSoft }}>
       <View style={{ flexDirection: "row", gap: space(2), alignItems: "center" }}>
-        <Ionicons name="chatbubble-ellipses-outline" size={20} color={c.accent} />
-        <Txt variant="h3" style={{ flex: 1 }}>{t("form.askTitle")}</Txt>
+        <Ionicons name={current ? "help-circle-outline" : "chatbubble-ellipses-outline"} size={20} color={c.accent} />
+        <Txt variant="h3" style={{ flex: 1 }}>{current ? t("form.questionsTitle") : t("form.askTitle")}</Txt>
+        {current && <Muted>{t("form.questionOf", { n: open.length - queue.length + 1, total: open.length })}</Muted>}
       </View>
-      <Muted>{missing ? t("form.askText", { count: missing }) : t("form.askTextDone")}</Muted>
+      {current ? (
+        <View style={{ gap: space(1) }}>
+          <Txt variant="small" tone="muted" style={{ writingDirection: "ltr", textAlign: "left" }}>{current.label_de}</Txt>
+          <Txt variant="h3">{current.question ?? current.explanation}</Txt>
+        </View>
+      ) : (
+        <Muted>{open.length ? t("form.askText", { count: open.length }) : t("form.askTextDone")}</Muted>
+      )}
       <TextInput
         value={text}
         onChangeText={setText}
         multiline
-        placeholder={t("form.askPlaceholder")}
+        placeholder={current ? t("form.answerPlaceholder") : t("form.askPlaceholder")}
         placeholderTextColor={c.faint}
-        accessibilityLabel={t("form.askTitle")}
+        accessibilityLabel={current?.question ?? t("form.askTitle")}
         style={{
-          minHeight: 72, textAlignVertical: "top", color: c.ink, backgroundColor: c.card, borderRadius: radius.sm,
-          padding: space(3), fontSize: 16,
+          minHeight: current ? 48 : 72, textAlignVertical: "top", color: c.ink, backgroundColor: c.card, borderRadius: radius.sm,
+          padding: space(3), fontSize: 16, position: "relative", zIndex: 1,
         }}
       />
-      <Button small icon="sparkles" title={t("form.askSend")} onPress={send} loading={busy} disabled={!text.trim()} />
+      <View style={{ flexDirection: "row", gap: space(2) }}>
+        {current && (
+          <Button small style={{ flex: 1 }} variant="secondary" title={t("form.skip")} disabled={busy}
+            onPress={() => {
+              setSkipped([...skipped, current.key]);
+              setText("");
+            }} />
+        )}
+        <Button small style={{ flex: 1 }} icon="sparkles" title={current ? t("form.answer") : t("form.askSend")} onPress={send}
+          loading={busy} disabled={!text.trim()} />
+      </View>
+      {!current && skipped.length > 0 && open.length > 0 && (
+        <Button small variant="ghost" title={t("form.askSkippedAgain")} onPress={() => setSkipped([])} />
+      )}
       {reply && <Txt>{reply}</Txt>}
     </Card>
   );

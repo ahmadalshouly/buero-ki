@@ -144,7 +144,7 @@ async function answer(ctx: Ctx<Input & { action: "answer" }>) {
 
   const { data: result, usage } = await generateJson({
     system: `Task: the person is filling in a German form and told you something in their own words. Set every field their message gives a value for. Write values in German, exactly as they belong on the form: dates DD.MM.YYYY, checkboxes 'true' or 'false', choices one of the options.
-Only use what the message says. Do not change fields the message does not cover. Reply in ${languageName(profile.language)}. Today's date is ${today()}.`,
+Only use what the message says. Do not change fields the message does not cover. If the message answers a question about one field, set that field, and any other field the answer clearly covers. If the person does not know or does not have something, set nothing and say in the reply where they can find it or what to do. Reply in ${languageName(profile.language)}. Today's date is ${today()}.`,
     content: `<fields>\n${fields.map((f) => JSON.stringify(f)).join("\n")}\n</fields>\n\nWhat the person said:\n<message>\n${input.message}\n</message>`,
     schema: FormAnswers,
     effort: "low",
