@@ -6,6 +6,7 @@
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, type TextStyle, type ViewStyle } from "react-native";
+import { scriptFont } from "./fonts";
 import { isRtl } from "./i18n";
 
 export function useRtl(): boolean {
@@ -66,7 +67,8 @@ const RTL_INPUT: TextStyle = { textAlign: "right", writingDirection: "rtl" };
 
 /** Aligns typed text to the reading side; inputs don't follow writingDirection alone. */
 export function useInputDir(): TextStyle | null {
-  return useRtl() ? RTL_INPUT : null;
+  const rtl = useRtl();
+  return rtl ? { ...RTL_INPUT, ...scriptFont(true, null) } : null;
 }
 
 /** Inputs for German text (form answers, letter drafts): typed left-to-right from the left edge. */
