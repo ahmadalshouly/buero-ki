@@ -7,8 +7,8 @@ import { authStorage } from "./storage";
 const PROJECT_URL = "https://tvkpaoqnvjpjfaeqdzhr.supabase.co";
 const PROJECT_KEY = "sb_publishable_pytX7Ko9H66Th4RnCaJLhg_tEysvlWP";
 
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || PROJECT_URL;
-const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY || PROJECT_KEY;
+export const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || PROJECT_URL;
+export const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY || PROJECT_KEY;
 
 // EXPO_PUBLIC_DEMO=1 runs the app with local sample data instead.
 export const isDemo = process.env.EXPO_PUBLIC_DEMO === "1";

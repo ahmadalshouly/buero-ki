@@ -1,12 +1,12 @@
 import { assert, assertEquals, assertMatch, assertThrows } from "jsr:@std/assert@1";
 import { outputSchema } from "../_shared/anthropic.ts";
 import { renderCase } from "../_shared/case.ts";
-import { HttpError, toErrorResponse } from "../_shared/http.ts";
+import { type Ctx, eventStream, HttpError, toErrorResponse, wantsStream } from "../_shared/http.ts";
 import { DAILY_LIMITS, limitFor } from "../_shared/limits.ts";
-import { Analysis, Draft, pageBlock } from "../_shared/schemas.ts";
+import { Analysis, Draft, FactSuggestions, pageBlock } from "../_shared/schemas.ts";
 
 Deno.test("output schemas are strict JSON Schema with every field required", () => {
-  for (const schema of [Analysis, Draft]) {
+  for (const schema of [Analysis, Draft, FactSuggestions]) {
     const js = outputSchema(schema) as { type: string; required: string[]; properties: object; additionalProperties: boolean };
     assertEquals(js.type, "object");
     assertEquals(js.additionalProperties, false);
@@ -39,12 +39,23 @@ Deno.test("pageBlock maps PDFs and images and rejects other files", () => {
 Deno.test("renderCase fences the case and marks missing data", () => {
   const text = renderCase({
     caseRow: { id: "1", title: "Bürgergeld", category: "jobcenter", authority: null, reference_number: null, summary: null, facts: {} },
-    documents: [], openTasks: [{ title: "Send payslips", due_date: "2026-10-20" }], sentDrafts: [],
+    documents: [], openTasks: [{ id: "t", title: "Send payslips", due_date: "2026-10-20" }], sentDrafts: [],
   }, null);
   assertMatch(text, /^<case>\n/);
   assertMatch(text, /<\/case>$/);
   assertMatch(text, /Authority: unknown/);
-  assertMatch(text, /Send payslips \(due 2026-10-20\)/);
+  assertMatch(text, /\[T1\] Send payslips \(due 2026-10-20\)/);
+});
+
+Deno.test("renderCase lists the facts the person agreed to keep", () => {
+  const caseRow = { id: "1", title: "Kindergeld", category: "familienkasse", authority: null, reference_number: null, summary: null, facts: {} };
+  const empty = renderCase({ caseRow, documents: [], openTasks: [], sentDrafts: [] }, null);
+  assertMatch(empty, /About the person \(they agreed BüroKI may remember this\):\n- none/);
+  const text = renderCase({
+    caseRow, documents: [], openTasks: [], sentDrafts: [],
+    personFacts: [{ category: "family", fact: "You have two children, Yusuf (6) and Lina (3)." }],
+  }, "Amina");
+  assertMatch(text, /- \[family\] You have two children/);
 });
 
 Deno.test("limits grow with the plan and fall back to free", () => {
@@ -57,4 +68,23 @@ Deno.test("errors map to safe client messages", () => {
   const internal = toErrorResponse(new Error("password=hunter2"));
   assertEquals(internal.status, 500);
   assert(!internal.message.includes("hunter2"));
+});
+
+Deno.test("eventStream sends events and turns a failure into an error event", async () => {
+  const ctx = { requestId: "req-1", log: () => {}, logError: () => {} } as unknown as Ctx<unknown>;
+  const res = eventStream(ctx, (send) => {
+    send({ type: "delta", text: "Hallo" });
+    return Promise.reject(new HttpError(429, "Limit reached", "limit"));
+  });
+  assertEquals(res.headers.get("Content-Type"), "text/event-stream; charset=utf-8");
+  const events = (await res.text()).split("\n\n").filter(Boolean).map((e) => JSON.parse(e.replace(/^data: /, "")));
+  assertEquals(events, [
+    { type: "delta", text: "Hallo" },
+    { type: "error", error: "Limit reached", code: "limit", requestId: "req-1" },
+  ]);
+});
+
+Deno.test("wantsStream reads the Accept header", () => {
+  assert(wantsStream(new Request("http://x", { headers: { Accept: "text/event-stream" } })));
+  assert(!wantsStream(new Request("http://x")));
 });

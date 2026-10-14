@@ -35,6 +35,8 @@ export interface Profile {
   onboarded_at: string | null;
   ai_consent_at: string | null;
   plan: Plan;
+  /** False: the agent stops suggesting facts to remember. */
+  memory_enabled: boolean;
 }
 
 export interface Case {
@@ -114,11 +116,18 @@ export interface Draft {
   created_at: string;
 }
 
+/** A change the assistant made while answering, such as a task it added or removed. */
+export interface ChatAction {
+  kind: "task_added" | "task_updated" | "task_done" | "task_removed" | (string & {});
+  title: string;
+}
+
 export interface ChatMessage {
   id: string;
   case_id: string;
   role: "user" | "assistant";
   content: string;
+  actions?: ChatAction[];
   created_at: string;
 }
 
@@ -152,6 +161,22 @@ export interface SearchResult {
   title: string | null;
   detail: string | null;
   at: string;
+}
+
+export const FACT_CATEGORIES = ["identity", "residence", "family", "work", "money", "housing", "health", "contact", "other"] as const;
+export type FactCategory = (typeof FACT_CATEGORIES)[number];
+
+/** Something about the person the agent suggested remembering (pending) or the person kept. */
+export interface UserFact {
+  id: string;
+  category: FactCategory;
+  fact: string;
+  status: "pending" | "kept";
+  case_id: string | null;
+  replaces_id: string | null;
+  source: "agent" | "user";
+  created_at: string;
+  decided_at: string | null;
 }
 
 export type AgentFunction = "analyze-document" | "draft-reply" | "case-chat";

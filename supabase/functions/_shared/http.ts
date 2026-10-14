@@ -38,6 +38,7 @@ export interface Ctx<I> {
   supabase: SupabaseClient;
   profile: Profile;
   log: (msg: string, extra?: Record<string, unknown>) => void;
+  logError: (msg: string, extra?: Record<string, unknown>) => void;
 }
 
 export type Logger = (level: "info" | "error", msg: string, extra?: Record<string, unknown>) => void;
@@ -112,7 +113,13 @@ export function handler<S extends z.ZodType>(
         supabase,
         profile: profile as Profile,
         log: (msg, extra) => logger("info", msg, extra),
+        logError: (msg, extra) => logger("error", msg, extra),
       });
+      if (result instanceof Response) {
+        logger("info", "streaming", { ms: Date.now() - started });
+        result.headers.set("x-request-id", requestId);
+        return result;
+      }
       logger("info", "done", { ms: Date.now() - started });
       return json(result, 200, { "x-request-id": requestId });
     } catch (error) {
@@ -126,4 +133,47 @@ export function handler<S extends z.ZodType>(
       return json({ error: message, code, requestId }, status, { "x-request-id": requestId });
     }
   };
+}
+
+export function wantsStream(req: Request): boolean {
+  return (req.headers.get("Accept") ?? "").includes("text/event-stream");
+}
+
+export type SendEvent = (event: { type: string } & Record<string, unknown>) => void;
+
+/**
+ * Answers with server-sent events, one JSON object per event. Once the stream is open the
+ * status is 200, so a failure arrives as an "error" event with the same fields as a JSON error.
+ */
+export function eventStream(ctx: Ctx<unknown>, work: (send: SendEvent) => Promise<void>): Response {
+  const started = Date.now();
+  const encoder = new TextEncoder();
+  const body = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const send: SendEvent = (event) => controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+      try {
+        await work(send);
+        ctx.log("done", { ms: Date.now() - started });
+      } catch (error) {
+        const { status, code, message } = toErrorResponse(error);
+        (status >= 500 ? ctx.logError : ctx.log)("failed", {
+          status,
+          code,
+          ms: Date.now() - started,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        send({ type: "error", error: message, code, requestId: ctx.requestId });
+      } finally {
+        controller.close();
+      }
+    },
+  });
+  return new Response(body, {
+    headers: {
+      ...corsHeaders,
+      "Content-Type": "text/event-stream; charset=utf-8",
+      "Cache-Control": "no-cache",
+      "X-Accel-Buffering": "no",
+    },
+  });
 }
