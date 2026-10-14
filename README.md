@@ -34,7 +34,7 @@ Sending emails, AI phone calls, the community translator marketplace and the law
 ```
 apps/mobile/            Expo (React Native) app for iOS, Android and web
   src/app/              Screens (Expo Router): (tabs)/ Today, Cases, Deadlines, Settings
-  src/lib/api.ts        Data layer: Supabase, or demo mode when no Supabase is configured
+  src/lib/api.ts        Data layer: Supabase, or demo mode with EXPO_PUBLIC_DEMO=1
   src/lib/queries.ts    TanStack Query hooks, cache persisted on the device
   src/locales/          UI translations
   src/__tests__/        Jest tests
@@ -52,9 +52,9 @@ supabase/
 .github/workflows/ci.yml
 ```
 
-## Run the app in demo mode
+## Run the app
 
-No accounts needed. The app shows a sample Jobcenter case.
+The app connects to the BüroKI Supabase project. To try it with sample data and no backend, set `EXPO_PUBLIC_DEMO=1` in `apps/mobile/.env`.
 
 ```bash
 cd apps/mobile
@@ -111,7 +111,7 @@ The native `ios/` and `android/` folders are generated from `app.json` (`npx exp
 - `bueroki-android-apk`: an APK you can install on any Android phone (allow "install unknown apps").
 - `bueroki-ios-simulator`: the app for the iOS Simulator on a Mac.
 
-Download them from the workflow run's **Artifacts**. Add the repository secrets `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` to connect the builds to Supabase; without them the apps open in demo mode.
+Download them from the workflow run's **Artifacts**. The builds use the BüroKI Supabase project set in `apps/mobile/src/lib/supabase.ts`. The repository secrets `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` point them at another project.
 
 **Real iPhones and the stores (EAS).** Installing on an iPhone outside the Simulator needs an Apple Developer account. Builds run in Expo's cloud, so no Mac is needed:
 
