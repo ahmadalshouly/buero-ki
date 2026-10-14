@@ -576,6 +576,7 @@ const en = {
       upd: "Free advice on health insurance and treatment",
     },
     attribution: "Places from OpenStreetMap (© OpenStreetMap contributors). Details can be out of date; call before you go.",
+    attributionGoogle: "Places from Google Maps. Details can be out of date; call before you go.",
     speaksYours: "Speaks your language",
     wheelchair: "Wheelchair access",
     call: "Call",

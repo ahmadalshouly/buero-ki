@@ -8,6 +8,8 @@ name: Deploy backend
 #   SUPABASE_DB_PASSWORD   the database password of the project
 #   ANTHROPIC_API_KEY      console.anthropic.com > API keys
 # Optional: ANTHROPIC_WORKSPACE_ID, for keys that are not tied to a workspace.
+# Optional, for reliable search results in Find help (otherwise OpenStreetMap is used):
+#   GOOGLE_MAPS_API_KEY    console.cloud.google.com > APIs & Services > Credentials, with "Places API (New)" enabled
 # Optional, to send emails from BüroKI (otherwise the app opens the email app):
 #   RESEND_API_KEY         resend.com > API keys
 #   EMAIL_FROM             a sender address on a domain verified in Resend, e.g. post@mail.example.de
@@ -62,11 +64,14 @@ jobs:
           ANTHROPIC_WORKSPACE_ID: ${{ secrets.ANTHROPIC_WORKSPACE_ID }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
         run: |
           args=("ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY")
           [ -n "$ANTHROPIC_WORKSPACE_ID" ] && args+=("ANTHROPIC_WORKSPACE_ID=$ANTHROPIC_WORKSPACE_ID")
           [ -n "$RESEND_API_KEY" ] && args+=("RESEND_API_KEY=$RESEND_API_KEY")
           [ -n "$EMAIL_FROM" ] && args+=("EMAIL_FROM=$EMAIL_FROM")
+          [ -n "$GOOGLE_MAPS_API_KEY" ] && args+=("GOOGLE_MAPS_API_KEY=$GOOGLE_MAPS_API_KEY")
+          [ -z "$GOOGLE_MAPS_API_KEY" ] && echo "::notice::GOOGLE_MAPS_API_KEY missing: Find help searches OpenStreetMap, which is often busy."
           if [ -z "$RESEND_API_KEY" ] || [ -z "$EMAIL_FROM" ]; then
             echo "::notice::RESEND_API_KEY or EMAIL_FROM missing: the app opens the email app instead of sending from BüroKI."
           fi

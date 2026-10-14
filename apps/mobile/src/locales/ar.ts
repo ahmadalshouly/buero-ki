@@ -594,6 +594,7 @@ const ar: Locale = {
       upd: "استشارة مجانية حول التأمين الصحي والعلاج",
     },
     attribution: "الأماكن من OpenStreetMap (© مساهمو OpenStreetMap). قد تكون المعلومات قديمة؛ اتصل قبل الذهاب.",
+    attributionGoogle: "الأماكن من Google Maps. قد تكون المعلومات قديمة؛ اتصل قبل الذهاب.",
     speaksYours: "يتحدث لغتك",
     wheelchair: "مناسب للكراسي المتحركة",
     call: "اتصال",

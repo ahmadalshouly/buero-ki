@@ -578,6 +578,7 @@ const fa: Locale = {
       upd: "مشاوره رایگان درباره بیمه درمانی و درمان",
     },
     attribution: "مکان‌ها از OpenStreetMap (© مشارکت‌کنندگان OpenStreetMap). اطلاعات ممکن است قدیمی باشد؛ قبل از رفتن تماس بگیرید.",
+    attributionGoogle: "مکان‌ها از Google Maps. اطلاعات ممکن است قدیمی باشد؛ قبل از رفتن تماس بگیرید.",
     speaksYours: "به زبان شما صحبت می‌کند",
     wheelchair: "دسترسی با ویلچر",
     call: "تماس",

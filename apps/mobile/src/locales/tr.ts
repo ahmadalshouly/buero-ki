@@ -578,6 +578,7 @@ const tr: Locale = {
       upd: "Sağlık sigortası ve tedavi hakkında ücretsiz danışmanlık",
     },
     attribution: "Yerler OpenStreetMap'ten (© OpenStreetMap katkıda bulunanlar). Bilgiler eski olabilir; gitmeden önce arayın.",
+    attributionGoogle: "Yerler Google Maps'ten. Bilgiler eski olabilir; gitmeden önce arayın.",
     speaksYours: "Sizin dilinizi konuşuyor",
     wheelchair: "Tekerlekli sandalye erişimi",
     call: "Ara",

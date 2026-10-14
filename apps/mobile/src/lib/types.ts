@@ -264,5 +264,7 @@ export interface HelpPlace {
 
 export interface HelpResult {
   center: { lat: number; lon: number; label: string | null };
+  /** Where the places come from, for the attribution line. */
+  source?: "google" | "osm";
   places: HelpPlace[];
 }
