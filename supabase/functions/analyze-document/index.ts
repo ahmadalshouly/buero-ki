@@ -7,6 +7,7 @@ import type { SupabaseClient } from "npm:@supabase/supabase-js@2.117.3";
 import { z } from "npm:zod@4.6.7";
 import { generateJson, languageName } from "../_shared/anthropic.ts";
 import { type CaseContext, loadCaseContext, renderCase, today } from "../_shared/case.ts";
+import { isEmailAddress } from "../_shared/email.ts";
 import { type Ctx, handler, HttpError } from "../_shared/http.ts";
 import { enforceLimit, recordUsage } from "../_shared/limits.ts";
 import { Analysis, MAX_PAGES, pageBlock } from "../_shared/schemas.ts";
@@ -91,6 +92,9 @@ Today's date is ${today()}. Use it to calculate deadlines that are given as a pe
       effort: "high",
     });
     await recordUsage(ctx, "analyze-document", usage);
+    // The app offers this address when the person sends an email; they can still change it.
+    const email = analysis.sender_email?.trim().toLowerCase() ?? "";
+    analysis.sender_email = isEmailAddress(email) ? email : null;
 
     if (analysis.belongs_to === "someone_else") return await decline(ctx, doc.id, analysis.addressed_to);
     if (analysis.belongs_to === "unsure") {

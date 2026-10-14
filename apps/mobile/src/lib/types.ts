@@ -73,6 +73,8 @@ export interface Analysis {
   /** The search that fits the advice; missing on letters read before it existed. */
   advice_search?: HelpSuggestion | null;
   reference_number: string | null;
+  /** The sender's email for replies, as printed in the letter; offered when sending an email. */
+  sender_email?: string | null;
   amounts?: { label: string; amount_eur: number }[];
   about_person?: { category: FactCategory; fact: string; replaces_id: string | null }[];
 }

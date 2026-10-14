@@ -317,6 +317,7 @@ const de: Locale = {
     sendTitle: "E-Mail senden",
     sendTo: "An (E-Mail-Adresse der Behörde)",
     sendToHint: "Prüfe die Adresse im Brief der Behörde oder auf ihrer Website.",
+    sendToFound: "Aus dem Brief „{{letter}}“ übernommen. Bitte prüfe sie.",
     replyTo: "Deine E-Mail für Antworten",
     sendReplies: "BüroKI sendet sie in deinem Namen. Die Behörde sieht diese Adresse in der E-Mail, Antworten gehen dorthin, und du bekommst eine Kopie.",
     sendNow: "Jetzt senden",

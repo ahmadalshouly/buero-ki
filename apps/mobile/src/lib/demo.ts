@@ -51,6 +51,7 @@ After the deadline the Jobcenter can refuse the money (§ 66 SGB I). You can sti
   needs_advice: false,
   advice_reason: null,
   reference_number: "BG 12345//0067890",
+  sender_email: "jobcenter-berlin-mitte@jobcenter-ge.de",
   amounts: [{ label: "Monthly Bürgergeld applied for", amount_eur: 1124 }],
 };
 
@@ -168,6 +169,7 @@ const state = {
         urgency: "low",
         amounts: [],
         reference_number: "123FK456789",
+        sender_email: null,
       },
       error: null,
       created_at: day(-6) + "T10:00:00Z",

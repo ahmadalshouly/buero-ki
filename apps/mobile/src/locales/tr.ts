@@ -317,6 +317,7 @@ const tr: Locale = {
     sendTitle: "Bu e-postayı gönder",
     sendTo: "Alıcı (kurumun e-posta adresi)",
     sendToHint: "Adresi kurumun mektubunda veya web sitesinde kontrol edin.",
+    sendToFound: "“{{letter}}” mektubunda bulundu. Lütfen kontrol edin.",
     replyTo: "Yanıtlar için e-posta adresiniz",
     sendReplies: "BüroKI e-postayı sizin adınıza gönderir. Kurum bu adresi e-postada görür, yanıtlar oraya gelir ve size bir kopya gönderilir.",
     sendNow: "Şimdi gönder",

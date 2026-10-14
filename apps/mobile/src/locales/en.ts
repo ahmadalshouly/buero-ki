@@ -315,6 +315,7 @@ const en = {
     sendTitle: "Send this email",
     sendTo: "To (email address of the office)",
     sendToHint: "Check the address in the office's letter or on its website.",
+    sendToFound: "Found in the letter “{{letter}}”. Please check it.",
     replyTo: "Your email for replies",
     sendReplies: "BüroKI sends it in your name. The office sees this address in the email, replies go there, and you get a copy.",
     sendNow: "Send now",
