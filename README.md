@@ -66,6 +66,17 @@ Scan the QR code with the Expo Go app on your phone, or press `w` for the browse
 
 ## Connect Supabase and Claude
 
+**Quick way:** with the [Supabase CLI](https://supabase.com/docs/guides/cli) installed, run
+
+```bash
+./scripts/setup-backend.sh <project-ref>
+```
+
+It links the project, creates the database, stores the Anthropic key as a function secret and deploys the functions. Then follow step 4 and 5 below. If your Anthropic key is not tied to a workspace, also run `export ANTHROPIC_WORKSPACE_ID=wrkspc_...` first.
+
+**Step by step:**
+
+
 1. Create a project at [supabase.com](https://supabase.com) (choose an EU region, for example Frankfurt).
 2. Install the [Supabase CLI](https://supabase.com/docs/guides/cli) and link the project:
    ```bash

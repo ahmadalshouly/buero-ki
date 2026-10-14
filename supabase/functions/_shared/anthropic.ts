@@ -9,7 +9,10 @@ const FALLBACK_BETA = "server-side-fallback-2026-07-01";
 let client: Anthropic | null = null;
 // Created on first use so modules load in tests without an API key.
 function anthropic(): Anthropic {
-  client ??= new Anthropic(); // Reads ANTHROPIC_API_KEY from the function's secrets.
+  // Reads ANTHROPIC_API_KEY from the function's secrets. Keys that are not tied to a
+  // workspace also need ANTHROPIC_WORKSPACE_ID.
+  const workspace = Deno.env.get("ANTHROPIC_WORKSPACE_ID");
+  client ??= new Anthropic(workspace ? { defaultHeaders: { "anthropic-workspace-id": workspace } } : {});
   return client;
 }
 
