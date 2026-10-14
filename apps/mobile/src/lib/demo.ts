@@ -559,6 +559,13 @@ Mit freundlichen Grüßen
     const d = find(state.drafts, key);
     d.status = status;
     d.sent_at = status === "sent" ? now() : null;
+    d.sent_via = status === "sent" ? "self" : null;
+  },
+  async sendEmail(key, to) {
+    await wait(800);
+    const d = find(state.drafts, key);
+    Object.assign(d, { status: "sent", sent_at: now(), sent_to: to, sent_via: "bueroki" });
+    return { ...d };
   },
   async deleteDraft(key) {
     drop(state.drafts, key);

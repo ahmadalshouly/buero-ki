@@ -29,7 +29,7 @@ SECRETS=(ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY")
 supabase secrets set "${SECRETS[@]}" --project-ref "$REF"
 
 echo "Deploying edge functions…"
-supabase functions deploy analyze-document draft-reply case-chat fill-form learn-facts export-data delete-account --project-ref "$REF"
+supabase functions deploy analyze-document draft-reply case-chat fill-form learn-facts find-help send-email export-data delete-account --project-ref "$REF"
 
 cat <<MSG
 

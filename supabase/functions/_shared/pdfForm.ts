@@ -90,10 +90,12 @@ export async function fillPdf(
   // Dynamic (XFA) forms would ignore the values we write into the regular fields.
   form.deleteXFA();
 
+  // getFieldMaybe walks every field on each call; long forms need one lookup table instead.
+  const byName = new Map(form.getFields().map((f) => [f.getName(), f]));
   let filled = 0;
   const skipped: string[] = [];
   for (const { pdf_field, value } of values) {
-    const field = form.getFieldMaybe(pdf_field);
+    const field = byName.get(pdf_field);
     try {
       if (field instanceof PDFTextField) {
         const max = field.getMaxLength();
@@ -115,5 +117,6 @@ export async function fillPdf(
     }
   }
   form.updateFieldAppearances(font);
-  return { bytes: await pdf.save(), filled, skipped };
+  // The appearances are already drawn above; drawing them again on save doubles the work.
+  return { bytes: await pdf.save({ updateFieldAppearances: false }), filled, skipped };
 }

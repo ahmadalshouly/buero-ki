@@ -151,9 +151,26 @@ test("facts suggested from a letter point at the person's own letter only", asyn
   await assert.rejects(as(AMINA, "insert into public.user_facts (fact, origin) values ('x', 'gossip')"), /check constraint/);
 });
 
+test("sent emails are counted per person and cannot be erased or faked for others", async () => {
+  const caseId = (await as(AMINA, "select id from public.cases limit 1")).rows[0].id;
+  const draft = (await as(AMINA, "insert into public.drafts (case_id, kind, subject, body_de) values ($1, 'email', 'Termin', 'Hallo') returning id", [caseId])).rows[0];
+  await as(AMINA, "insert into public.sent_emails (case_id, draft_id, to_address, subject) values ($1, $2, 'amt@example.de', 'Termin')", [caseId, draft.id]);
+  await as(AMINA, "update public.drafts set status = 'sent', sent_at = now(), sent_to = 'amt@example.de', sent_via = 'bueroki' where id = $1", [draft.id]);
+  assert.equal((await as(AMINA, "select public.emails_sent_last_day() n")).rows[0].n, 1);
+  assert.equal((await as(BORIS, "select public.emails_sent_last_day() n")).rows[0].n, 0);
+  await as(AMINA, "delete from public.sent_emails");
+  assert.equal((await as(AMINA, "select public.emails_sent_last_day() n")).rows[0].n, 1);
+  assert.equal((await as(BORIS, "select * from public.sent_emails")).rows.length, 0);
+  await assert.rejects(
+    as(BORIS, "insert into public.sent_emails (case_id, to_address, subject) values ($1, 'x@example.de', 'x')", [caseId]),
+    /row-level security/,
+  );
+  await assert.rejects(as(AMINA, "update public.drafts set sent_via = 'pigeon' where id = $1", [draft.id]), /check constraint/);
+});
+
 test("deleting the login removes all of the person's data", async () => {
   await db.exec(`delete from auth.users where id = '${AMINA}'`);
-  for (const table of ["profiles", "cases", "documents", "forms", "tasks", "drafts", "user_facts"]) {
+  for (const table of ["profiles", "cases", "documents", "forms", "tasks", "drafts", "user_facts", "sent_emails"]) {
     const { rows } = await db.query(`select count(*)::int n from public.${table} where ${table === "profiles" ? "id" : "user_id"} = $1`, [AMINA]);
     assert.equal(rows[0].n, 0, table);
   }

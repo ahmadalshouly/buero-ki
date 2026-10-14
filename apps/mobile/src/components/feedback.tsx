@@ -26,6 +26,15 @@ interface Feedback {
 const FeedbackContext = createContext<Feedback>({ toast: () => {}, confirm: async () => false });
 export const useFeedback = () => useContext(FeedbackContext);
 
+// iOS cannot show the share sheet (or any other screen) while a modal is still fading out:
+// it silently never appears and the promise waiting for it never settles.
+const MODAL_CLOSE_MS = 400;
+
+/** Resolves once a modal that was just closed has finished fading out. */
+export function waitForModalClose(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, MODAL_CLOSE_MS));
+}
+
 export function FeedbackProvider({ children }: { children: ReactNode }) {
   const c = useColors();
   const { t } = useTranslation();
@@ -52,8 +61,10 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
   }), []);
 
   const close = (value: boolean) => {
-    dialog?.resolve(value);
+    const resolve = dialog?.resolve;
     setDialog(null);
+    // Answer only after the dialog is gone, so a share sheet opened next can appear.
+    if (resolve) waitForModalClose().then(() => resolve(value));
   };
 
   const icon = toast?.tone === "error" ? "alert-circle" : toast?.tone === "info" ? "information-circle" : "checkmark-circle";
