@@ -1,7 +1,7 @@
 import { assert, assertEquals, assertMatch, assertThrows } from "jsr:@std/assert@1";
 import { outputSchema } from "../_shared/anthropic.ts";
 import { renderCase } from "../_shared/case.ts";
-import { HttpError, toErrorResponse } from "../_shared/http.ts";
+import { type Ctx, eventStream, HttpError, toErrorResponse, wantsStream } from "../_shared/http.ts";
 import { DAILY_LIMITS, limitFor } from "../_shared/limits.ts";
 import { Analysis, Draft, pageBlock } from "../_shared/schemas.ts";
 
@@ -57,4 +57,23 @@ Deno.test("errors map to safe client messages", () => {
   const internal = toErrorResponse(new Error("password=hunter2"));
   assertEquals(internal.status, 500);
   assert(!internal.message.includes("hunter2"));
+});
+
+Deno.test("eventStream sends events and turns a failure into an error event", async () => {
+  const ctx = { requestId: "req-1", log: () => {}, logError: () => {} } as unknown as Ctx<unknown>;
+  const res = eventStream(ctx, (send) => {
+    send({ type: "delta", text: "Hallo" });
+    return Promise.reject(new HttpError(429, "Limit reached", "limit"));
+  });
+  assertEquals(res.headers.get("Content-Type"), "text/event-stream; charset=utf-8");
+  const events = (await res.text()).split("\n\n").filter(Boolean).map((e) => JSON.parse(e.replace(/^data: /, "")));
+  assertEquals(events, [
+    { type: "delta", text: "Hallo" },
+    { type: "error", error: "Limit reached", code: "limit", requestId: "req-1" },
+  ]);
+});
+
+Deno.test("wantsStream reads the Accept header", () => {
+  assert(wantsStream(new Request("http://x", { headers: { Accept: "text/event-stream" } })));
+  assert(!wantsStream(new Request("http://x")));
 });

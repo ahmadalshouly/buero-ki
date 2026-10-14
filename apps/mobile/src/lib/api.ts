@@ -1,8 +1,10 @@
 import { FunctionsFetchError, FunctionsHttpError, type SupabaseClient } from "@supabase/supabase-js";
+import { fetch as streamingFetch } from "expo/fetch";
 import { demoApi } from "./demo";
 import { ApiError, EXTENSIONS, validatePages } from "./errors";
 import { DAILY_LIMITS } from "./limits";
-import { isDemo, supabase } from "./supabase";
+import { sseParser } from "./sse";
+import { isDemo, supabase, supabaseKey, supabaseUrl } from "./supabase";
 import type {
   AgentFunction, Case, CaseDocument, CaseStatus, ChatMessage, Draft, NewCase, PickedFile, Profile, SearchResult, Task,
   TimelineItem, UsageToday,
@@ -55,7 +57,8 @@ export interface Api {
   deleteDraft(id: string): Promise<void>;
 
   listMessages(caseId: string): Promise<ChatMessage[]>;
-  sendMessage(caseId: string, text: string): Promise<ChatMessage>;
+  /** onText receives the answer so far while it is being written. */
+  sendMessage(caseId: string, text: string, onText?: (soFar: string) => void): Promise<ChatMessage>;
 
   search(q: string): Promise<SearchResult[]>;
 }
@@ -79,6 +82,63 @@ async function invoke<T>(db: SupabaseClient, name: string, body: object): Promis
   }
   if (error instanceof FunctionsFetchError) throw new ApiError(error.message, "offline");
   throw new ApiError(error.message);
+}
+
+/** Calls a function that streams its answer as server-sent events; also accepts a plain JSON answer. */
+async function invokeStream<T>(
+  db: SupabaseClient,
+  name: string,
+  body: object,
+  onDelta: (text: string) => void,
+): Promise<T> {
+  const { data } = await db.auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) throw new ApiError("Not signed in", "auth");
+
+  let res: Awaited<ReturnType<typeof streamingFetch>>;
+  try {
+    res = await streamingFetch(`${supabaseUrl}/functions/v1/${name}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        apikey: supabaseKey,
+        "Content-Type": "application/json",
+        Accept: "text/event-stream",
+      },
+      body: JSON.stringify(body),
+    });
+  } catch (e) {
+    throw new ApiError(e instanceof Error ? e.message : String(e), "offline");
+  }
+  if (!res.ok) {
+    const payload = await res.json().catch(() => null);
+    throw new ApiError(payload?.error ?? `Request failed (${res.status})`, payload?.code ?? "error", payload?.requestId);
+  }
+  if (!res.headers.get("Content-Type")?.includes("text/event-stream") || !res.body) return res.json() as Promise<T>;
+
+  let result: T | undefined;
+  let failure: ApiError | undefined;
+  const push = sseParser((event) => {
+    if (event.type === "delta") onDelta(event.text as string);
+    else if (event.type === "done") result = event as T;
+    else if (event.type === "error") {
+      failure = new ApiError(event.error as string, (event.code as ApiError["code"]) ?? "error", event.requestId as string);
+    }
+  });
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      push(decoder.decode(value, { stream: true }));
+    }
+  } catch (e) {
+    throw new ApiError(e instanceof Error ? e.message : String(e), "offline");
+  }
+  if (failure) throw failure;
+  if (!result) throw new ApiError("The answer was cut off. Please try again.", "offline");
+  return result;
 }
 
 function supabaseApi(db: SupabaseClient): Api {
@@ -236,8 +296,12 @@ function supabaseApi(db: SupabaseClient): Api {
     async listMessages(caseId) {
       return must(await db.from("messages").select("*").eq("case_id", caseId).order("created_at", { ascending: true }));
     },
-    async sendMessage(caseId, text) {
-      const res = await invoke<{ message: ChatMessage }>(db, "case-chat", { case_id: caseId, message: text });
+    async sendMessage(caseId, text, onText) {
+      let soFar = "";
+      const res = await invokeStream<{ message: ChatMessage }>(db, "case-chat", { case_id: caseId, message: text }, (delta) => {
+        soFar += delta;
+        onText?.(soFar);
+      });
       return res.message;
     },
 
