@@ -59,4 +59,13 @@ describe("demo backend", () => {
     await demoApi.forgetAllFacts();
     expect(await demoApi.listFacts()).toEqual([]);
   });
+
+  it("offers to remember what a new letter says about the person", async () => {
+    const doc = await demoApi.addDocument("demo-case-1", [{ uri: "file://a.jpg", mimeType: "image/jpeg", name: "a.jpg" }]);
+    const fromLetter = (await demoApi.listFacts()).filter((f) => f.origin === "letter");
+    expect(fromLetter).toEqual([expect.objectContaining({ status: "pending", document_id: doc.id })]);
+    await demoApi.forgetFact(fromLetter[0].id);
+    const drafted = await demoApi.learnFacts("demo-case-1", "I am self-employed, so I have no payslips.", "draft");
+    expect(drafted[0].origin).toBe("draft");
+  });
 });

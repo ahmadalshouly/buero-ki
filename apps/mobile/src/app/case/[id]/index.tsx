@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ActivityIndicator, View } from "react-native";
 import { useFeedback } from "@/components/feedback";
+import { PendingFacts } from "@/components/FactSuggestions";
 import { TaskRow } from "@/components/TaskRow";
 import {
   Badge, Button, Card, DemoBanner, EmptyState, ErrorBox, IconButton, IconCircle, type IconName, Muted, Screen, Section,
@@ -109,6 +110,8 @@ export default function CaseScreen() {
         <Txt variant="h2" tone="accentInk">{next ? next.title : t("case.nothingNext")}</Txt>
         {next?.due_date && <Txt tone="accentInk" style={{ opacity: 0.85 }}>{t("due.on", { date: formatDate(next.due_date) })}</Txt>}
       </Card>
+
+      <PendingFacts caseId={id} />
 
       <View style={{ flexDirection: "row", gap: space(2) }}>
         <Button style={{ flex: 1 }} icon="camera-outline" title={t("case.addLetter")} onPress={() => router.push(`/case/${id}/scan`)} />

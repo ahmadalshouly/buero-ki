@@ -80,7 +80,7 @@ export interface Api {
   /** Kept facts and suggestions still waiting for the person's answer. */
   listFacts(): Promise<UserFact[]>;
   /** Asks the agent whether the latest chat turn, or what the person told a form (text), holds something worth remembering. */
-  learnFacts(caseId: string, text?: string): Promise<UserFact[]>;
+  learnFacts(caseId: string, text?: string, source?: "form" | "draft" | "note"): Promise<UserFact[]>;
   keepFact(id: string): Promise<void>;
   /** Deletes a fact for good: ignoring a suggestion and forgetting a kept fact are the same. */
   forgetFact(id: string): Promise<void>;
@@ -382,8 +382,8 @@ function supabaseApi(db: SupabaseClient): Api {
     async listFacts() {
       return must(await db.from("user_facts").select("*").order("created_at", { ascending: true }));
     },
-    async learnFacts(caseId, text) {
-      const res = await invoke<{ facts: UserFact[] }>(db, "learn-facts", text ? { case_id: caseId, text } : { case_id: caseId });
+    async learnFacts(caseId, text, source) {
+      const res = await invoke<{ facts: UserFact[] }>(db, "learn-facts", text ? { case_id: caseId, text, ...(source ? { source } : {}) } : { case_id: caseId });
       return res.facts;
     },
     async keepFact(id) {

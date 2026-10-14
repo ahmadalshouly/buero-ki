@@ -20,6 +20,7 @@ export default function Memory() {
   const kept = (facts.data ?? []).filter((f) => f.status === "kept");
   const pending = (facts.data ?? []).filter((f) => f.status === "pending");
   const label = (cat: FactCategory) => t(`memory.categories.${cat}`);
+  const subtitle = (f: UserFact) => [label(f.category), f.origin && t(`memory.origins.${f.origin}`)].filter(Boolean).join(" · ");
 
   async function setLearning(on: boolean) {
     try {
@@ -66,7 +67,7 @@ export default function Memory() {
         <Section title={t("memory.waiting")}>
           <Group>
             {pending.map((f) => (
-              <ListRow key={f.id} title={f.fact} subtitle={label(f.category)} chevron={false}
+              <ListRow key={f.id} title={f.fact} subtitle={subtitle(f)} chevron={false}
                 right={(
                   <View style={{ flexDirection: "row", gap: space(1) }}>
                     <Button small title={t("memory.keep")} onPress={() => decideFact(f, true)} />
@@ -83,7 +84,7 @@ export default function Memory() {
           {kept.length ? (
             <Group>
               {kept.map((f) => (
-                <ListRow key={f.id} title={f.fact} subtitle={label(f.category)} chevron={false}
+                <ListRow key={f.id} title={f.fact} subtitle={subtitle(f)} chevron={false}
                   right={<IconButton icon="trash-outline" label={t("memory.forget")} color={c.danger} onPress={() => decideFact(f, false)} />} />
               ))}
             </Group>

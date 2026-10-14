@@ -384,6 +384,14 @@ const en = {
     forgetAll: "Forget everything",
     forgetAllConfirm: "Forget everything BüroKI remembers?",
     forgetAllText: "Your cases, letters and chats stay. Only the facts on this page are deleted.",
+    origins: {
+      chat: "From a chat",
+      letter: "From a letter",
+      form: "From a form",
+      draft: "From a letter you asked for",
+      note: "From something you wrote",
+      user: "Added by you",
+    },
     categories: {
       identity: "About you",
       residence: "Residence",

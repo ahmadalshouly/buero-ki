@@ -4,7 +4,8 @@ import { useTranslation } from "react-i18next";
 import { ActivityIndicator, View } from "react-native";
 import { Button, Chip, DemoBanner, ErrorBox, Field, Muted, Screen, Segmented, Txt } from "@/components/ui";
 import { friendlyError } from "@/lib/errorText";
-import { useCreateDraft, useDocuments, useDraft } from "@/lib/queries";
+import { useCreateDraft, useDocuments, useDraft, useLearnFacts } from "@/lib/queries";
+import { useMe } from "@/lib/session";
 import { space, useColors } from "@/lib/theme";
 
 export default function NewDraft() {
@@ -17,6 +18,8 @@ export default function NewDraft() {
   const [docId, setDocId] = useState<string | null>(documentId ?? null);
   const [instructions, setInstructions] = useState("");
   const create = useCreateDraft(id);
+  const learn = useLearnFacts(id, "draft");
+  const { profile } = useMe();
   const revising = !!revise;
   const ready = (documents.data ?? []).filter((d) => d.status === "ready");
 
@@ -34,6 +37,8 @@ export default function NewDraft() {
       instructions: instructions.trim(),
       reviseDraftId: revise ?? null,
     }, { onSuccess: (draft) => router.replace(`/draft/${draft.id}`) });
+    // What the person explains about themselves here is offered to remember on the case screen.
+    if (profile?.memory_enabled !== false && !suggestions.includes(instructions.trim())) learn.mutate(instructions.trim());
   }
 
   if (create.isPending) {

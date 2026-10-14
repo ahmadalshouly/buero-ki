@@ -67,6 +67,7 @@ export interface Analysis {
   advice_reason: string | null;
   reference_number: string | null;
   amounts?: { label: string; amount_eur: number }[];
+  about_person?: { category: FactCategory; fact: string; replaces_id: string | null }[];
 }
 
 export interface CaseDocument {
@@ -214,9 +215,14 @@ export interface UserFact {
   case_id: string | null;
   replaces_id: string | null;
   source: "agent" | "user";
+  /** Where it came up; null for facts from before this was recorded. */
+  origin: FactOrigin | null;
+  document_id: string | null;
   created_at: string;
   decided_at: string | null;
 }
+
+export type FactOrigin = "chat" | "letter" | "form" | "draft" | "note" | "user";
 
 export type AgentFunction = "analyze-document" | "draft-reply" | "case-chat" | "fill-form";
 

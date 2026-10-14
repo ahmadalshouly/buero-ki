@@ -114,6 +114,8 @@ function useInvalidate() {
     qc.invalidateQueries({ queryKey: keys.cases });
     qc.invalidateQueries({ queryKey: ["tasks"] });
     qc.invalidateQueries({ queryKey: keys.usage });
+    // Reading a letter may have suggested facts to remember.
+    qc.invalidateQueries({ queryKey: keys.facts });
     if (caseId) qc.invalidateQueries({ queryKey: ["case", caseId] });
   };
 }
@@ -314,10 +316,10 @@ export function useSendMessage(caseId: string) {
  * Asks for suggestions after a chat answer, or about what the person told a form (text).
  * Runs in the background, so failures stay quiet.
  */
-export function useLearnFacts(caseId: string) {
+export function useLearnFacts(caseId: string, source?: "form" | "draft" | "note") {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (text: string | void) => api.learnFacts(caseId, text || undefined),
+    mutationFn: (text: string | void) => api.learnFacts(caseId, text || undefined, source),
     onSuccess: (facts) => {
       if (facts.length) qc.invalidateQueries({ queryKey: keys.facts });
     },
