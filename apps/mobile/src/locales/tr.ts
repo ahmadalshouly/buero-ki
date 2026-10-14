@@ -25,6 +25,7 @@ const tr: Locale = {
     busy: "Asistan şu anda meşgul. Lütfen bir dakika sonra tekrar deneyin.",
     offline: "İnternet bağlantısı yok. Lütfen çevrimiçi olduğunuzda tekrar deneyin.",
     upstream: "Asistan şu anda kullanılamıyor. Lütfen tekrar deneyin.",
+    timeout: "Bu çok uzun sürdü. Lütfen bağlantını kontrol edip tekrar dene.",
     auth: "Lütfen tekrar giriş yapın.",
     not_found: "Bu öğe artık mevcut değil.",
     file_type: "Lütfen JPEG, PNG veya PDF dosyaları kullanın.",
