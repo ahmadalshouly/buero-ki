@@ -11,13 +11,14 @@ What is in this version:
 - **Letters as PDF**: a reply can be saved as an A4 PDF laid out after DIN 5008, so it can be printed, signed and posted in a window envelope. The app warns when fields in [brackets] are still empty.
 - **Form filling**: photograph a form or pick its PDF. The agent lists every field, explains it in the person's language and pre-fills what it knows from the profile, the case and other cases. Empty fields become plain questions, and the person can answer in their own words. PDFs with form fields come back filled in; photos and scans get a printable filling sheet.
 - **Chat with the case** in any language.
+- **Find help**: free Beratungsstellen (migration, social, debt, tenant, consumer, tax and patient advice), lawyers and doctors near the person or a city they type, from OpenStreetMap. Places that say they speak the person's language come first, each case suggests the kinds of help that fit it, and official searches (Arztsuche 116117, Anwaltauskunft, BAMF-NAvI and others) cover what the map does not.
 - **Search** across cases and letters.
 - **Onboarding** with language, name and explicit consent to AI processing.
 - **Deadline reminders** on the phone (3 days before and on the day) and an optional **Face ID / fingerprint lock**.
 - **Light and dark mode**, six languages (English, Deutsch, العربية, Türkçe, Українська, فارسی) with right-to-left layout.
 - **Works offline** from a cached copy of your cases.
 
-Sending emails, AI phone calls, the community translator marketplace and the lawyer/doctor directory come in later phases.
+Sending emails, AI phone calls and the community translator marketplace come in later phases.
 
 ## Production features
 
@@ -48,6 +49,7 @@ supabase/
     case-chat/          Answers questions about one case
     fill-form/          Reads a form, pre-fills its fields and writes them into the PDF
     learn-facts/        Suggests facts about the person to remember; kept only if they agree
+    find-help/          Doctors, lawyers and Beratungsstellen nearby, from OpenStreetMap (no API key)
     export-data/        GDPR data export
     delete-account/     GDPR account deletion
     tests/              Deno tests

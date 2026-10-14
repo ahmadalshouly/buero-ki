@@ -7,7 +7,9 @@ import { friendlyError } from "./errorText";
 import { ApiError } from "./errors";
 import i18n from "./i18n";
 import { authStorage } from "./storage";
-import type { Case, CaseDocument, CaseForm, CaseStatus, Draft, FormField, NewCase, PickedFile, Task, UserFact } from "./types";
+import type {
+  Case, CaseDocument, CaseForm, CaseStatus, Draft, FormField, HelpKind, HelpWhere, NewCase, PickedFile, Task, UserFact,
+} from "./types";
 
 export const keys = {
   profile: ["profile"] as const,
@@ -26,6 +28,7 @@ export const keys = {
   messages: (caseId: string) => ["case", caseId, "messages"] as const,
   search: (q: string) => ["search", q] as const,
   facts: ["facts"] as const,
+  help: (kind: string, where: unknown, radiusKm: number) => ["help", kind, where, radiusKm] as const,
 };
 
 export const queryClient = new QueryClient({
@@ -105,6 +108,15 @@ export const useMessages = (caseId: string) =>
 export const useFacts = (enabled = true) => useQuery({ queryKey: keys.facts, queryFn: api.listFacts, enabled });
 export const useSearch = (q: string) =>
   useQuery({ queryKey: keys.search(q), queryFn: () => api.search(q), enabled: q.trim().length >= 2, staleTime: 10_000 });
+
+// Places change slowly; keep a search for a day and show it offline.
+export const useFindHelp = (kind: HelpKind, where: HelpWhere | null, radiusKm = 5) =>
+  useQuery({
+    queryKey: keys.help(kind, where, radiusKm),
+    queryFn: () => api.findHelp(kind, where!, radiusKm),
+    enabled: !!where,
+    staleTime: 24 * 3600_000,
+  });
 
 // Mutations ------------------------------------------------------------------
 

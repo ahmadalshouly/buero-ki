@@ -11,6 +11,7 @@ import {
   Segmented, Sheet, SkeletonList, Txt,
 } from "@/components/ui";
 import { categoryIcon } from "@/lib/categories";
+import { HELP_ICONS, helpForCategory } from "@/lib/help";
 import { formatDate } from "@/lib/i18n";
 import {
   errorMessage, useCase, useDeleteCase, useDeleteTask, useDocuments, useDrafts, useForms, useTasks, useTimeline, useUpdateCase,
@@ -122,6 +123,27 @@ export default function CaseScreen() {
         <Button style={{ flex: 1 }} variant="secondary" icon="clipboard-outline" title={t("case.fillForm")}
           onPress={() => router.push({ pathname: "/case/[id]/scan", params: { id, kind: "form" } })} />
       </View>
+
+      {(() => {
+        // Letters the agent flagged as "get advice" put the help offer up front, with its reason.
+        const advice = (documents.data ?? []).find((d) => d.analysis?.needs_advice);
+        const kinds = helpForCategory(theCase.category);
+        return (
+          <Card style={{ gap: space(2) }}>
+            <View style={{ flexDirection: "row", gap: space(2), alignItems: "center" }}>
+              <Ionicons name="help-buoy-outline" size={20} color={advice ? c.warn : c.accent} />
+              <Txt variant="h3" tone={advice ? "warn" : "ink"} style={{ flex: 1 }}>{t(advice ? "help.caseAdvice" : "help.caseTitle")}</Txt>
+            </View>
+            {advice?.analysis?.advice_reason ? <Txt variant="small">{advice.analysis.advice_reason}</Txt> : null}
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: space(2) }}>
+              {kinds.map((kind) => (
+                <Button key={kind} small variant="secondary" icon={HELP_ICONS[kind]} title={t(`help.kind.${kind}`)}
+                  onPress={() => router.push({ pathname: "/help/[kind]", params: { kind, caseId: id } })} />
+              ))}
+            </View>
+          </Card>
+        );
+      })()}
 
       {reading && (
         <Card style={{ flexDirection: "row", alignItems: "center", gap: space(3) }}>

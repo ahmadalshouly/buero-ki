@@ -92,6 +92,7 @@ function RootStack() {
           <Stack.Screen name="document/[id]" options={{ title: t("document.title") }} />
           <Stack.Screen name="draft/[id]" options={{ title: t("case.drafts") }} />
           <Stack.Screen name="form/[id]" options={{ title: t("form.title") }} />
+          <Stack.Screen name="help/[kind]" options={{ title: t("help.title") }} />
         </Stack.Protected>
         <Stack.Protected guard={signedIn && !onboarded}>
           <Stack.Screen name="onboarding" options={{ headerShown: false }} />

@@ -231,3 +231,34 @@ export interface UsageToday {
   used: Record<AgentFunction, number>;
   limits: Record<AgentFunction, number>;
 }
+
+export const HELP_KINDS = [
+  "doctor", "dentist", "psychotherapy", "lawyer", "migration", "social", "debt", "tenant", "consumer", "tax", "patient",
+] as const;
+export type HelpKind = (typeof HELP_KINDS)[number];
+
+/** Where to look: the phone's position, or a city, district or postcode. */
+export type HelpWhere = { lat: number; lon: number } | { place: string };
+
+/** A doctor, lawyer or Beratungsstelle from OpenStreetMap. */
+export interface HelpPlace {
+  id: string;
+  kind: HelpKind;
+  name: string;
+  lat: number;
+  lon: number;
+  distance_m: number;
+  address: string | null;
+  phone: string | null;
+  email: string | null;
+  website: string | null;
+  opening_hours: string | null;
+  /** ISO 639-1 codes of languages the place says it speaks. Most places don't say. */
+  languages: string[];
+  wheelchair: boolean | null;
+}
+
+export interface HelpResult {
+  center: { lat: number; lon: number; label: string | null };
+  places: HelpPlace[];
+}
