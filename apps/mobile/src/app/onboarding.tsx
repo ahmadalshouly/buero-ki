@@ -114,8 +114,8 @@ export default function Onboarding() {
               onPress={() => setAgreed(!agreed)}
               style={{
                 flexDirection: "row", gap: space(3), alignItems: "center", padding: space(4),
-                borderRadius: radius.md, borderWidth: 1, borderColor: agreed ? c.accent : c.line,
-                backgroundColor: agreed ? c.accentSoft : c.card,
+                borderRadius: radius.md, borderCurve: "continuous", borderWidth: 1, borderColor: agreed ? c.accent : c.glassEdge,
+                backgroundColor: agreed ? c.accentSoft : c.glassFill,
               }}
             >
               <Ionicons name={agreed ? "checkbox" : "square-outline"} size={26} color={agreed ? c.accent : c.faint} />

@@ -1,11 +1,53 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
+import { NativeTabs } from "expo-router/unstable-native-tabs";
 import { useTranslation } from "react-i18next";
-import type { ColorValue } from "react-native";
+import { Platform, StyleSheet, type ColorValue } from "react-native";
+import type { SFSymbol } from "sf-symbols-typescript";
+import { GlassFill } from "@/components/glass";
 import { useTasks } from "@/lib/queries";
 import { daysUntil } from "@/lib/i18n";
 import { useColors } from "@/lib/theme";
 import type { IconName } from "@/components/ui";
+
+const TABS: { name: string; label: string; sf: [SFSymbol, SFSymbol]; ion: [IconName, IconName] }[] = [
+  { name: "index", label: "tabs.today", sf: ["sun.max", "sun.max.fill"], ion: ["sunny-outline", "sunny"] },
+  { name: "cases", label: "tabs.cases", sf: ["folder", "folder.fill"], ion: ["folder-outline", "folder"] },
+  { name: "deadlines", label: "tabs.deadlines", sf: ["calendar", "calendar"], ion: ["calendar-outline", "calendar"] },
+  { name: "settings", label: "tabs.settings", sf: ["gearshape", "gearshape.fill"], ion: ["settings-outline", "settings"] },
+];
+
+function useUrgent() {
+  const { data: tasks } = useTasks({ openOnly: true });
+  return (tasks ?? []).filter((x) => x.due_date && daysUntil(x.due_date) <= 3).length;
+}
+
+/**
+ * The system tab bar: Liquid Glass on iOS 26, a translucent material bar on
+ * earlier iOS, and the Material bar on Android.
+ */
+function NativeTabBar() {
+  const { t } = useTranslation();
+  const c = useColors();
+  const urgent = useUrgent();
+  return (
+    <NativeTabs tintColor={c.accent} badgeBackgroundColor={c.danger} minimizeBehavior="onScrollDown">
+      {TABS.map((tab) => (
+        <NativeTabs.Trigger key={tab.name} name={tab.name} contentStyle={{ backgroundColor: c.bg }}>
+          <NativeTabs.Trigger.Label>{t(tab.label)}</NativeTabs.Trigger.Label>
+          <NativeTabs.Trigger.Icon
+            sf={{ default: tab.sf[0], selected: tab.sf[1] }}
+            src={{
+              default: <NativeTabs.Trigger.VectorIcon family={Ionicons} name={tab.ion[0]} />,
+              selected: <NativeTabs.Trigger.VectorIcon family={Ionicons} name={tab.ion[1]} />,
+            }}
+          />
+          {tab.name === "deadlines" && urgent > 0 && <NativeTabs.Trigger.Badge>{String(urgent)}</NativeTabs.Trigger.Badge>}
+        </NativeTabs.Trigger>
+      ))}
+    </NativeTabs>
+  );
+}
 
 function icon(name: IconName, active: IconName) {
   return function TabIcon({ color, focused, size }: { color: ColorValue; focused: boolean; size: number }) {
@@ -13,35 +55,40 @@ function icon(name: IconName, active: IconName) {
   };
 }
 
-export default function TabsLayout() {
+/** Web keeps the JavaScript tab bar, drawn as frosted glass. */
+function WebTabBar() {
   const { t } = useTranslation();
   const c = useColors();
-  const { data: tasks } = useTasks({ openOnly: true });
-  const urgent = (tasks ?? []).filter((x) => x.due_date && daysUntil(x.due_date) <= 3).length;
-
+  const urgent = useUrgent();
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: c.accent,
-        tabBarInactiveTintColor: c.muted,
-        tabBarStyle: { backgroundColor: c.card, borderTopColor: c.line },
-        tabBarLabelStyle: { fontSize: 12, fontWeight: "600" },
+        tabBarInactiveTintColor: c.faint,
+        tabBarStyle: { position: "absolute", backgroundColor: "transparent", borderTopColor: c.line, borderTopWidth: StyleSheet.hairlineWidth },
+        tabBarBackground: () => <GlassFill round={0} material="chrome" />,
+        tabBarLabelStyle: { fontSize: 11, fontWeight: "500" },
         sceneStyle: { backgroundColor: c.bg },
       }}
     >
-      <Tabs.Screen name="index" options={{ title: t("tabs.today"), tabBarIcon: icon("sunny-outline", "sunny") }} />
-      <Tabs.Screen name="cases" options={{ title: t("tabs.cases"), tabBarIcon: icon("folder-outline", "folder") }} />
-      <Tabs.Screen
-        name="deadlines"
-        options={{
-          title: t("tabs.deadlines"),
-          tabBarIcon: icon("calendar-outline", "calendar"),
-          tabBarBadge: urgent || undefined,
-          tabBarBadgeStyle: { backgroundColor: c.danger, color: "#FFFFFF" },
-        }}
-      />
-      <Tabs.Screen name="settings" options={{ title: t("tabs.settings"), tabBarIcon: icon("settings-outline", "settings") }} />
+      {TABS.map((tab) => (
+        <Tabs.Screen
+          key={tab.name}
+          name={tab.name}
+          options={{
+            title: t(tab.label),
+            tabBarIcon: icon(tab.ion[0], tab.ion[1]),
+            ...(tab.name === "deadlines"
+              ? { tabBarBadge: urgent || undefined, tabBarBadgeStyle: { backgroundColor: c.danger, color: "#FFFFFF" } }
+              : null),
+          }}
+        />
+      ))}
     </Tabs>
   );
+}
+
+export default function TabsLayout() {
+  return Platform.OS === "web" ? <WebTabBar /> : <NativeTabBar />;
 }

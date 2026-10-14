@@ -37,8 +37,8 @@ export default function Cases() {
       <DemoBanner />
 
       <View style={{
-        flexDirection: "row", alignItems: "center", gap: space(2), backgroundColor: c.card,
-        borderWidth: 1, borderColor: c.line, borderRadius: radius.sm, paddingHorizontal: space(3),
+        flexDirection: "row", alignItems: "center", gap: space(2), backgroundColor: c.raised,
+        borderRadius: radius.sm, borderCurve: "continuous", paddingHorizontal: space(3),
       }}>
         <Ionicons name="search" size={18} color={c.faint} />
         <TextInput
@@ -47,7 +47,7 @@ export default function Cases() {
           placeholder={t("search.placeholder")}
           placeholderTextColor={c.faint}
           accessibilityLabel={t("search.title")}
-          style={{ flex: 1, paddingVertical: space(3), fontSize: 16, color: c.ink, outlineWidth: 0 }}
+          style={{ flex: 1, paddingVertical: space(2.5), fontSize: 17, color: c.ink, outlineWidth: 0 }}
         />
       </View>
       <Segmented

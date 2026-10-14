@@ -27,10 +27,10 @@ export default function Search() {
   return (
     <Screen>
       <View style={{
-        flexDirection: "row", alignItems: "center", gap: space(2), backgroundColor: c.card,
-        borderWidth: 1, borderColor: c.accent, borderRadius: radius.sm, paddingHorizontal: space(3),
+        flexDirection: "row", alignItems: "center", gap: space(2), backgroundColor: c.raised,
+        borderRadius: radius.sm, borderCurve: "continuous", paddingHorizontal: space(3),
       }}>
-        <Ionicons name="search" size={18} color={c.accent} />
+        <Ionicons name="search" size={18} color={c.faint} />
         <TextInput
           value={q}
           onChangeText={setQ}
