@@ -595,6 +595,7 @@ const ar: Locale = {
     },
     attribution: "الأماكن من OpenStreetMap (© مساهمو OpenStreetMap). قد تكون المعلومات قديمة؛ اتصل قبل الذهاب.",
     attributionGoogle: "الأماكن من Google Maps. قد تكون المعلومات قديمة؛ اتصل قبل الذهاب.",
+    searching: "جارٍ البحث في الخريطة. قد يستغرق ذلك حتى دقيقة.",
     speaksYours: "يتحدث لغتك",
     wheelchair: "مناسب للكراسي المتحركة",
     call: "اتصال",

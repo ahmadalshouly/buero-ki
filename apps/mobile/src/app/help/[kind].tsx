@@ -67,7 +67,12 @@ export default function HelpResults() {
         </Card>
       )}
 
-      {!where ? null : query.isPending ? <SkeletonList rows={3} /> : query.error ? (
+      {!where ? null : query.isPending ? (
+        <View style={{ gap: space(3) }}>
+          <Muted>{t("help.searching")}</Muted>
+          <SkeletonList rows={3} />
+        </View>
+      ) : query.error ? (
         <ErrorBox message={errorText(query.error)} onRetry={() => query.refetch()} />
       ) : places.length === 0 ? (
         <EmptyState

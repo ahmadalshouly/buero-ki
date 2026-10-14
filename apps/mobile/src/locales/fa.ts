@@ -579,6 +579,7 @@ const fa: Locale = {
     },
     attribution: "مکان‌ها از OpenStreetMap (© مشارکت‌کنندگان OpenStreetMap). اطلاعات ممکن است قدیمی باشد؛ قبل از رفتن تماس بگیرید.",
     attributionGoogle: "مکان‌ها از Google Maps. اطلاعات ممکن است قدیمی باشد؛ قبل از رفتن تماس بگیرید.",
+    searching: "در حال جستجو در نقشه. این ممکن است تا یک دقیقه طول بکشد.",
     speaksYours: "به زبان شما صحبت می‌کند",
     wheelchair: "دسترسی با ویلچر",
     call: "تماس",

@@ -579,6 +579,7 @@ const de: Locale = {
     },
     attribution: "Orte aus OpenStreetMap (© OpenStreetMap-Mitwirkende). Angaben können veraltet sein; ruf vorher an.",
     attributionGoogle: "Orte aus Google Maps. Angaben können veraltet sein; ruf vorher an.",
+    searching: "Die Karte wird durchsucht. Das kann bis zu einer Minute dauern.",
     speaksYours: "Spricht deine Sprache",
     wheelchair: "Rollstuhlgerecht",
     call: "Anrufen",

@@ -577,6 +577,7 @@ const en = {
     },
     attribution: "Places from OpenStreetMap (© OpenStreetMap contributors). Details can be out of date; call before you go.",
     attributionGoogle: "Places from Google Maps. Details can be out of date; call before you go.",
+    searching: "Searching the map. This can take up to a minute.",
     speaksYours: "Speaks your language",
     wheelchair: "Wheelchair access",
     call: "Call",
