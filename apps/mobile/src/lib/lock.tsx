@@ -6,10 +6,13 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { useTranslation } from "react-i18next";
 import { AppState, Platform, View } from "react-native";
 import { Button, Txt } from "@/components/ui";
-import { getPrefs, usePrefs } from "./prefs";
+import i18n from "./i18n";
+import { getPrefs, setPrefs, usePrefs } from "./prefs";
 import { space, useColors } from "./theme";
 
 const RELOCK_AFTER_MS = 30_000;
+// Errors that mean the lock can never succeed on this device or build (Expo Go has no Face ID permission).
+const UNUSABLE = ["not_available", "not_enrolled", "passcode_not_set", "missing_usage_description"];
 export const lockSupported = Platform.OS === "ios" || Platform.OS === "android";
 
 export async function canUseBiometrics(): Promise<boolean> {
@@ -30,13 +33,37 @@ export function LockGate({ children }: { children: ReactNode }) {
   const [locked, setLocked] = useState(() => lockSupported && getPrefs().appLock);
   const leftAt = useRef<number | null>(null);
 
-  const unlock = useCallback(() => {
-    authenticate(t("lock.prompt")).then((ok) => ok && setLocked(false), () => {});
-  }, [t]);
+  const asking = useRef(false);
 
-  // Ask right away when the app opens locked.
+  // One prompt at a time; repeated calls while the system dialog is up are ignored.
+  const unlock = useCallback(async () => {
+    if (asking.current) return;
+    asking.current = true;
+    try {
+      // Face ID removed or not available (for example in Expo Go): don't lock the person out.
+      if (!(await canUseBiometrics())) {
+        setPrefs({ appLock: false });
+        setLocked(false);
+        return;
+      }
+      const res = await LocalAuthentication.authenticateAsync({ promptMessage: i18n.t("lock.prompt"), disableDeviceFallback: false });
+      if (res.success) setLocked(false);
+      else if (UNUSABLE.includes(res.error)) {
+        setPrefs({ appLock: false });
+        setLocked(false);
+      }
+    } catch {
+      // Stay locked; the Unlock button tries again.
+    } finally {
+      asking.current = false;
+    }
+  }, []);
+
+  // Ask once when the app opens locked.
   useEffect(() => {
-    if (lockSupported && getPrefs().appLock) unlock();
+    if (!lockSupported || !getPrefs().appLock) return;
+    const timer = setTimeout(unlock, 0);
+    return () => clearTimeout(timer);
   }, [unlock]);
 
   useEffect(() => {
@@ -44,6 +71,7 @@ export function LockGate({ children }: { children: ReactNode }) {
     const sub = AppState.addEventListener("change", (state) => {
       if (state === "background") leftAt.current = Date.now();
       if (state === "active" && leftAt.current && Date.now() - leftAt.current > RELOCK_AFTER_MS) {
+        leftAt.current = null;
         setLocked(true);
         unlock();
       }
