@@ -393,6 +393,12 @@ export const demoApi: Api = {
   async retryDocument(key) {
     return { ...find(state.documents, key) };
   },
+  async answerOwner(key, owner) {
+    const doc = find(state.documents, key);
+    if (owner === "mine") doc.status = "ready";
+    else Object.assign(doc, { status: "not_owner", analysis: null, title_de: null, sender: null, summary: null, urgency: null });
+    return { ...doc };
+  },
   async deleteDocument(key) {
     drop(state.documents, key);
   },
