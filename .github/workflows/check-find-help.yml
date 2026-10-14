@@ -11,13 +11,4 @@ jobs:
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
-      - name: Function logs
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          REF: tvkpaoqnvjpjfaeqdzhr
-        run: |
-          start=$(date -u -d '-3 hours' +%Y-%m-%dT%H:%M:%SZ)
-          q() { curl -sS -G "https://api.supabase.com/v1/projects/$REF/analytics/endpoints/logs.all" -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" --data-urlencode "sql=$1" --data-urlencode "iso_timestamp_start=$start" | jq -c '.result // .' | head -c 20000; echo; }
-          echo "== function logs"; q "select timestamp, event_message from function_logs where event_message like '%find-help%' order by timestamp desc limit 40"
-          echo "== edge logs"; q "select timestamp, event_message from function_edge_logs where event_message like '%find-help%' order by timestamp desc limit 20"
       - run: deno run --allow-net scripts/check-find-help.ts
