@@ -561,8 +561,9 @@ Mit freundlichen Grüßen
     d.sent_at = status === "sent" ? now() : null;
     d.sent_via = status === "sent" ? "self" : null;
   },
-  async sendEmail(key, to) {
+  async sendEmail(key, to, replyTo) {
     await wait(800);
+    state.profile.contact_email = replyTo;
     const d = find(state.drafts, key);
     Object.assign(d, { status: "sent", sent_at: now(), sent_to: to, sent_via: "bueroki" });
     return { ...d };

@@ -39,7 +39,8 @@ Deno.serve(handler("draft-reply", Input, async (ctx) => {
     system: `Task: ${input.revise_draft_id ? "revise" : "draft"} a ${input.kind === "email" ? "short formal German email" : "formal German letter (DIN 5008 style)"} on behalf of the person, in correct, polite, simple official German.
 Write only what the person asked for and what the case supports. Never invent facts, amounts or dates; use [square brackets] placeholders instead.
 If the person asks for an objection (Widerspruch) and the reasons are not clear, draft a deadline-preserving Widerspruch that requests Akteneinsicht and says the reasons will follow, and mention in the notes that a Beratungsstelle should check the case.
-The translation and notes must be in ${languageName(profile.language)}. Today's date is ${today()}.`,
+${input.kind === "email" ? `End the email with the person's name and, on the next line, their email address for replies: ${profile.contact_email ?? ctx.userEmail ?? "[Ihre E-Mail-Adresse]"}.
+` : ""}The translation and notes must be in ${languageName(profile.language)}. Today's date is ${today()}.`,
     content: `${renderCase(caseCtx, profile.full_name)}${replyTo}${previous}\n\nWhat the person wants:\n<request>\n${input.instructions}\n</request>`,
     schema: Draft,
     effort: "high",

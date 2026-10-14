@@ -37,6 +37,8 @@ export interface Profile {
   plan: Plan;
   /** False: the agent stops suggesting facts to remember. */
   memory_enabled: boolean;
+  /** Where replies go when BüroKI sends an email; asked for before the first send. */
+  contact_email?: string | null;
 }
 
 export interface Case {

@@ -308,8 +308,9 @@ export function useSendEmail(draft: Draft | undefined) {
   const qc = useQueryClient();
   const invalidate = useInvalidate();
   return useMutation({
-    mutationFn: (to: string) => api.sendEmail(draft!.id, to),
+    mutationFn: ({ to, replyTo }: { to: string; replyTo: string }) => api.sendEmail(draft!.id, to, replyTo),
     onSuccess: (sent) => {
+      qc.invalidateQueries({ queryKey: keys.profile });
       qc.setQueryData(keys.draft(sent.id), sent);
       invalidate(sent.case_id);
     },
