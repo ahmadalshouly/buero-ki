@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { type ReactNode, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import { Button, Card, Txt } from "@/components/ui";
@@ -37,12 +37,12 @@ export function FactSuggestions({ caseId, messages }: { caseId: string; messages
 }
 
 /** Each suggestion from this case still waiting for an answer, with Remember / Don't remember. */
-export function PendingFacts({ caseId }: { caseId: string }) {
+export function PendingFacts({ caseId, empty = null }: { caseId: string; empty?: ReactNode }) {
   const { t } = useTranslation();
   const facts = useFacts();
   const decide = useDecideFact();
   const pending = (facts.data ?? []).filter((f) => f.status === "pending" && f.case_id === caseId);
-  if (!pending.length) return null;
+  if (!pending.length) return <>{empty}</>;
 
   return (
     <View style={{ gap: space(3) }}>
