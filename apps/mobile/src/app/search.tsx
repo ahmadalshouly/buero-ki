@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { TextInput, View } from "react-native";
 import { Badge, Card, EmptyState, ErrorBox, Muted, Screen, SkeletonList, Txt } from "@/components/ui";
+import { useInputDir } from "@/lib/direction";
 import { formatDate } from "@/lib/i18n";
 import { errorMessage, useSearch } from "@/lib/queries";
 import { radius, space, useColors } from "@/lib/theme";
@@ -20,6 +21,7 @@ function useDebounced<T>(value: T, ms = 300): T {
 export default function Search() {
   const { t } = useTranslation();
   const c = useColors();
+  const inputDir = useInputDir();
   const [q, setQ] = useState("");
   const term = useDebounced(q.trim());
   const results = useSearch(term);
@@ -39,7 +41,7 @@ export default function Search() {
           placeholder={t("search.placeholder")}
           placeholderTextColor={c.faint}
           accessibilityLabel={t("search.title")}
-          style={{ flex: 1, paddingVertical: space(3), fontSize: 16, color: c.ink, outlineWidth: 0 }}
+          style={[{ flex: 1, paddingVertical: space(3), fontSize: 17, color: c.ink, outlineWidth: 0 }, inputDir]}
         />
       </View>
 

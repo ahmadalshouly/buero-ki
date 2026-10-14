@@ -7,6 +7,7 @@ import {
   Badge, Button, Card, DemoBanner, EmptyState, ErrorBox, IconCircle, Muted, Screen, Segmented, SkeletonList, Txt,
 } from "@/components/ui";
 import { categoryIcon } from "@/lib/categories";
+import { useIconFlip, useInputDir } from "@/lib/direction";
 import { formatDate } from "@/lib/i18n";
 import { errorMessage, useCases, useTasks } from "@/lib/queries";
 import { radius, space, useColors } from "@/lib/theme";
@@ -16,6 +17,8 @@ type Filter = "open" | "closed" | "all";
 export default function Cases() {
   const { t } = useTranslation();
   const c = useColors();
+  const flip = useIconFlip("chevron-forward");
+  const inputDir = useInputDir();
   const cases = useCases();
   const tasks = useTasks({ openOnly: true });
   const [filter, setFilter] = useState<Filter>("open");
@@ -47,7 +50,7 @@ export default function Cases() {
           placeholder={t("search.placeholder")}
           placeholderTextColor={c.faint}
           accessibilityLabel={t("search.title")}
-          style={{ flex: 1, paddingVertical: space(2.5), fontSize: 17, color: c.ink, outlineWidth: 0 }}
+          style={[{ flex: 1, paddingVertical: space(2.5), fontSize: 17, color: c.ink, outlineWidth: 0 }, inputDir]}
         />
       </View>
       <Segmented
@@ -83,7 +86,7 @@ export default function Cases() {
                     <Txt variant="small" tone="faint">{formatDate(x.updated_at)}</Txt>
                   </View>
                 </View>
-                <Ionicons name="chevron-forward" size={20} color={c.faint} />
+                <Ionicons name="chevron-forward" size={20} color={c.faint} style={flip} />
               </Card>
             );
           })}

@@ -8,6 +8,7 @@ import { Markdown } from "@/components/Markdown";
 import {
   Badge, Button, Card, Chip, DemoBanner, ErrorBox, Footer, IconButton, Muted, Screen, Section, Segmented, Sheet, SkeletonList, Txt,
 } from "@/components/ui";
+import { useInputDir } from "@/lib/direction";
 import { friendlyError } from "@/lib/errorText";
 import { formFileName, formProgress, formSheetHtml, groupFields, isFilled } from "@/lib/formSheet";
 import { errorMessage, useForm, useFormActions } from "@/lib/queries";
@@ -85,6 +86,7 @@ function FieldCard({ field, onChange }: { field: FormField; onChange: (value: st
 function Ask({ form, busy, onSend }: { form: CaseForm; busy: boolean; onSend: (text: string) => Promise<string | null> }) {
   const { t } = useTranslation();
   const c = useColors();
+  const inputDir = useInputDir();
   const [text, setText] = useState("");
   const [reply, setReply] = useState<string | null>(null);
   const missing = form.fields.filter((f) => !isFilled(f)).length;
@@ -111,10 +113,10 @@ function Ask({ form, busy, onSend }: { form: CaseForm; busy: boolean; onSend: (t
         placeholder={t("form.askPlaceholder")}
         placeholderTextColor={c.faint}
         accessibilityLabel={t("form.askTitle")}
-        style={{
-          minHeight: 72, textAlignVertical: "top", color: c.ink, backgroundColor: c.card, borderRadius: radius.sm,
+        style={[{
+          minHeight: 72, textAlignVertical: "top", color: c.ink, backgroundColor: c.glassFill, borderRadius: radius.sm,
           padding: space(3), fontSize: 16,
-        }}
+        }, inputDir]}
       />
       <Button small icon="sparkles" title={t("form.askSend")} onPress={send} loading={busy} disabled={!text.trim()} />
       {reply && <Txt>{reply}</Txt>}

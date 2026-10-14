@@ -8,6 +8,7 @@ import { FactSuggestions } from "@/components/FactSuggestions";
 import { Backdrop } from "@/components/glass";
 import { Markdown } from "@/components/Markdown";
 import { Chip, ErrorBox, Muted, Skeleton, Txt } from "@/components/ui";
+import { useInputDir } from "@/lib/direction";
 import { friendlyError } from "@/lib/errorText";
 import { useMessages, useSendMessage } from "@/lib/queries";
 import { makeStyles } from "@/lib/styles";
@@ -17,9 +18,9 @@ import type { ChatAction, ChatMessage } from "@/lib/types";
 const useStyles = makeStyles((c) => ({
   list: { padding: space(4), gap: space(3), width: "100%", maxWidth: 680, alignSelf: "center", flexGrow: 1 },
   bubble: { paddingVertical: space(2.5), paddingHorizontal: space(3.5), borderRadius: radius.md, borderCurve: "continuous", maxWidth: "88%" },
-  mine: { alignSelf: "flex-end", backgroundColor: c.accent, borderBottomRightRadius: 6 },
+  mine: { alignSelf: "flex-end", backgroundColor: c.accent, borderBottomEndRadius: 6 },
   theirs: {
-    alignSelf: "flex-start", backgroundColor: c.glassFill, borderWidth: StyleSheet.hairlineWidth, borderColor: c.glassEdge, borderBottomLeftRadius: 6,
+    alignSelf: "flex-start", backgroundColor: c.glassFill, borderWidth: StyleSheet.hairlineWidth, borderColor: c.glassEdge, borderBottomStartRadius: 6,
   },
   composer: {
     flexDirection: "row",
@@ -72,6 +73,7 @@ export default function Chat() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { t } = useTranslation();
   const s = useStyles();
+  const inputDir = useInputDir();
   const [text, setText] = useState("");
   const [pending, setPending] = useState<ChatMessage | null>(null);
   const [streamed, setStreamed] = useState("");
@@ -172,7 +174,7 @@ export default function Chat() {
         />
         <View style={s.composer}>
           <TextInput
-            style={s.input}
+            style={[s.input, inputDir]}
             value={text}
             onChangeText={setText}
             placeholder={t("chat.placeholder")}

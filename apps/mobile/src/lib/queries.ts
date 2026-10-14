@@ -3,7 +3,9 @@
 import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
 import { QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./api";
+import { friendlyError } from "./errorText";
 import { ApiError } from "./errors";
+import i18n from "./i18n";
 import { authStorage } from "./storage";
 import type { Case, CaseDocument, CaseForm, CaseStatus, Draft, FormField, NewCase, PickedFile, Task, UserFact } from "./types";
 
@@ -337,6 +339,7 @@ export function useDecideFact() {
   });
 }
 
+/** Error text for screens, translated where we can (see friendlyError). */
 export function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error ?? "");
+  return friendlyError(error, i18n.t);
 }

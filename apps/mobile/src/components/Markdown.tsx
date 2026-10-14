@@ -1,6 +1,7 @@
 // A small Markdown renderer for agent text: headings, bullet and numbered lists, bold.
 import { Fragment } from "react";
 import { Text, View } from "react-native";
+import { textDir, useRtl } from "@/lib/direction";
 import { font, space, useColors } from "@/lib/theme";
 
 export type MdBlock =
@@ -45,13 +46,14 @@ function Inline({ text }: { text: string }) {
 
 export function Markdown({ text, color }: { text: string; color?: string }) {
   const c = useColors();
+  const rtl = useRtl();
   const ink = color ?? c.ink;
   return (
     <View style={{ gap: space(2) }}>
       {parseMarkdown(text).map((block, i) => {
         if (block.kind === "heading") {
           return (
-            <Text key={i} style={[font.h3, { color: ink, marginTop: i ? space(2) : 0 }]}>
+            <Text key={i} style={[font.h3, { color: ink, marginTop: i ? space(2) : 0 }, textDir(rtl, block.text)]}>
               <Inline text={block.text} />
             </Text>
           );
@@ -60,14 +62,14 @@ export function Markdown({ text, color }: { text: string; color?: string }) {
           return (
             <View key={i} style={{ flexDirection: "row", gap: space(2), paddingStart: space(1) }}>
               <Text style={[font.body, { color: c.accent, fontWeight: "700" }]}>{block.marker}</Text>
-              <Text style={[font.body, { color: ink, flex: 1 }]}>
+              <Text style={[font.body, { color: ink, flex: 1 }, textDir(rtl, block.text)]}>
                 <Inline text={block.text} />
               </Text>
             </View>
           );
         }
         return (
-          <Text key={i} style={[font.body, { color: ink }]}>
+          <Text key={i} style={[font.body, { color: ink }, textDir(rtl, block.text)]}>
             <Inline text={block.text} />
           </Text>
         );
