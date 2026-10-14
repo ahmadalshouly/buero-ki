@@ -152,6 +152,10 @@ export interface Draft {
   status: "draft" | "approved" | "sent";
   edited: boolean;
   sent_at: string | null;
+  /** Where the email went when BüroKI sent it. */
+  sent_to?: string | null;
+  /** "bueroki" when BüroKI sent it, "self" or empty when the person sent it themselves. */
+  sent_via?: "self" | "bueroki" | null;
   revision_of: string | null;
   created_at: string;
 }
@@ -230,4 +234,37 @@ export interface UsageToday {
   plan: Plan;
   used: Record<AgentFunction, number>;
   limits: Record<AgentFunction, number>;
+}
+
+export const HELP_KINDS = [
+  "doctor", "dentist", "psychotherapy", "lawyer", "migration", "social", "debt", "tenant", "consumer", "tax", "patient",
+] as const;
+export type HelpKind = (typeof HELP_KINDS)[number];
+
+/** Where to look: the phone's position, or a city, district or postcode. */
+export type HelpWhere = { lat: number; lon: number } | { place: string };
+
+/** A doctor, lawyer or Beratungsstelle from OpenStreetMap. */
+export interface HelpPlace {
+  id: string;
+  kind: HelpKind;
+  name: string;
+  lat: number;
+  lon: number;
+  distance_m: number;
+  address: string | null;
+  phone: string | null;
+  email: string | null;
+  website: string | null;
+  opening_hours: string | null;
+  /** ISO 639-1 codes of languages the place says it speaks. Most places don't say. */
+  languages: string[];
+  wheelchair: boolean | null;
+}
+
+export interface HelpResult {
+  center: { lat: number; lon: number; label: string | null };
+  /** Where the places come from, for the attribution line. */
+  source?: "google" | "osm";
+  places: HelpPlace[];
 }

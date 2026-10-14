@@ -126,3 +126,13 @@ export function letterFileName(subject: string, date = new Date()): string {
     .slice(0, 60) || "Brief";
   return `${date.toISOString().slice(0, 10)}_${slug}.pdf`;
 }
+
+/** One plain email address, as the send-email function accepts it. */
+export function isEmailAddress(text: string): boolean {
+  return text.length <= 254 && /^[^\s@<>()",;:]+@[^\s@<>()",;:]+\.[a-z]{2,}$/i.test(text);
+}
+
+/** Pulls an email address out of free text, such as the office field of a case. */
+export function emailIn(text: string | null | undefined): string {
+  return text?.match(/[^\s@<>]+@[^\s@<>]+\.[a-z]{2,}/i)?.[0] ?? "";
+}

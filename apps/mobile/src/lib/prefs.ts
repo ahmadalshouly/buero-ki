@@ -7,6 +7,8 @@ export interface Prefs {
   theme: "system" | "light" | "dark";
   appLock: boolean;
   reminders: boolean;
+  /** The last city or postcode searched for help nearby. */
+  helpPlace?: string;
 }
 
 const KEY = "bueroki.prefs";

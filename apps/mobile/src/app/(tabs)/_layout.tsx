@@ -16,6 +16,7 @@ const TABS: { name: string; label: string; sf: [SFSymbol, SFSymbol]; ion: [IconN
   { name: "index", label: "tabs.today", sf: ["sun.max", "sun.max.fill"], ion: ["sunny-outline", "sunny"] },
   { name: "cases", label: "tabs.cases", sf: ["folder", "folder.fill"], ion: ["folder-outline", "folder"] },
   { name: "deadlines", label: "tabs.deadlines", sf: ["calendar", "calendar"], ion: ["calendar-outline", "calendar"] },
+  { name: "help", label: "tabs.help", sf: ["lifepreserver", "lifepreserver.fill"], ion: ["help-buoy-outline", "help-buoy"] },
   { name: "settings", label: "tabs.settings", sf: ["gearshape", "gearshape.fill"], ion: ["settings-outline", "settings"] },
 ];
 

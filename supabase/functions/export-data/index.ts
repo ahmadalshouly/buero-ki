@@ -3,7 +3,7 @@
 import { z } from "npm:zod@4.6.7";
 import { handler } from "../_shared/http.ts";
 
-const TABLES = ["cases", "documents", "forms", "tasks", "drafts", "messages", "user_facts", "ai_usage", "audit_log"] as const;
+const TABLES = ["cases", "documents", "forms", "tasks", "drafts", "messages", "user_facts", "sent_emails", "ai_usage", "audit_log"] as const;
 const LINK_SECONDS = 60 * 60;
 
 Deno.serve(handler("export-data", z.strictObject({}), async ({ supabase, userId }) => {
