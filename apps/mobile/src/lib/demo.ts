@@ -5,7 +5,7 @@ import { ApiError, validatePages } from "./errors";
 import { DAILY_LIMITS } from "./limits";
 import { authStorage } from "./storage";
 import type {
-  AgentFunction, Analysis, Case, CaseDocument, CaseForm, ChatMessage, Draft, FormField, Profile, Task, TimelineItem,
+  AgentFunction, Analysis, Case, CaseDocument, CaseForm, ChatMessage, Draft, FormField, Profile, Task, TimelineItem, UserFact,
 } from "./types";
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -94,7 +94,7 @@ const sampleFields = (name: string | null): FormField[] => [
 const state = {
   profile: {
     id: "demo-user", full_name: "Amina", language: "en", city: "Berlin",
-    onboarded_at: null, ai_consent_at: null, plan: "free",
+    onboarded_at: null, ai_consent_at: null, plan: "free", memory_enabled: true,
   } as Profile,
   cases: [
     {
@@ -200,6 +200,8 @@ const state = {
   forms: [] as CaseForm[],
   messages: [] as ChatMessage[],
   usage: [] as { fn: AgentFunction; at: number }[],
+  facts: [] as UserFact[],
+  factSuggested: false,
 };
 
 // Keep the demo profile (onboarding, consent, language) across reloads.
@@ -530,17 +532,18 @@ Mit freundlichen Grüßen
   async listMessages(caseId) {
     return state.messages.filter((m) => m.case_id === caseId);
   },
-  async sendMessage(caseId, text) {
+  async sendMessage(caseId, text, onText) {
     spend("case-chat");
     state.messages.push({ id: id(), case_id: caseId, role: "user", content: text, created_at: now() });
-    await wait(1200);
-    const reply: ChatMessage = {
-      id: id(),
-      case_id: caseId,
-      role: "assistant",
-      content: "This is demo mode, so I can't answer for real yet. Once BüroKI is connected, I will answer questions about this case in your language, using every letter you added.",
-      created_at: now(),
-    };
+    const answer = "This is demo mode, so I can't answer for real yet. Once BüroKI is connected, I will answer questions about this case in your language, using every letter you added.";
+    await wait(600);
+    // Write the answer word by word, like the real assistant streams it.
+    const words = answer.split(" ");
+    for (let i = 1; i <= words.length; i++) {
+      onText?.(words.slice(0, i).join(" "));
+      await wait(40);
+    }
+    const reply: ChatMessage = { id: id(), case_id: caseId, role: "assistant", content: answer, created_at: now() };
     state.messages.push(reply);
     touch(caseId);
     return reply;
@@ -558,5 +561,30 @@ Mit freundlichen Grüßen
         kind: "document" as const, id: d.id, case_id: d.case_id, title: d.title_de ?? d.file_name, detail: d.summary, at: d.created_at,
       })),
     ].sort((a, b) => b.at.localeCompare(a.at));
+  },
+
+  async listFacts() {
+    return [...state.facts];
+  },
+  async learnFacts(caseId) {
+    // Demo mode suggests one sample fact after the first real question.
+    const asked = state.messages.some((m) => m.case_id === caseId && m.role === "user" && m.content.trim().length >= 12);
+    if (state.factSuggested || !asked || state.profile.memory_enabled === false) return [];
+    state.factSuggested = true;
+    const fact: UserFact = {
+      id: id(), category: "family", fact: "You live in Berlin with your partner and one child.", status: "pending",
+      case_id: caseId, replaces_id: null, source: "agent", created_at: now(), decided_at: null,
+    };
+    state.facts.push(fact);
+    return [fact];
+  },
+  async keepFact(key) {
+    Object.assign(find(state.facts, key), { status: "kept", decided_at: now() });
+  },
+  async forgetFact(key) {
+    drop(state.facts, key);
+  },
+  async forgetAllFacts() {
+    state.facts.splice(0);
   },
 };

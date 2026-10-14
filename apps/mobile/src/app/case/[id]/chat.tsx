@@ -1,16 +1,17 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams } from "expo-router";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { FlatList, KeyboardAvoidingView, Platform, Pressable, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { FactSuggestions } from "@/components/FactSuggestions";
 import { Markdown } from "@/components/Markdown";
 import { Chip, ErrorBox, Muted, Skeleton, Txt } from "@/components/ui";
 import { friendlyError } from "@/lib/errorText";
 import { useMessages, useSendMessage } from "@/lib/queries";
 import { makeStyles } from "@/lib/styles";
 import { radius, space } from "@/lib/theme";
-import type { ChatMessage } from "@/lib/types";
+import type { ChatAction, ChatMessage } from "@/lib/types";
 
 const useStyles = makeStyles((c) => ({
   list: { padding: space(4), gap: space(3), width: "100%", maxWidth: 680, alignSelf: "center", flexGrow: 1 },
@@ -30,8 +31,38 @@ const useStyles = makeStyles((c) => ({
     flex: 1, maxHeight: 140, fontSize: 16, color: c.ink, paddingVertical: space(2.5), paddingHorizontal: space(3),
     backgroundColor: c.bg, borderRadius: radius.md, outlineWidth: 0,
   },
+  actions: { alignSelf: "flex-start", maxWidth: "88%", gap: space(1.5), marginTop: -space(1) },
+  action: {
+    flexDirection: "row", alignItems: "center", gap: space(2), paddingVertical: space(1.5), paddingHorizontal: space(3),
+    borderRadius: radius.md, backgroundColor: c.accentSoft,
+  },
   send: { width: 44, height: 44, borderRadius: 22, backgroundColor: c.accent, alignItems: "center", justifyContent: "center" },
 }));
+
+const ACTION_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
+  task_added: "add-circle-outline",
+  task_updated: "create-outline",
+  task_done: "checkmark-circle-outline",
+  task_removed: "trash-outline",
+};
+
+/** What the assistant changed while answering, shown under its answer. */
+function Actions({ actions }: { actions: ChatAction[] }) {
+  const { t } = useTranslation();
+  const s = useStyles();
+  return (
+    <View style={s.actions}>
+      {actions.map((a, i) => (
+        <View key={i} style={s.action}>
+          <Ionicons name={ACTION_ICONS[a.kind] ?? "sparkles-outline"} size={16} color={s.c.accent} />
+          <Txt variant="small" style={{ flexShrink: 1 }}>
+            {t(`chat.actions.${a.kind}`, { title: a.title, defaultValue: a.title })}
+          </Txt>
+        </View>
+      ))}
+    </View>
+  );
+}
 
 export default function Chat() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -39,13 +70,32 @@ export default function Chat() {
   const s = useStyles();
   const [text, setText] = useState("");
   const [pending, setPending] = useState<ChatMessage | null>(null);
+  const [streamed, setStreamed] = useState("");
+  const latest = useRef("");
+  const frame = useRef<number | null>(null);
   const list = useRef<FlatList<ChatMessage>>(null);
   const messages = useMessages(id);
   const send = useSendMessage(id);
 
-  // Show the question at once, until the refreshed list contains it.
+  useEffect(() => () => {
+    if (frame.current !== null) cancelAnimationFrame(frame.current);
+  }, []);
+
+  // Show the question and the answer as it is written, until the refreshed list contains them.
   const showPending = pending && (send.isPending || messages.isFetching);
-  const shown = [...(messages.data ?? []), ...(showPending ? [pending] : [])];
+  const answer: ChatMessage | null = showPending && streamed
+    ? { id: "streaming", case_id: id, role: "assistant", content: streamed, created_at: "" }
+    : null;
+  const shown = [...(messages.data ?? []), ...(showPending ? [pending] : []), ...(answer ? [answer] : [])];
+
+  // Many small pieces arrive per second; draw at most once per frame.
+  function onText(soFar: string) {
+    latest.current = soFar;
+    frame.current ??= requestAnimationFrame(() => {
+      frame.current = null;
+      setStreamed(latest.current);
+    });
+  }
   const examples = t("chat.examples", { returnObjects: true }) as string[];
 
   function submit(value = text) {
@@ -53,8 +103,12 @@ export default function Chat() {
     if (!message || send.isPending) return;
     setText("");
     setPending({ id: "pending", case_id: id, role: "user", content: message, created_at: "" });
-    send.mutate(message, {
+    setStreamed("");
+    send.mutate({ text: message, onText }, {
       onError: () => {
+        if (frame.current !== null) cancelAnimationFrame(frame.current);
+        frame.current = null;
+        setStreamed("");
         setPending(null);
         setText(message);
       },
@@ -86,21 +140,27 @@ export default function Chat() {
           )}
           ListFooterComponent={(
             <View style={{ gap: space(3) }}>
-              {send.isPending && (
+              {send.isPending && !streamed && (
                 <View style={[s.bubble, s.theirs]}>
                   <Muted>{t("chat.thinking")}</Muted>
                 </View>
               )}
               {send.error && <ErrorBox message={friendlyError(send.error, t)} />}
+              <FactSuggestions caseId={id} messages={messages.data} />
             </View>
           )}
           renderItem={({ item }) => (
-            <View style={[s.bubble, item.role === "user" ? s.mine : s.theirs]}>
-              {item.role === "user" ? (
-                <Txt tone="accentInk" selectable>{item.content}</Txt>
-              ) : (
-                <Markdown text={item.content} />
+            <View style={{ gap: space(3) }}>
+              {!!item.content && (
+                <View style={[s.bubble, item.role === "user" ? s.mine : s.theirs]}>
+                  {item.role === "user" ? (
+                    <Txt tone="accentInk" selectable>{item.content}</Txt>
+                  ) : (
+                    <Markdown text={item.content} />
+                  )}
+                </View>
               )}
+              {!!item.actions?.length && <Actions actions={item.actions} />}
             </View>
           )}
         />

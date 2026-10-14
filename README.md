@@ -47,6 +47,7 @@ supabase/
     draft-reply/        Writes or revises a German letter or email with a translation
     case-chat/          Answers questions about one case
     fill-form/          Reads a form, pre-fills its fields and writes them into the PDF
+    learn-facts/        Suggests facts about the person to remember; kept only if they agree
     export-data/        GDPR data export
     delete-account/     GDPR account deletion
     tests/              Deno tests
@@ -91,7 +92,7 @@ It links the project, creates the database, stores the Anthropic key as a functi
 3. Add your Anthropic API key and deploy the functions:
    ```bash
    supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
-   supabase functions deploy analyze-document draft-reply case-chat fill-form export-data delete-account
+   supabase functions deploy analyze-document draft-reply case-chat fill-form learn-facts export-data delete-account
    ```
 4. Sign-in uses a 6-digit email code. In the Supabase dashboard go to **Authentication > Email Templates > Magic Link** and make sure the template includes `{{ .Token }}`, for example: `Your BüroKI code is {{ .Token }}`.
 5. Copy `apps/mobile/.env.example` to `apps/mobile/.env` and fill in the project URL and publishable key from **Project Settings > API**. Restart `npx expo start`.

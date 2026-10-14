@@ -1,4 +1,5 @@
 import * as Application from "expo-application";
+import { router } from "expo-router";
 import { useState, type ComponentProps } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
@@ -187,6 +188,7 @@ export default function Settings() {
                 title={profile?.ai_consent_at ? t("settings.withdrawAi") : t("settings.allowAi")} onPress={toggleConsent} />
             )}
           />
+          <ListRow icon="bookmark-outline" title={t("memory.title")} subtitle={t("memory.rowText")} onPress={() => router.push("/memory")} />
           <ListRow icon="download-outline" title={t("settings.export")} subtitle={t("settings.exportText")}
             onPress={exporting ? undefined : exportData} />
           {!isDemo && (

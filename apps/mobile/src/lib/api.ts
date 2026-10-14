@@ -1,16 +1,18 @@
 import { FunctionsFetchError, FunctionsHttpError, type SupabaseClient } from "@supabase/supabase-js";
+import { fetch as streamingFetch } from "expo/fetch";
 import { demoApi } from "./demo";
 import { ApiError, EXTENSIONS, validatePages } from "./errors";
 import { DAILY_LIMITS } from "./limits";
-import { isDemo, supabase } from "./supabase";
+import { sseParser } from "./sse";
+import { isDemo, supabase, supabaseKey, supabaseUrl } from "./supabase";
 import type {
-  AgentFunction, Case, CaseDocument, CaseForm, CaseStatus, FormField, ChatMessage, Draft, NewCase, PickedFile, Profile, SearchResult, Task,
-  TimelineItem, UsageToday,
+  AgentFunction, Case, CaseDocument, CaseForm, CaseStatus, ChatMessage, Draft, FormField, NewCase, PickedFile, Profile, SearchResult,
+  Task, TimelineItem, UsageToday, UserFact,
 } from "./types";
 
 export { ApiError, MAX_PAGES, TERMS_VERSION, type ApiErrorCode } from "./errors";
 
-export type ProfilePatch = Partial<Pick<Profile, "full_name" | "language" | "city" | "onboarded_at" | "ai_consent_at">> & {
+export type ProfilePatch = Partial<Pick<Profile, "full_name" | "language" | "city" | "onboarded_at" | "ai_consent_at" | "memory_enabled">> & {
   terms_version?: string;
 };
 
@@ -67,9 +69,19 @@ export interface Api {
   deleteDraft(id: string): Promise<void>;
 
   listMessages(caseId: string): Promise<ChatMessage[]>;
-  sendMessage(caseId: string, text: string): Promise<ChatMessage>;
+  /** onText receives the answer so far while it is being written. */
+  sendMessage(caseId: string, text: string, onText?: (soFar: string) => void): Promise<ChatMessage>;
 
   search(q: string): Promise<SearchResult[]>;
+
+  /** Kept facts and suggestions still waiting for the person's answer. */
+  listFacts(): Promise<UserFact[]>;
+  /** Asks the agent whether the latest chat turn holds something worth remembering. */
+  learnFacts(caseId: string): Promise<UserFact[]>;
+  keepFact(id: string): Promise<void>;
+  /** Deletes a fact for good: ignoring a suggestion and forgetting a kept fact are the same. */
+  forgetFact(id: string): Promise<void>;
+  forgetAllFacts(): Promise<void>;
 }
 
 function must<T>(result: { data: T | null; error: { message: string; code?: string } | null }): T {
@@ -91,6 +103,63 @@ async function invoke<T>(db: SupabaseClient, name: string, body: object): Promis
   }
   if (error instanceof FunctionsFetchError) throw new ApiError(error.message, "offline");
   throw new ApiError(error.message);
+}
+
+/** Calls a function that streams its answer as server-sent events; also accepts a plain JSON answer. */
+async function invokeStream<T>(
+  db: SupabaseClient,
+  name: string,
+  body: object,
+  onDelta: (text: string) => void,
+): Promise<T> {
+  const { data } = await db.auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) throw new ApiError("Not signed in", "auth");
+
+  let res: Awaited<ReturnType<typeof streamingFetch>>;
+  try {
+    res = await streamingFetch(`${supabaseUrl}/functions/v1/${name}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        apikey: supabaseKey,
+        "Content-Type": "application/json",
+        Accept: "text/event-stream",
+      },
+      body: JSON.stringify(body),
+    });
+  } catch (e) {
+    throw new ApiError(e instanceof Error ? e.message : String(e), "offline");
+  }
+  if (!res.ok) {
+    const payload = await res.json().catch(() => null);
+    throw new ApiError(payload?.error ?? `Request failed (${res.status})`, payload?.code ?? "error", payload?.requestId);
+  }
+  if (!res.headers.get("Content-Type")?.includes("text/event-stream") || !res.body) return res.json() as Promise<T>;
+
+  let result: T | undefined;
+  let failure: ApiError | undefined;
+  const push = sseParser((event) => {
+    if (event.type === "delta") onDelta(event.text as string);
+    else if (event.type === "done") result = event as T;
+    else if (event.type === "error") {
+      failure = new ApiError(event.error as string, (event.code as ApiError["code"]) ?? "error", event.requestId as string);
+    }
+  });
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      push(decoder.decode(value, { stream: true }));
+    }
+  } catch (e) {
+    throw new ApiError(e instanceof Error ? e.message : String(e), "offline");
+  }
+  if (failure) throw failure;
+  if (!result) throw new ApiError("The answer was cut off. Please try again.", "offline");
+  return result;
 }
 
 function supabaseApi(db: SupabaseClient): Api {
@@ -128,7 +197,7 @@ function supabaseApi(db: SupabaseClient): Api {
   const api: Api = {
     async getProfile() {
       const id = await userId();
-      return must(await db.from("profiles").select("id, full_name, language, city, onboarded_at, ai_consent_at, plan").eq("id", id).single());
+      return must(await db.from("profiles").select("id, full_name, language, city, onboarded_at, ai_consent_at, plan, memory_enabled").eq("id", id).single());
     },
     async updateProfile(patch) {
       ok(await db.from("profiles").update(patch).eq("id", await userId()));
@@ -291,8 +360,12 @@ function supabaseApi(db: SupabaseClient): Api {
     async listMessages(caseId) {
       return must(await db.from("messages").select("*").eq("case_id", caseId).order("created_at", { ascending: true }));
     },
-    async sendMessage(caseId, text) {
-      const res = await invoke<{ message: ChatMessage }>(db, "case-chat", { case_id: caseId, message: text });
+    async sendMessage(caseId, text, onText) {
+      let soFar = "";
+      const res = await invokeStream<{ message: ChatMessage }>(db, "case-chat", { case_id: caseId, message: text }, (delta) => {
+        soFar += delta;
+        onText?.(soFar);
+      });
       return res.message;
     },
 
@@ -300,6 +373,23 @@ function supabaseApi(db: SupabaseClient): Api {
       const term = q.trim();
       if (term.length < 2) return [];
       return must(await db.rpc("search_everything", { q: term }));
+    },
+
+    async listFacts() {
+      return must(await db.from("user_facts").select("*").order("created_at", { ascending: true }));
+    },
+    async learnFacts(caseId) {
+      const res = await invoke<{ facts: UserFact[] }>(db, "learn-facts", { case_id: caseId });
+      return res.facts;
+    },
+    async keepFact(id) {
+      ok(await db.from("user_facts").update({ status: "kept" }).eq("id", id));
+    },
+    async forgetFact(id) {
+      ok(await db.from("user_facts").delete().eq("id", id));
+    },
+    async forgetAllFacts() {
+      ok(await db.from("user_facts").delete().eq("user_id", await userId()));
     },
   };
   return api;

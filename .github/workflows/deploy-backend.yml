@@ -63,7 +63,7 @@ jobs:
           supabase secrets set "${args[@]}" --project-ref "$PROJECT_REF"
 
       - name: Edge functions
-        run: supabase functions deploy analyze-document draft-reply case-chat fill-form export-data delete-account --project-ref "$PROJECT_REF"
+        run: supabase functions deploy analyze-document draft-reply case-chat fill-form learn-facts export-data delete-account --project-ref "$PROJECT_REF"
 
       - name: Sign-in settings
         run: |

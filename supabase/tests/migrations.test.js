@@ -124,9 +124,28 @@ test("usage is counted per function and cannot be erased by the user", async () 
   assert.equal((await as(AMINA, "select public.ai_calls_last_day('case-chat') n")).rows[0].n, 2);
 });
 
+test("facts stay private, and keeping a correction replaces the old fact", async () => {
+  const caseId = (await as(AMINA, "select id from public.cases")).rows[0].id;
+  const old = (await as(AMINA, "insert into public.user_facts (category, fact, status, source) values ('housing', 'You live in Berlin-Mitte', 'kept', 'user') returning id, decided_at")).rows[0];
+  assert.ok(old.decided_at);
+  const fix = (await as(AMINA, "insert into public.user_facts (category, fact, case_id, replaces_id) values ('housing', 'You live in Berlin-Neukölln', $1, $2) returning id, decided_at", [caseId, old.id])).rows[0];
+  assert.equal(fix.decided_at, null);
+
+  assert.equal((await as(BORIS, "select * from public.user_facts")).rows.length, 0);
+  assert.equal((await as(BORIS, "update public.user_facts set fact = 'x' returning id")).rows.length, 0);
+  await assert.rejects(
+    as(BORIS, "insert into public.user_facts (fact, case_id) values ('sneaky', $1)", [caseId]),
+    /row-level security/,
+  );
+
+  await as(AMINA, "update public.user_facts set status = 'kept' where id = $1", [fix.id]);
+  const rows = (await as(AMINA, "select fact, status from public.user_facts")).rows;
+  assert.deepEqual(rows.map((r) => [r.fact, r.status]), [["You live in Berlin-Neukölln", "kept"]]);
+});
+
 test("deleting the login removes all of the person's data", async () => {
   await db.exec(`delete from auth.users where id = '${AMINA}'`);
-  for (const table of ["profiles", "cases", "documents", "forms", "tasks", "drafts"]) {
+  for (const table of ["profiles", "cases", "documents", "forms", "tasks", "drafts", "user_facts"]) {
     const { rows } = await db.query(`select count(*)::int n from public.${table} where ${table === "profiles" ? "id" : "user_id"} = $1`, [AMINA]);
     assert.equal(rows[0].n, 0, table);
   }
