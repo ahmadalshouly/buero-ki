@@ -305,6 +305,12 @@ const uk: Locale = {
     ],
     thinking: "Думає…",
     disclaimer: "Відповіді можуть бути помилковими. Для важливих рішень зверніться до Beratungsstelle (консультаційного центру).",
+    actions: {
+      task_added: "Додано завдання: {{title}}",
+      task_updated: "Змінено завдання: {{title}}",
+      task_done: "Виконано: {{title}}",
+      task_removed: "Видалено завдання: {{title}}",
+    },
   },
   search: {
     title: "Пошук",

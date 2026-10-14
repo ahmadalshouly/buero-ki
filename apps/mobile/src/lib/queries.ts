@@ -227,12 +227,15 @@ export function useDeleteDraft() {
 
 export function useSendMessage(caseId: string) {
   const qc = useQueryClient();
+  const invalidate = useInvalidate();
   return useMutation({
     mutationFn: ({ text, onText }: { text: string; onText?: (soFar: string) => void }) =>
       api.sendMessage(caseId, text, onText),
-    onSettled: () => {
+    onSettled: (message) => {
       qc.invalidateQueries({ queryKey: keys.messages(caseId) });
-      qc.invalidateQueries({ queryKey: keys.usage });
+      // The assistant may have changed tasks while answering.
+      if (message?.actions?.length) invalidate(caseId);
+      else qc.invalidateQueries({ queryKey: keys.usage });
     },
   });
 }

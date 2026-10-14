@@ -295,6 +295,12 @@ const en = {
     ],
     thinking: "Thinking…",
     disclaimer: "Answers can be wrong. For important decisions, ask a Beratungsstelle.",
+    actions: {
+      task_added: "Added task: {{title}}",
+      task_updated: "Changed task: {{title}}",
+      task_done: "Done: {{title}}",
+      task_removed: "Removed task: {{title}}",
+    },
   },
   search: {
     title: "Search",

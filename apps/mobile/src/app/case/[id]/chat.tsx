@@ -11,7 +11,7 @@ import { friendlyError } from "@/lib/errorText";
 import { useMessages, useSendMessage } from "@/lib/queries";
 import { makeStyles } from "@/lib/styles";
 import { radius, space } from "@/lib/theme";
-import type { ChatMessage } from "@/lib/types";
+import type { ChatAction, ChatMessage } from "@/lib/types";
 
 const useStyles = makeStyles((c) => ({
   list: { padding: space(4), gap: space(3), width: "100%", maxWidth: 680, alignSelf: "center", flexGrow: 1 },
@@ -31,8 +31,38 @@ const useStyles = makeStyles((c) => ({
     flex: 1, maxHeight: 140, fontSize: 16, color: c.ink, paddingVertical: space(2.5), paddingHorizontal: space(3),
     backgroundColor: c.bg, borderRadius: radius.md, outlineWidth: 0,
   },
+  actions: { alignSelf: "flex-start", maxWidth: "88%", gap: space(1.5), marginTop: -space(1) },
+  action: {
+    flexDirection: "row", alignItems: "center", gap: space(2), paddingVertical: space(1.5), paddingHorizontal: space(3),
+    borderRadius: radius.md, backgroundColor: c.accentSoft,
+  },
   send: { width: 44, height: 44, borderRadius: 22, backgroundColor: c.accent, alignItems: "center", justifyContent: "center" },
 }));
+
+const ACTION_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
+  task_added: "add-circle-outline",
+  task_updated: "create-outline",
+  task_done: "checkmark-circle-outline",
+  task_removed: "trash-outline",
+};
+
+/** What the assistant changed while answering, shown under its answer. */
+function Actions({ actions }: { actions: ChatAction[] }) {
+  const { t } = useTranslation();
+  const s = useStyles();
+  return (
+    <View style={s.actions}>
+      {actions.map((a, i) => (
+        <View key={i} style={s.action}>
+          <Ionicons name={ACTION_ICONS[a.kind] ?? "sparkles-outline"} size={16} color={s.c.accent} />
+          <Txt variant="small" style={{ flexShrink: 1 }}>
+            {t(`chat.actions.${a.kind}`, { title: a.title, defaultValue: a.title })}
+          </Txt>
+        </View>
+      ))}
+    </View>
+  );
+}
 
 export default function Chat() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -120,12 +150,17 @@ export default function Chat() {
             </View>
           )}
           renderItem={({ item }) => (
-            <View style={[s.bubble, item.role === "user" ? s.mine : s.theirs]}>
-              {item.role === "user" ? (
-                <Txt tone="accentInk" selectable>{item.content}</Txt>
-              ) : (
-                <Markdown text={item.content} />
+            <View style={{ gap: space(3) }}>
+              {!!item.content && (
+                <View style={[s.bubble, item.role === "user" ? s.mine : s.theirs]}>
+                  {item.role === "user" ? (
+                    <Txt tone="accentInk" selectable>{item.content}</Txt>
+                  ) : (
+                    <Markdown text={item.content} />
+                  )}
+                </View>
               )}
+              {!!item.actions?.length && <Actions actions={item.actions} />}
             </View>
           )}
         />

@@ -297,6 +297,12 @@ const fa: Locale = {
     ],
     thinking: "در حال فکر کردن…",
     disclaimer: "پاسخ‌ها ممکن است اشتباه باشند. برای تصمیم‌های مهم از یک مرکز مشاوره (Beratungsstelle) بپرسید.",
+    actions: {
+      task_added: "کار اضافه شد: {{title}}",
+      task_updated: "کار تغییر کرد: {{title}}",
+      task_done: "انجام شد: {{title}}",
+      task_removed: "کار حذف شد: {{title}}",
+    },
   },
   search: {
     title: "جستجو",
