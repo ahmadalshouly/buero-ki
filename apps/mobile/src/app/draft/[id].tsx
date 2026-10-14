@@ -4,20 +4,17 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Linking, Share, TextInput, View } from "react-native";
 import { useFeedback } from "@/components/feedback";
-import { Badge, Button, Card, ErrorBox, IconButton, Muted, Screen, Section, Sheet, SkeletonList, Txt } from "@/components/ui";
+import { Badge, Button, Card, ErrorBox, Field, IconButton, Muted, Screen, Section, Sheet, SkeletonList, Txt } from "@/components/ui";
 import { useLtrText } from "@/lib/direction";
+import { ApiError } from "@/lib/errors";
 import { formatDate } from "@/lib/i18n";
-import { placeholders } from "@/lib/letter";
+import { emailIn, isEmailAddress, placeholders } from "@/lib/letter";
 import { exportLetterPdf } from "@/lib/printLetter";
 import {
-  errorMessage, useCase, useDeleteDraft, useDraft, useSetDraftStatus, useUpdateDraft,
+  errorMessage, useCase, useDeleteDraft, useDraft, useSendEmail, useSetDraftStatus, useUpdateDraft,
 } from "@/lib/queries";
+import { useSession } from "@/lib/session";
 import { radius, space, useColors } from "@/lib/theme";
-
-/** Pulls an email address out of the case's office field, if the person typed one there. */
-function emailIn(text: string | null | undefined): string {
-  return text?.match(/[^\s@<>]+@[^\s@<>]+\.[a-z]{2,}/i)?.[0] ?? "";
-}
 
 export default function DraftScreen() {
   const ltrText = useLtrText();
@@ -31,6 +28,10 @@ export default function DraftScreen() {
   const update = useUpdateDraft(draft);
   const setStatus = useSetDraftStatus(draft);
   const remove = useDeleteDraft();
+  const send = useSendEmail(draft);
+  const { email: myEmail } = useSession();
+  const [sending, setSending] = useState(false);
+  const [to, setTo] = useState("");
   const [editing, setEditing] = useState(false);
   const [body, setBody] = useState("");
   const [menu, setMenu] = useState(false);
@@ -59,6 +60,32 @@ export default function DraftScreen() {
     const to = emailIn(theCase.data?.authority);
     const url = `mailto:${to}?subject=${encodeURIComponent(draft!.subject)}&body=${encodeURIComponent(draft!.body_de)}`;
     Linking.openURL(url).catch(() => toast(t("common.error"), "error"));
+  }
+
+  function startSend() {
+    const missing = placeholders(`${draft!.subject}\n${draft!.body_de}`);
+    if (missing.length) {
+      toast(t("draft.sendFillFirst", { fields: missing.slice(0, 4).join(", ") }), "error");
+      return;
+    }
+    setTo(emailIn(theCase.data?.authority));
+    send.reset();
+    setSending(true);
+  }
+
+  function sendNow() {
+    send.mutate(to.trim().toLowerCase(), {
+      onSuccess: (sentDraft) => {
+        setSending(false);
+        toast(t("draft.sentByBueroki", { to: sentDraft.sent_to ?? to }));
+      },
+      onError: (e) => {
+        if (e instanceof ApiError && e.code === "email_off") {
+          setSending(false);
+          openEmail();
+        }
+      },
+    });
   }
 
   async function savePdf() {
@@ -97,6 +124,7 @@ export default function DraftScreen() {
         <View style={{ flexDirection: "row", gap: space(2), flexWrap: "wrap" }}>
           <Badge label={draft.kind === "email" ? t("draft.email") : t("draft.letter")} icon={draft.kind === "email" ? "mail-outline" : "document-text-outline"} />
           {sent && <Badge tone="accent" icon="checkmark" label={draft.sent_at ? t("draft.sentOn", { date: formatDate(draft.sent_at) }) : t("draft.sent")} />}
+          {sent && draft.sent_via === "bueroki" && draft.sent_to && <Badge icon="paper-plane-outline" label={t("draft.sentByBueroki", { to: draft.sent_to })} />}
           {draft.edited && <Badge label={t("draft.edited")} icon="pencil" />}
           {draft.revision_of && <Badge label={t("draft.revisionOf")} icon="git-branch-outline" />}
         </View>
@@ -153,6 +181,7 @@ export default function DraftScreen() {
               <Txt variant="small" tone="muted" style={{ textAlign: "center" }}>{t("draft.pdfHint")}</Txt>
             </View>
           )}
+          {draft.kind === "email" && !sent && <Button icon="paper-plane" title={t("draft.sendBueroki")} onPress={startSend} />}
           {draft.kind === "email" && <Button variant="secondary" icon="mail-outline" title={t("draft.sendEmail")} onPress={openEmail} />}
           {!sent && (
             <Button variant="secondary" icon="sparkles-outline" title={t("draft.revise")}
@@ -173,10 +202,33 @@ export default function DraftScreen() {
       {!sent ? (
         <Button icon="paper-plane-outline" title={t("draft.markSent")} loading={setStatus.isPending}
           onPress={() => setStatus.mutate("sent", { onSuccess: () => toast(t("draft.markedSent")) })} />
-      ) : (
+      ) : draft.sent_via !== "bueroki" ? (
         <Button variant="ghost" title={t("draft.undoSent")} onPress={() => setStatus.mutate("draft")} />
-      )}
+      ) : null}
       <Muted>{t("draft.disclaimer")}</Muted>
+
+      <Sheet visible={sending} onClose={() => setSending(false)} title={t("draft.sendTitle")}>
+        <Field
+          label={t("draft.sendTo")}
+          value={to}
+          onChangeText={setTo}
+          ltr
+          autoCapitalize="none"
+          autoCorrect={false}
+          keyboardType="email-address"
+          hint={t("draft.sendToHint")}
+          error={to.trim() && !isEmailAddress(to.trim()) ? t("draft.sendInvalid") : null}
+        />
+        <Card>
+          <Txt variant="h3" style={ltrText}>{draft.subject}</Txt>
+          <Muted numberOfLines={3}>{draft.body_de}</Muted>
+        </Card>
+        <Muted>{t("draft.sendReplies", { email: myEmail ?? "" })}</Muted>
+        {send.error && <ErrorBox message={errorMessage(send.error)} />}
+        <Button icon="paper-plane" title={t("draft.sendNow")} onPress={sendNow} loading={send.isPending}
+          disabled={!isEmailAddress(to.trim()) || send.isPending} />
+        <Button variant="secondary" title={t("common.cancel")} onPress={() => setSending(false)} />
+      </Sheet>
 
       <Sheet visible={menu} onClose={() => setMenu(false)}>
         <Button variant="danger" icon="trash-outline" title={t("draft.delete")} onPress={del} />

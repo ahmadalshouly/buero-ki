@@ -152,6 +152,10 @@ export interface Draft {
   status: "draft" | "approved" | "sent";
   edited: boolean;
   sent_at: string | null;
+  /** Where the email went when BüroKI sent it. */
+  sent_to?: string | null;
+  /** "bueroki" when BüroKI sent it, "self" or empty when the person sent it themselves. */
+  sent_via?: "self" | "bueroki" | null;
   revision_of: string | null;
   created_at: string;
 }

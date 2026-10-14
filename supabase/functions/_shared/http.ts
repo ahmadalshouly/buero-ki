@@ -35,6 +35,8 @@ export interface Ctx<I> {
   input: I;
   requestId: string;
   userId: string;
+  /** The sign-in email address, if the login has one. */
+  userEmail: string | null;
   supabase: SupabaseClient;
   profile: Profile;
   log: (msg: string, extra?: Record<string, unknown>) => void;
@@ -110,6 +112,7 @@ export function handler<S extends z.ZodType>(
         input: parsed.data,
         requestId,
         userId,
+        userEmail: auth.user.email ?? null,
         supabase,
         profile: profile as Profile,
         log: (msg, extra) => logger("info", msg, extra),

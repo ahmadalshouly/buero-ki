@@ -69,6 +69,8 @@ export interface Api {
   }): Promise<Draft>;
   updateDraft(id: string, patch: { subject?: string; body_de?: string }): Promise<void>;
   setDraftStatus(id: string, status: Draft["status"]): Promise<void>;
+  /** BüroKI sends the saved email draft to `to`; replies go to the person. Only call after they confirmed. */
+  sendEmail(id: string, to: string): Promise<Draft>;
   deleteDraft(id: string): Promise<void>;
 
   listMessages(caseId: string): Promise<ChatMessage[]>;
@@ -355,7 +357,11 @@ function supabaseApi(db: SupabaseClient): Api {
       ok(await db.from("drafts").update({ ...patch, edited: true }).eq("id", id));
     },
     async setDraftStatus(id, status) {
-      ok(await db.from("drafts").update({ status, sent_at: status === "sent" ? new Date().toISOString() : null }).eq("id", id));
+      ok(await db.from("drafts").update({ status, sent_at: status === "sent" ? new Date().toISOString() : null, sent_via: status === "sent" ? "self" : null }).eq("id", id));
+    },
+    async sendEmail(id, to) {
+      const res = await invoke<{ draft: Draft }>(db, "send-email", { draft_id: id, to, confirmed: true });
+      return res.draft;
     },
     async deleteDraft(id) {
       ok(await db.from("drafts").delete().eq("id", id));
