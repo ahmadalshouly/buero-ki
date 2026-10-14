@@ -94,3 +94,60 @@ describe("validatePages", () => {
     expect(() => validatePages([{ ...jpg, mimeType: "image/heic" }])).toThrow(ApiError);
   });
 });
+
+describe("letter PDF", () => {
+  const { letterFileName, letterHtml, parseLetter, placeholders } = jest.requireActual("../lib/letter") as typeof import("../lib/letter");
+  const letter = `Amina Haddad
+Musterstraße 1
+10115 Berlin
+
+Jobcenter Berlin Mitte
+Seydelstraße 2-5
+10117 Berlin
+
+Berlin, 14.10.2026
+
+Betreff: BG 12345//0067890 – Einreichung von Unterlagen
+
+Sehr geehrte Damen und Herren,
+
+anbei die Unterlagen.
+
+Mit freundlichen Grüßen
+
+[Unterschrift]
+
+Amina Haddad`;
+
+  it("splits a DIN letter into its parts", () => {
+    const p = parseLetter(letter);
+    expect(p.sender).toEqual(["Amina Haddad", "Musterstraße 1", "10115 Berlin"]);
+    expect(p.recipient).toEqual(["Jobcenter Berlin Mitte", "Seydelstraße 2-5", "10117 Berlin"]);
+    expect(p.date).toBe("Berlin, 14.10.2026");
+    expect(p.subject).toBe("BG 12345//0067890 – Einreichung von Unterlagen");
+    expect(p.body[0]).toBe("Sehr geehrte Damen und Herren,");
+    expect(p.body.at(-1)).toBe("Amina Haddad");
+  });
+
+  it("falls back to plain text without a Betreff line", () => {
+    const p = parseLetter("Hallo,\n\nText", "Betreff X");
+    expect(p.recipient).toEqual([]);
+    expect(p.subject).toBe("Betreff X");
+  });
+
+  it("lists fields still to fill in, but not the signature", () => {
+    expect(placeholders("[Ihr Name]\n[Ihre Adresse]\n[Ihr Name]\n[Unterschrift]")).toEqual(["[Ihr Name]", "[Ihre Adresse]"]);
+  });
+
+  it("escapes text and leaves room for a signature", () => {
+    const html = letterHtml(letter.replace("anbei", "<b>anbei</b>"));
+    expect(html).toContain("&lt;b&gt;anbei");
+    expect(html).toContain('class="sign"');
+    expect(html).toContain("top:105mm");
+  });
+
+  it("makes a safe file name", () => {
+    expect(letterFileName("Widerspruch gegen Bescheid vom 1.10.", new Date("2026-10-14T10:00:00Z")))
+      .toBe("2026-10-14_Widerspruch-gegen-Bescheid-vom-1-10.pdf");
+  });
+});

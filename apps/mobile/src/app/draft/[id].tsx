@@ -6,6 +6,8 @@ import { Linking, Share, TextInput, View } from "react-native";
 import { useFeedback } from "@/components/feedback";
 import { Badge, Button, Card, ErrorBox, IconButton, Muted, Screen, Section, Sheet, SkeletonList, Txt } from "@/components/ui";
 import { formatDate } from "@/lib/i18n";
+import { placeholders } from "@/lib/letter";
+import { exportLetterPdf } from "@/lib/printLetter";
 import {
   errorMessage, useCase, useDeleteDraft, useDraft, useSetDraftStatus, useUpdateDraft,
 } from "@/lib/queries";
@@ -30,6 +32,7 @@ export default function DraftScreen() {
   const [editing, setEditing] = useState(false);
   const [body, setBody] = useState("");
   const [menu, setMenu] = useState(false);
+  const [printing, setPrinting] = useState(false);
 
   if (!draft) {
     return <Screen>{query.error ? <ErrorBox message={errorMessage(query.error)} onRetry={() => query.refetch()} /> : <SkeletonList rows={3} />}</Screen>;
@@ -54,6 +57,26 @@ export default function DraftScreen() {
     const to = emailIn(theCase.data?.authority);
     const url = `mailto:${to}?subject=${encodeURIComponent(draft!.subject)}&body=${encodeURIComponent(draft!.body_de)}`;
     Linking.openURL(url).catch(() => toast(t("common.error"), "error"));
+  }
+
+  async function savePdf() {
+    const missing = placeholders(draft!.body_de);
+    if (missing.length) {
+      const go = await confirm({
+        title: t("draft.placeholdersTitle"),
+        message: t("draft.placeholdersText", { fields: missing.slice(0, 4).join(", ") }),
+        confirm: t("draft.pdfAnyway"),
+      });
+      if (!go) return;
+    }
+    setPrinting(true);
+    try {
+      await exportLetterPdf(draft!.body_de, draft!.subject);
+    } catch (e) {
+      toast(errorMessage(e), "error");
+    } finally {
+      setPrinting(false);
+    }
   }
 
   async function del() {
@@ -122,6 +145,12 @@ export default function DraftScreen() {
             <Button style={{ flex: 1 }} variant="secondary" icon="share-outline" title={t("draft.share")}
               onPress={() => Share.share({ title: draft.subject, message: draft.body_de })} />
           </View>
+          {draft.kind === "letter" && (
+            <View style={{ gap: space(1.5) }}>
+              <Button variant="secondary" icon="document-outline" title={t("draft.pdf")} onPress={savePdf} loading={printing} />
+              <Txt variant="small" tone="muted" style={{ textAlign: "center" }}>{t("draft.pdfHint")}</Txt>
+            </View>
+          )}
           {draft.kind === "email" && <Button variant="secondary" icon="mail-outline" title={t("draft.sendEmail")} onPress={openEmail} />}
           {!sent && (
             <Button variant="secondary" icon="sparkles-outline" title={t("draft.revise")}

@@ -231,6 +231,11 @@ const tr: Locale = {
     deleteText: "Fotoğraflar ve açıklama silinir. Bu mektuptan gelen görevler kalır.",
   },
   draft: {
+    pdf: "PDF olarak kaydet",
+    pdfHint: "Yazdırın, imzalayın ve postayla gönderin. Adres pencereli zarfa uyar.",
+    placeholdersTitle: "Bazı alanlar hâlâ boş",
+    placeholdersText: "Mektubu göndermeden önce {{fields}} alanlarını doldurun. Önce metni düzenleyebilirsiniz.",
+    pdfAnyway: "Yine de PDF oluştur",
     newTitle: "Yanıt yaz",
     reviseTitle: "Taslağı değiştir",
     kind: "Tür",

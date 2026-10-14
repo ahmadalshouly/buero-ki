@@ -42,7 +42,7 @@ export type Analysis = z.infer<typeof Analysis>;
 export const Draft = z.strictObject({
   subject: z.string().describe("German subject line (Betreff), including the reference number if known."),
   body_de: z.string().describe(
-    "The complete German letter or email, ready to send. Letters include sender block, recipient block, place and date, Betreff, salutation, body, closing and a signature line. Use [square brackets] for anything the person must fill in.",
+    "The complete German letter or email, ready to send, as plain text without Markdown. A letter has these parts in this order, separated by one empty line: sender name and address, recipient name and address, place and date (e.g. 'Berlin, 14.10.2026'), a line starting with 'Betreff: ', salutation, body, closing ('Mit freundlichen Grüßen'), a line '[Unterschrift]', then the printed name. Use [square brackets] for anything the person must fill in.",
   ),
   body_translation: z.string().describe("Faithful translation of body_de in the user's language."),
   notes: z.string().describe(

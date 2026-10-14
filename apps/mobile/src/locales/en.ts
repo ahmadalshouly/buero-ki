@@ -229,6 +229,11 @@ const en = {
     deleteText: "The photos and the explanation are deleted. Tasks from this letter stay.",
   },
   draft: {
+    pdf: "Save as PDF",
+    pdfHint: "Print it, sign it and send it by post. The address fits a window envelope.",
+    placeholdersTitle: "Some fields are still empty",
+    placeholdersText: "Fill in {{fields}} before you send the letter. You can edit the text first.",
+    pdfAnyway: "Make PDF anyway",
     newTitle: "Write a reply",
     reviseTitle: "Change the draft",
     kind: "Type",

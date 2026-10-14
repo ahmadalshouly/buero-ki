@@ -8,6 +8,7 @@ What is in this version:
 - **Scan and explain**: up to 10 photographed pages or one PDF per letter. The agent returns an explanation, deadlines (with where each date came from), amounts, German terms and whether to get advice, in the person's language.
 - **Today and Deadlines**: what is overdue, due this week and later, across all cases. Tasks can also be added by hand.
 - **Reply drafting**: a formal German letter or email with a translation and "before you send" notes. Drafts can be edited, revised by the agent ("make it shorter"), opened in the email app and marked as sent.
+- **Letters as PDF**: a reply can be saved as an A4 PDF laid out after DIN 5008, so it can be printed, signed and posted in a window envelope. The app warns when fields in [brackets] are still empty.
 - **Chat with the case** in any language.
 - **Search** across cases and letters.
 - **Onboarding** with language, name and explicit consent to AI processing.
@@ -88,17 +89,33 @@ deno check supabase/functions/*/index.ts && deno test supabase/functions/tests/
 cd supabase/tests && npm install && npm test
 ```
 
-## Build for the app stores
+## Build the apps
 
-The app uses [EAS](https://docs.expo.dev/eas/) to build in the cloud, so no Mac is needed for iOS builds.
+The native `ios/` and `android/` folders are generated from `app.json` (`npx expo prebuild`), so they are not in the repository.
+
+**Test builds on GitHub (no accounts needed).** Every push to `main` runs `.github/workflows/build-apps.yml`, which produces:
+
+- `bueroki-android-apk`: an APK you can install on any Android phone (allow "install unknown apps").
+- `bueroki-ios-simulator`: the app for the iOS Simulator on a Mac.
+
+Download them from the workflow run's **Artifacts**. Add the repository secrets `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` to connect the builds to Supabase; without them the apps open in demo mode.
+
+**Real iPhones and the stores (EAS).** Installing on an iPhone outside the Simulator needs an Apple Developer account. Builds run in Expo's cloud, so no Mac is needed:
 
 ```bash
 cd apps/mobile
 npx eas-cli@latest login
-npx eas-cli@latest build --platform all --profile preview
+npx eas-cli@latest init                      # links the app to your Expo account
+npx eas-cli@latest env:create --name EXPO_PUBLIC_SUPABASE_URL --value https://<ref>.supabase.co --environment preview --environment production
+npx eas-cli@latest env:create --name EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY --value sb_publishable_... --environment preview --environment production
+npx eas-cli@latest build --platform all --profile preview      # installable test builds
+npx eas-cli@latest build --platform all --profile production   # store builds
+npx eas-cli@latest submit --platform all
 ```
 
-Store submission needs an Apple Developer account and a Google Play developer account.
+After `eas init`, add an `EXPO_TOKEN` secret on GitHub and every `v*` tag also starts production EAS builds.
+
+**Locally**, with Android Studio or Xcode installed: `npm run android` or `npm run ios`.
 
 ## Notes on the AI
 

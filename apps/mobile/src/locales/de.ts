@@ -231,6 +231,11 @@ const de: Locale = {
     deleteText: "Die Fotos und die Erklärung werden gelöscht. Aufgaben aus diesem Brief bleiben.",
   },
   draft: {
+    pdf: "Als PDF speichern",
+    pdfHint: "Ausdrucken, unterschreiben und per Post schicken. Die Adresse passt in einen Fensterumschlag.",
+    placeholdersTitle: "Einige Felder sind noch leer",
+    placeholdersText: "Fülle {{fields}} aus, bevor du den Brief abschickst. Du kannst den Text vorher bearbeiten.",
+    pdfAnyway: "Trotzdem PDF erstellen",
     newTitle: "Antwort schreiben",
     reviseTitle: "Entwurf ändern",
     kind: "Art",

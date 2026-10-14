@@ -1,0 +1,110 @@
+name: Build apps
+
+# Builds an installable Android APK and an iOS Simulator app on every push to main,
+# on version tags and on demand. With Supabase secrets set, the apps connect to your
+# project; without them they start in demo mode.
+#
+# Repository secrets (Settings > Secrets and variables > Actions), all optional:
+#   EXPO_PUBLIC_SUPABASE_URL, EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY  connect the apps
+#   EXPO_TOKEN                                                      also start signed EAS builds for real iPhones and the stores
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+  EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+
+jobs:
+  android:
+    name: Android APK
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/mobile/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+      - run: npm ci
+      - run: npx expo prebuild --platform android --no-install
+      - name: Build release APK
+        working-directory: apps/mobile/android
+        run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a,armeabi-v7a,x86_64
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bueroki-android-apk
+          path: apps/mobile/android/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+
+  ios-simulator:
+    name: iOS Simulator app
+    runs-on: macos-15
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/mobile/package-lock.json
+      - run: npm ci
+      - run: npx expo prebuild --platform ios
+      - name: Build for the iOS Simulator
+        working-directory: apps/mobile/ios
+        run: |
+          WORKSPACE=$(ls -d *.xcworkspace | head -1)
+          SCHEME="${WORKSPACE%.xcworkspace}"
+          xcodebuild -workspace "$WORKSPACE" -scheme "$SCHEME" -configuration Release \
+            -sdk iphonesimulator -destination "generic/platform=iOS Simulator" \
+            -derivedDataPath build CODE_SIGNING_ALLOWED=NO | tail -40
+          cd build/Build/Products/Release-iphonesimulator && zip -qry "$GITHUB_WORKSPACE/bueroki-ios-simulator.zip" *.app
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bueroki-ios-simulator
+          path: bueroki-ios-simulator.zip
+          if-no-files-found: error
+
+  eas:
+    name: Signed builds (EAS)
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - name: Check for an Expo token
+        id: token
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: echo "present=$([ -n "$EXPO_TOKEN" ] && echo yes || echo no)" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        if: steps.token.outputs.present == 'yes'
+      - uses: actions/setup-node@v4
+        if: steps.token.outputs.present == 'yes'
+        with:
+          node-version: 22
+      - uses: expo/expo-github-action@v8
+        if: steps.token.outputs.present == 'yes'
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      - if: steps.token.outputs.present == 'yes'
+        run: npm ci && eas build --platform all --profile production --non-interactive --no-wait
