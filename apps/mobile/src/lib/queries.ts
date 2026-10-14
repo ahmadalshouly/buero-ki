@@ -8,7 +8,7 @@ import { ApiError } from "./errors";
 import i18n from "./i18n";
 import { authStorage } from "./storage";
 import type {
-  Case, CaseDocument, CaseForm, CaseStatus, Draft, FormField, HelpKind, HelpWhere, NewCase, PickedFile, Task, UserFact,
+  Case, CaseDocument, CaseForm, CaseStatus, Draft, FormField, HelpKind, HelpSpecialty, HelpWhere, NewCase, PickedFile, Task, UserFact,
 } from "./types";
 
 export const keys = {
@@ -28,7 +28,7 @@ export const keys = {
   messages: (caseId: string) => ["case", caseId, "messages"] as const,
   search: (q: string) => ["search", q] as const,
   facts: ["facts"] as const,
-  help: (kind: string, where: unknown, radiusKm: number) => ["help", kind, where, radiusKm] as const,
+  help: (kind: string, where: unknown, radiusKm: number, specialty?: string | null) => ["help", kind, specialty ?? null, where, radiusKm] as const,
 };
 
 export const queryClient = new QueryClient({
@@ -111,11 +111,12 @@ export const useSearch = (q: string) =>
   useQuery({ queryKey: keys.search(q), queryFn: () => api.search(q), enabled: q.trim().length >= 2, staleTime: 10_000 });
 
 // Places change slowly; keep a search for a day and show it offline.
-export const useFindHelp = (kind: HelpKind, where: HelpWhere | null, radiusKm = 5) =>
+// Lawyers and doctors wait until the person picks a type.
+export const useFindHelp = (kind: HelpKind, where: HelpWhere | null, radiusKm = 5, specialty?: HelpSpecialty | null, enabled = true) =>
   useQuery({
-    queryKey: keys.help(kind, where, radiusKm),
-    queryFn: () => api.findHelp(kind, where!, radiusKm),
-    enabled: !!where,
+    queryKey: keys.help(kind, where, radiusKm, specialty),
+    queryFn: () => api.findHelp(kind, where!, radiusKm, specialty ?? undefined),
+    enabled: !!where && enabled,
     staleTime: 24 * 3600_000,
   });
 

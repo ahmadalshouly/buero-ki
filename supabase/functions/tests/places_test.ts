@@ -1,7 +1,7 @@
 import { assert, assertEquals, assertMatch } from "jsr:@std/assert@1";
 import {
-  coarse, distanceM, googleGeocodeRequest, googleRequest, HELP_KINDS, overpassFailed, overpassQuery, parseGeocode, parseGoogleGeocode,
-  parseGooglePlaces, parsePlaces, PlacesInput,
+  coarse, distanceM, DOCTOR_SPECIALTIES, googleGeocodeRequest, googleRequest, HELP_KINDS, overpassFailed, overpassQuery, parseGeocode, parseGoogleGeocode,
+  LAWYER_SPECIALTIES, parseGooglePlaces, parsePlaces, PlacesInput, specialtiesFor,
 } from "../_shared/places.ts";
 
 const center = { lat: 52.4811, lon: 13.4353 }; // Berlin-Neukölln
@@ -134,4 +134,19 @@ Deno.test("google finds a typed place in Germany and keeps its name", () => {
     { lat: 52.48, lon: 13.43, label: "Neukölln" });
   assertEquals(parseGoogleGeocode({ places: [{ location: { latitude: 40.7, longitude: -74 } }] }), null);
   assertEquals(parseGoogleGeocode({}), null);
+});
+
+Deno.test("lawyers and doctors are searched by type", () => {
+  assert(PlacesInput.safeParse({ kind: "lawyer", place: "Berlin", specialty: "tenancy" }).success);
+  assert(PlacesInput.safeParse({ kind: "doctor", place: "Berlin", specialty: "paediatrics" }).success);
+  assert(!PlacesInput.safeParse({ kind: "lawyer", place: "Berlin", specialty: "paediatrics" }).success);
+  assert(!PlacesInput.safeParse({ kind: "debt", place: "Berlin", specialty: "tenancy" }).success);
+  assertEquals(googleRequest("lawyer", center, 5, "tenancy").textQuery, "Rechtsanwalt Mietrecht");
+  assertEquals(googleRequest("doctor", center, 5, "paediatrics").textQuery, "Kinderarzt");
+  assertEquals(googleRequest("lawyer", center, 5).textQuery, "Rechtsanwalt");
+  const q = overpassQuery("doctor", 52.5, 13.4, 5, 150, "paediatrics");
+  assertMatch(q, /\["amenity"="doctors"\]\["healthcare:speciality"~"paediatrics"\]/);
+  assert(!q.includes('"clinic"'));
+  for (const s of LAWYER_SPECIALTIES) assert(specialtiesFor("lawyer").includes(s));
+  for (const s of DOCTOR_SPECIALTIES) assert(specialtiesFor("doctor").includes(s));
 });

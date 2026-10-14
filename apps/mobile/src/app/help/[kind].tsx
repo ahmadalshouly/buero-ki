@@ -8,23 +8,29 @@ import {
 } from "@/components/ui";
 import { friendlyError } from "@/lib/errorText";
 import { ApiError } from "@/lib/errors";
-import { HELP_DIRECTORIES, sortForLanguage, useHelpWhere } from "@/lib/help";
+import { HELP_DIRECTORIES, helpTitle, sortForLanguage, specialtiesFor, useHelpWhere } from "@/lib/help";
 import { useFindHelp } from "@/lib/queries";
 import { useMe } from "@/lib/session";
 import { space } from "@/lib/theme";
-import { HELP_KINDS, LANGUAGES, type HelpKind } from "@/lib/types";
+import { HELP_KINDS, type HelpKind, type HelpSpecialty, LANGUAGES } from "@/lib/types";
 
 const RADII = ["2", "5", "10", "25"] as const;
 
 export default function HelpResults() {
-  const params = useLocalSearchParams<{ kind: string; caseId?: string }>();
+  const params = useLocalSearchParams<{ kind: string; caseId?: string; specialty?: string }>();
   const kind: HelpKind = (HELP_KINDS as readonly string[]).includes(params.kind) ? params.kind as HelpKind : "social";
+  // Lawyers and doctors are searched by type, picked here unless the case already named one.
+  const types = specialtiesFor(kind);
+  const [specialty, setSpecialty] = useState<HelpSpecialty | null>(
+    types.includes(params.specialty as HelpSpecialty) ? params.specialty as HelpSpecialty : null,
+  );
+  const mustPick = types.length > 0 && !specialty;
   const { t, i18n } = useTranslation();
   const { profile } = useMe();
   const where = useHelpWhere(profile?.city);
   const [radius, setRadius] = useState<(typeof RADII)[number]>("5");
   const [onlyMine, setOnlyMine] = useState(false);
-  const query = useFindHelp(kind, where, Number(radius));
+  const query = useFindHelp(kind, where, Number(radius), specialty, !mustPick);
   const lang = i18n.language;
   const langName = LANGUAGES.find((l) => l.code === lang)?.name ?? lang;
 
@@ -42,9 +48,24 @@ export default function HelpResults() {
 
   return (
     <Screen refreshing={query.isRefetching} onRefresh={() => query.refetch()}>
-      <Stack.Screen options={{ title: t(`help.kind.${kind}`) }} />
+      <Stack.Screen options={{ title: helpTitle(t, { kind, specialty }) }} />
       <DemoBanner />
-      <Muted>{t(`help.kindHint.${kind}`)}</Muted>
+      {types.length === 0 && <Muted>{t(`help.kindHint.${kind}`)}</Muted>}
+
+      {mustPick ? (
+        <Section title={t(kind === "lawyer" ? "help.chooseLawyer" : "help.chooseDoctor")}>
+          <Group>
+            {types.map((s) => (
+              <ListRow key={s} title={helpTitle(t, { kind, specialty: s })} onPress={() => setSpecialty(s)} />
+            ))}
+          </Group>
+        </Section>
+      ) : types.length > 0 && (
+        <Group>
+          <ListRow icon="options-outline" title={helpTitle(t, { kind, specialty })} subtitle={t("help.type")}
+            right={<Txt variant="small" tone="accent">{t("help.change")}</Txt>} onPress={() => setSpecialty(null)} />
+        </Group>
+      )}
 
       <WherePicker where={where} label={query.data?.center.label} />
 
@@ -67,7 +88,7 @@ export default function HelpResults() {
         </Card>
       )}
 
-      {!where ? null : query.isPending ? (
+      {!where || mustPick ? null : query.isPending ? (
         <View style={{ gap: space(3) }}>
           <Muted>{t("help.searching")}</Muted>
           <SkeletonList rows={3} />
@@ -84,6 +105,7 @@ export default function HelpResults() {
         <View style={{ gap: space(3) }}>
           <Muted>{t("help.found", { count: places.length })}</Muted>
           {lang !== "de" && !anyMine && <Muted>{t("help.languagesRare", { language: langName })}</Muted>}
+          {kind === "lawyer" && query.data?.source === "osm" && <Muted>{t("help.lawyerTypeNote")}</Muted>}
           {places.map((p) => <PlaceCard key={p.id} place={p} speaksMine={lang !== "de" && p.languages.includes(lang)} caseId={params.caseId} />)}
         </View>
       )}
