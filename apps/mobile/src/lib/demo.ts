@@ -417,17 +417,18 @@ Mit freundlichen Grüßen
   async listMessages(caseId) {
     return state.messages.filter((m) => m.case_id === caseId);
   },
-  async sendMessage(caseId, text) {
+  async sendMessage(caseId, text, onText) {
     spend("case-chat");
     state.messages.push({ id: id(), case_id: caseId, role: "user", content: text, created_at: now() });
-    await wait(1200);
-    const reply: ChatMessage = {
-      id: id(),
-      case_id: caseId,
-      role: "assistant",
-      content: "This is demo mode, so I can't answer for real yet. Once BüroKI is connected, I will answer questions about this case in your language, using every letter you added.",
-      created_at: now(),
-    };
+    const answer = "This is demo mode, so I can't answer for real yet. Once BüroKI is connected, I will answer questions about this case in your language, using every letter you added.";
+    await wait(600);
+    // Write the answer word by word, like the real assistant streams it.
+    const words = answer.split(" ");
+    for (let i = 1; i <= words.length; i++) {
+      onText?.(words.slice(0, i).join(" "));
+      await wait(40);
+    }
+    const reply: ChatMessage = { id: id(), case_id: caseId, role: "assistant", content: answer, created_at: now() };
     state.messages.push(reply);
     touch(caseId);
     return reply;

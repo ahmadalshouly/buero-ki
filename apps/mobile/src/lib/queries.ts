@@ -226,7 +226,8 @@ export function useDeleteDraft() {
 export function useSendMessage(caseId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (text: string) => api.sendMessage(caseId, text),
+    mutationFn: ({ text, onText }: { text: string; onText?: (soFar: string) => void }) =>
+      api.sendMessage(caseId, text, onText),
     onSettled: () => {
       qc.invalidateQueries({ queryKey: keys.messages(caseId) });
       qc.invalidateQueries({ queryKey: keys.usage });
