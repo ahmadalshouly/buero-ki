@@ -1,7 +1,11 @@
 import { letterHtml } from "./letter";
+import type { PickedFile } from "./types";
 
-/** Opens the browser's print dialog, where "Save as PDF" is one of the printers. */
-export async function exportLetterPdf(text: string, subject: string): Promise<void> {
+/**
+ * Opens the browser's print dialog, where "Save as PDF" is one of the printers.
+ * The browser keeps the file to itself, so there is none to keep with the draft.
+ */
+export async function exportLetterPdf(text: string, subject: string): Promise<PickedFile | null> {
   const frame = document.createElement("iframe");
   frame.style.position = "fixed";
   frame.style.width = "0";
@@ -16,4 +20,5 @@ export async function exportLetterPdf(text: string, subject: string): Promise<vo
   frame.contentWindow!.focus();
   frame.contentWindow!.print();
   setTimeout(() => frame.remove(), 1000);
+  return null;
 }

@@ -330,6 +330,23 @@ export function useSendEmail(draft: Draft | undefined) {
   });
 }
 
+/** Saving the exported PDF and adding or removing proof photos; each puts the saved draft into the cache. */
+export function useDraftFiles(draft: Draft | undefined) {
+  const qc = useQueryClient();
+  const put = (next: Draft) => {
+    qc.setQueryData(keys.draft(next.id), next);
+    qc.invalidateQueries({ queryKey: keys.drafts(next.case_id) });
+  };
+  return {
+    savePdf: useMutation({ mutationFn: (pdf: PickedFile) => api.saveDraftPdf(draft!.id, pdf), onSuccess: put }),
+    addProof: useMutation({ mutationFn: (photos: PickedFile[]) => api.addDraftProof(draft!.id, photos), onSuccess: put }),
+    removeProof: useMutation({ mutationFn: (path: string) => api.removeDraftProof(draft!.id, path), onSuccess: put }),
+  };
+}
+
+export const useFileUrls = (paths: string[]) =>
+  useQuery({ queryKey: ["files", ...paths], queryFn: () => api.getFileUrls(paths), enabled: paths.length > 0, staleTime: 5 * 60_000 });
+
 export function useDeleteDraft() {
   const invalidate = useInvalidate();
   return useMutation({ mutationFn: (d: Draft) => api.deleteDraft(d.id), onSuccess: (_r, d) => invalidate(d.case_id) });

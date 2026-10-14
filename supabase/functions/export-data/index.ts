@@ -18,8 +18,10 @@ Deno.serve(handler("export-data", z.strictObject({}), async ({ supabase, userId 
   });
 
   type Stored = { storage_path: string; page_paths: string[] | null; filled_path?: string | null };
+  type DraftFiles = { pdf_path: string | null; proof_paths: string[] | null };
   const paths = ([...(data.documents as Stored[] ?? []), ...(data.forms as Stored[] ?? [])])
-    .flatMap((d) => [...(d.page_paths?.length ? d.page_paths : [d.storage_path]), ...(d.filled_path ? [d.filled_path] : [])]);
+    .flatMap((d) => [...(d.page_paths?.length ? d.page_paths : [d.storage_path]), ...(d.filled_path ? [d.filled_path] : [])])
+    .concat((data.drafts as DraftFiles[] ?? []).flatMap((d) => [...(d.pdf_path ? [d.pdf_path] : []), ...(d.proof_paths ?? [])]));
   let files: { path: string; url: string | null }[] = [];
   if (paths.length) {
     const { data: signed } = await supabase.storage.from("documents").createSignedUrls(paths, LINK_SECONDS);

@@ -341,6 +341,10 @@ export const demoApi: Api = {
   async getDocument(key) {
     return { ...find(state.documents, key) };
   },
+  async getFileUrls(paths) {
+    // Demo files never leave the device, so their paths are already links.
+    return [...paths];
+  },
   async getPageUrls() {
     return [];
   },
@@ -576,6 +580,19 @@ Mit freundlichen Grüßen
   },
   async deleteDraft(key) {
     drop(state.drafts, key);
+  },
+  async saveDraftPdf(key, pdf) {
+    return { ...Object.assign(find(state.drafts, key), { pdf_path: pdf.uri, pdf_at: now() }) };
+  },
+  async addDraftProof(key, photos) {
+    const d = find(state.drafts, key);
+    d.proof_paths = [...(d.proof_paths ?? []), ...photos.map((p) => p.uri)];
+    return { ...d };
+  },
+  async removeDraftProof(key, path) {
+    const d = find(state.drafts, key);
+    d.proof_paths = (d.proof_paths ?? []).filter((p) => p !== path);
+    return { ...d };
   },
 
   async listMessages(caseId) {
