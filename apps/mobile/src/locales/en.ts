@@ -22,6 +22,7 @@ const en = {
     consent: "Please allow AI processing in Settings first.",
     busy: "The assistant is busy. Please try again in a minute.",
     offline: "No internet connection. Please try again when you are online.",
+    upstream: "The assistant is unavailable right now. Please try again.",
   },
   auth: {
     title: "Sign in",

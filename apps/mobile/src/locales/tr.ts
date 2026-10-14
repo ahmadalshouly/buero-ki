@@ -24,6 +24,7 @@ const tr: Locale = {
     consent: "Lütfen önce Ayarlar'dan yapay zekâ ile işlemeye izin verin.",
     busy: "Asistan şu anda meşgul. Lütfen bir dakika sonra tekrar deneyin.",
     offline: "İnternet bağlantısı yok. Lütfen çevrimiçi olduğunuzda tekrar deneyin.",
+    upstream: "Asistan şu anda kullanılamıyor. Lütfen tekrar dene.",
   },
   auth: {
     title: "Giriş yap",

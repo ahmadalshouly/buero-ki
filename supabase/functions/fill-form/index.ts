@@ -107,7 +107,11 @@ Today's date is ${today()}. Use it for date fields such as 'Datum' next to the s
     await recordUsage(ctx, "fill-form", usage);
 
     const known = new Set(pdfFields.map((f) => f.name));
-    const fields = result.fields.map((f) => ({ ...f, pdf_field: f.pdf_field && known.has(f.pdf_field) ? f.pdf_field : null }));
+    const fields = result.fields.map((f) => ({
+      ...f,
+      page: f.page === null ? null : Math.round(f.page),
+      pdf_field: f.pdf_field && known.has(f.pdf_field) ? f.pdf_field : null,
+    }));
     const usable = result.readable && result.is_form;
     const { data: saved, error } = await supabase.from("forms").update({
       status: usable ? "ready" : "failed",

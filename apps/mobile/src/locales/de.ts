@@ -24,6 +24,7 @@ const de: Locale = {
     consent: "Bitte erlaube zuerst die KI-Verarbeitung in den Einstellungen.",
     busy: "Der Assistent ist gerade beschäftigt. Bitte versuch es in einer Minute nochmal.",
     offline: "Keine Internetverbindung. Bitte versuch es nochmal, wenn du online bist.",
+    upstream: "Der Assistent ist gerade nicht erreichbar. Bitte versuche es noch einmal.",
   },
   auth: {
     title: "Anmelden",
