@@ -2,12 +2,13 @@
 import type { Usage } from "./anthropic.ts";
 import { type Ctx, HttpError, type Profile } from "./http.ts";
 
-export type AgentFunction = "analyze-document" | "draft-reply" | "case-chat";
+// learn-facts runs in the background after a chat answer; the app does not show its count.
+export type AgentFunction = "analyze-document" | "draft-reply" | "case-chat" | "learn-facts";
 
 export const DAILY_LIMITS: Record<Profile["plan"], Record<AgentFunction, number>> = {
-  free: { "analyze-document": 10, "draft-reply": 10, "case-chat": 40 },
-  plus: { "analyze-document": 60, "draft-reply": 60, "case-chat": 300 },
-  org: { "analyze-document": 300, "draft-reply": 300, "case-chat": 1500 },
+  free: { "analyze-document": 10, "draft-reply": 10, "case-chat": 40, "learn-facts": 40 },
+  plus: { "analyze-document": 60, "draft-reply": 60, "case-chat": 300, "learn-facts": 300 },
+  org: { "analyze-document": 300, "draft-reply": 300, "case-chat": 1500, "learn-facts": 1500 },
 };
 
 export function limitFor(plan: Profile["plan"], fn: AgentFunction): number {

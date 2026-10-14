@@ -21,10 +21,12 @@ export interface CaseContext {
   }[];
   openTasks: { title: string; due_date: string | null }[];
   sentDrafts: { subject: string; sent_at: string | null }[];
+  /** Facts the person agreed BüroKI may remember, across all their cases. */
+  personFacts?: { category: string; fact: string }[];
 }
 
 export async function loadCaseContext(supabase: SupabaseClient, caseId: string): Promise<CaseContext> {
-  const [caseRes, docsRes, tasksRes, draftsRes] = await Promise.all([
+  const [caseRes, docsRes, tasksRes, draftsRes, factsRes] = await Promise.all([
     supabase.from("cases").select("id, title, category, authority, reference_number, summary, facts").eq("id", caseId).single(),
     supabase.from("documents").select("id, title_de, sender, document_date, summary, created_at")
       .eq("case_id", caseId).eq("status", "ready").order("created_at", { ascending: true }).limit(40),
@@ -32,6 +34,8 @@ export async function loadCaseContext(supabase: SupabaseClient, caseId: string):
       .order("due_date", { ascending: true, nullsFirst: false }).limit(30),
     supabase.from("drafts").select("subject, sent_at").eq("case_id", caseId).eq("status", "sent")
       .order("sent_at", { ascending: true }).limit(20),
+    supabase.from("user_facts").select("category, fact").eq("status", "kept")
+      .order("created_at", { ascending: true }).limit(60),
   ]);
   if (caseRes.error || !caseRes.data) throw new HttpError(404, "Case not found", "not_found");
   return {
@@ -39,6 +43,7 @@ export async function loadCaseContext(supabase: SupabaseClient, caseId: string):
     documents: docsRes.data ?? [],
     openTasks: tasksRes.data ?? [],
     sentDrafts: draftsRes.data ?? [],
+    personFacts: factsRes.data ?? [],
   };
 }
 
@@ -53,6 +58,9 @@ export function renderCase(ctx: CaseContext, fullName: string | null): string {
     `Authority: ${c.authority ?? "unknown"}`,
     `Reference number: ${c.reference_number ?? "unknown"}`,
     `Person's name: ${fullName ?? "unknown"}`,
+    "",
+    "About the person (they agreed BüroKI may remember this):",
+    ...list(ctx.personFacts ?? [], (f) => `- [${f.category}] ${f.fact}`),
     "",
     `Current summary: ${c.summary ?? "(none yet)"}`,
     `Known facts: ${JSON.stringify(c.facts ?? {})}`,

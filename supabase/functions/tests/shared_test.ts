@@ -3,10 +3,10 @@ import { outputSchema } from "../_shared/anthropic.ts";
 import { renderCase } from "../_shared/case.ts";
 import { HttpError, toErrorResponse } from "../_shared/http.ts";
 import { DAILY_LIMITS, limitFor } from "../_shared/limits.ts";
-import { Analysis, Draft, pageBlock } from "../_shared/schemas.ts";
+import { Analysis, Draft, FactSuggestions, pageBlock } from "../_shared/schemas.ts";
 
 Deno.test("output schemas are strict JSON Schema with every field required", () => {
-  for (const schema of [Analysis, Draft]) {
+  for (const schema of [Analysis, Draft, FactSuggestions]) {
     const js = outputSchema(schema) as { type: string; required: string[]; properties: object; additionalProperties: boolean };
     assertEquals(js.type, "object");
     assertEquals(js.additionalProperties, false);
@@ -45,6 +45,17 @@ Deno.test("renderCase fences the case and marks missing data", () => {
   assertMatch(text, /<\/case>$/);
   assertMatch(text, /Authority: unknown/);
   assertMatch(text, /Send payslips \(due 2026-10-20\)/);
+});
+
+Deno.test("renderCase lists the facts the person agreed to keep", () => {
+  const caseRow = { id: "1", title: "Kindergeld", category: "familienkasse", authority: null, reference_number: null, summary: null, facts: {} };
+  const empty = renderCase({ caseRow, documents: [], openTasks: [], sentDrafts: [] }, null);
+  assertMatch(empty, /About the person \(they agreed BüroKI may remember this\):\n- none/);
+  const text = renderCase({
+    caseRow, documents: [], openTasks: [], sentDrafts: [],
+    personFacts: [{ category: "family", fact: "You have two children, Yusuf (6) and Lina (3)." }],
+  }, "Amina");
+  assertMatch(text, /- \[family\] You have two children/);
 });
 
 Deno.test("limits grow with the plan and fall back to free", () => {

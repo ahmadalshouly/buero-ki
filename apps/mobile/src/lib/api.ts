@@ -5,12 +5,12 @@ import { DAILY_LIMITS } from "./limits";
 import { isDemo, supabase } from "./supabase";
 import type {
   AgentFunction, Case, CaseDocument, CaseStatus, ChatMessage, Draft, NewCase, PickedFile, Profile, SearchResult, Task,
-  TimelineItem, UsageToday,
+  TimelineItem, UsageToday, UserFact,
 } from "./types";
 
 export { ApiError, MAX_PAGES, TERMS_VERSION, type ApiErrorCode } from "./errors";
 
-export type ProfilePatch = Partial<Pick<Profile, "full_name" | "language" | "city" | "onboarded_at" | "ai_consent_at">> & {
+export type ProfilePatch = Partial<Pick<Profile, "full_name" | "language" | "city" | "onboarded_at" | "ai_consent_at" | "memory_enabled">> & {
   terms_version?: string;
 };
 
@@ -58,6 +58,15 @@ export interface Api {
   sendMessage(caseId: string, text: string): Promise<ChatMessage>;
 
   search(q: string): Promise<SearchResult[]>;
+
+  /** Kept facts and suggestions still waiting for the person's answer. */
+  listFacts(): Promise<UserFact[]>;
+  /** Asks the agent whether the latest chat turn holds something worth remembering. */
+  learnFacts(caseId: string): Promise<UserFact[]>;
+  keepFact(id: string): Promise<void>;
+  /** Deletes a fact for good: ignoring a suggestion and forgetting a kept fact are the same. */
+  forgetFact(id: string): Promise<void>;
+  forgetAllFacts(): Promise<void>;
 }
 
 function must<T>(result: { data: T | null; error: { message: string; code?: string } | null }): T {
@@ -98,7 +107,7 @@ function supabaseApi(db: SupabaseClient): Api {
   const api: Api = {
     async getProfile() {
       const id = await userId();
-      return must(await db.from("profiles").select("id, full_name, language, city, onboarded_at, ai_consent_at, plan").eq("id", id).single());
+      return must(await db.from("profiles").select("id, full_name, language, city, onboarded_at, ai_consent_at, plan, memory_enabled").eq("id", id).single());
     },
     async updateProfile(patch) {
       ok(await db.from("profiles").update(patch).eq("id", await userId()));
@@ -245,6 +254,23 @@ function supabaseApi(db: SupabaseClient): Api {
       const term = q.trim();
       if (term.length < 2) return [];
       return must(await db.rpc("search_everything", { q: term }));
+    },
+
+    async listFacts() {
+      return must(await db.from("user_facts").select("*").order("created_at", { ascending: true }));
+    },
+    async learnFacts(caseId) {
+      const res = await invoke<{ facts: UserFact[] }>(db, "learn-facts", { case_id: caseId });
+      return res.facts;
+    },
+    async keepFact(id) {
+      ok(await db.from("user_facts").update({ status: "kept" }).eq("id", id));
+    },
+    async forgetFact(id) {
+      ok(await db.from("user_facts").delete().eq("id", id));
+    },
+    async forgetAllFacts() {
+      ok(await db.from("user_facts").delete().eq("user_id", await userId()));
     },
   };
   return api;
