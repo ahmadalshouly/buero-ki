@@ -9,6 +9,7 @@ What is in this version:
 - **Today and Deadlines**: what is overdue, due this week and later, across all cases. Tasks can also be added by hand.
 - **Reply drafting**: a formal German letter or email with a translation and "before you send" notes. Drafts can be edited, revised by the agent ("make it shorter"), opened in the email app and marked as sent.
 - **Letters as PDF**: a reply can be saved as an A4 PDF laid out after DIN 5008, so it can be printed, signed and posted in a window envelope. The app warns when fields in [brackets] are still empty.
+- **Form filling**: photograph a form or pick its PDF. The agent lists every field, explains it in the person's language and pre-fills what it knows from the profile, the case and other cases. Empty fields become plain questions, and the person can answer in their own words. PDFs with form fields come back filled in; photos and scans get a printable filling sheet.
 - **Chat with the case** in any language.
 - **Search** across cases and letters.
 - **Onboarding** with language, name and explicit consent to AI processing.
@@ -45,6 +46,7 @@ supabase/
     analyze-document/   Reads a letter, explains it, creates tasks, updates the case
     draft-reply/        Writes or revises a German letter or email with a translation
     case-chat/          Answers questions about one case
+    fill-form/          Reads a form, pre-fills its fields and writes them into the PDF
     export-data/        GDPR data export
     delete-account/     GDPR account deletion
     tests/              Deno tests
