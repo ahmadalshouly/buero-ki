@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState, type ComponentProps, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  ActivityIndicator, Animated, Modal, Pressable, RefreshControl, ScrollView, Switch, Text, TextInput, View,
+  ActivityIndicator, Animated, Modal, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Switch, Text, TextInput, View,
   type StyleProp, type TextInputProps, type TextStyle, type ViewStyle,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
@@ -10,46 +10,42 @@ import { tap } from "@/lib/haptics";
 import { daysUntil, formatDate } from "@/lib/i18n";
 import { makeStyles } from "@/lib/styles";
 import { isDemo } from "@/lib/supabase";
-import { font, type Palette, radius, space, useColors } from "@/lib/theme";
+import { curve, font, lift, type Palette, radius, space, useColors } from "@/lib/theme";
+import { Backdrop, GlassFill, glassSurface } from "./glass";
 
 export type IconName = ComponentProps<typeof Ionicons>["name"];
 type Tone = "neutral" | "accent" | "warn" | "danger";
 
 const useStyles = makeStyles((c) => ({
-  screen: { flex: 1, backgroundColor: c.bg },
-  scroll: { paddingBottom: space(12) },
+  root: { flex: 1, backgroundColor: c.bg },
+  screen: { flex: 1 },
+  scroll: { paddingBottom: Platform.OS === "web" ? space(24) : space(12) },
   column: { width: "100%", maxWidth: 680, alignSelf: "center", padding: space(4), gap: space(5) },
-  card: {
-    backgroundColor: c.card,
-    borderRadius: radius.md,
-    padding: space(4),
-    gap: space(2),
-    borderWidth: 1,
-    borderColor: c.line,
-  },
-  pressed: { opacity: 0.72 },
+  card: { ...glassSurface(c), padding: space(4), gap: space(2) },
+  pressed: { opacity: 0.8, transform: [{ scale: 0.98 }] },
   button: {
     minHeight: 50,
-    borderRadius: radius.md,
+    borderRadius: 999,
     paddingHorizontal: space(5),
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: space(2),
   },
-  buttonSmall: { minHeight: 38, paddingHorizontal: space(3.5), borderRadius: radius.sm },
-  buttonText: { fontSize: 16, fontWeight: "600" },
+  buttonSmall: { minHeight: 36, paddingHorizontal: space(3.5) },
+  buttonText: { fontSize: 17, fontWeight: "600", letterSpacing: -0.41 },
   input: {
-    backgroundColor: c.card,
-    borderWidth: 1,
+    backgroundColor: c.glassFill,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: c.line,
     borderRadius: radius.sm,
+    ...curve,
     paddingHorizontal: space(3.5),
     paddingVertical: space(3),
-    fontSize: 16,
+    fontSize: 17,
     color: c.ink,
   },
-  inputError: { borderColor: c.danger },
+  inputError: { borderColor: c.danger, borderWidth: 1 },
   multiline: { minHeight: 120, textAlignVertical: "top" },
   row: { flexDirection: "row", alignItems: "center", gap: space(3) },
   badge: {
@@ -57,7 +53,7 @@ const useStyles = makeStyles((c) => ({
     alignItems: "center",
     alignSelf: "flex-start",
     gap: 4,
-    paddingHorizontal: space(2),
+    paddingHorizontal: space(2.5),
     paddingVertical: 3,
     borderRadius: 999,
   },
@@ -68,36 +64,43 @@ const useStyles = makeStyles((c) => ({
     gap: space(2),
     backgroundColor: c.warnSoft,
     borderRadius: radius.sm,
+    ...curve,
     padding: space(3),
   },
   chip: {
     paddingHorizontal: space(3.5),
     paddingVertical: space(2),
     borderRadius: 999,
-    borderWidth: 1,
-    borderColor: c.line,
-    backgroundColor: c.card,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: c.glassEdge,
+    backgroundColor: c.glassFill,
   },
-  chipText: { fontSize: 15, color: c.ink },
+  chipText: { fontSize: 15, color: c.ink, letterSpacing: -0.24 },
   iconCircle: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
-  segmented: { flexDirection: "row", backgroundColor: c.skeleton, borderRadius: radius.sm, padding: 3, gap: 3 },
-  segment: { flex: 1, paddingVertical: space(2), borderRadius: radius.sm - 3, alignItems: "center" },
-  segmentOn: { backgroundColor: c.card },
-  listRow: { flexDirection: "row", alignItems: "center", gap: space(3), paddingVertical: space(3.5), paddingHorizontal: space(4) },
-  group: { backgroundColor: c.card, borderRadius: radius.md, borderWidth: 1, borderColor: c.line, overflow: "hidden" },
-  divider: { height: 1, backgroundColor: c.line, marginStart: space(4) },
+  segmented: { flexDirection: "row", backgroundColor: c.raised, borderRadius: 999, padding: 3, gap: 3 },
+  segment: { flex: 1, paddingVertical: space(2), borderRadius: 999, alignItems: "center" },
+  segmentOn: { backgroundColor: c.segment, ...lift(c), shadowRadius: 6, shadowOffset: { width: 0, height: 2 } },
+  listRow: { flexDirection: "row", alignItems: "center", gap: space(3), paddingVertical: space(3), paddingHorizontal: space(4), minHeight: 52 },
+  rowIcon: { width: 30, height: 30, borderRadius: 8, ...curve, alignItems: "center", justifyContent: "center" },
+  group: glassSurface(c),
+  groupClip: { borderRadius: radius.md, ...curve, overflow: "hidden" },
+  divider: { height: StyleSheet.hairlineWidth, backgroundColor: c.line, marginStart: space(4) },
   sheetBackdrop: { flex: 1, backgroundColor: c.overlay, justifyContent: "flex-end" },
   sheet: {
-    backgroundColor: c.bg,
     borderTopLeftRadius: radius.lg,
     borderTopRightRadius: radius.lg,
+    ...curve,
+    backgroundColor: Platform.OS === "android" ? c.solid : c.card,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: 0,
+    borderColor: c.glassEdge,
     padding: space(4),
     gap: space(3),
     width: "100%",
     maxWidth: 680,
     alignSelf: "center",
   },
-  grabber: { width: 40, height: 5, borderRadius: 3, backgroundColor: c.line, alignSelf: "center" },
+  grabber: { width: 36, height: 5, borderRadius: 3, backgroundColor: c.faint, opacity: 0.5, alignSelf: "center" },
 }));
 
 export function Screen({
@@ -113,12 +116,17 @@ export function Screen({
 }) {
   const s = useStyles();
   const insets = useSafeAreaInsets();
-  const top = padTop ? { paddingTop: insets.top + space(2) } : null;
+  // On iOS the scroll view insets itself for the status bar, translucent
+  // header and tab bar, so content scrolls under the glass.
+  const top = padTop ? { paddingTop: (scroll && Platform.OS === "ios" ? 0 : insets.top) + space(2) } : null;
   return (
+    <View style={s.root}>
+    <Backdrop />
     <SafeAreaView style={s.screen} edges={["left", "right"]}>
       {scroll ? (
         <ScrollView
           contentContainerStyle={s.scroll}
+          contentInsetAdjustmentBehavior="automatic"
           keyboardShouldPersistTaps="handled"
           refreshControl={onRefresh
             ? <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor={s.c.accent} colors={[s.c.accent]} />
@@ -131,6 +139,23 @@ export function Screen({
       )}
       {footer}
     </SafeAreaView>
+    </View>
+  );
+}
+
+/** A glass bar pinned under a screen's content, for its main action. */
+export function Footer({ children }: { children: ReactNode }) {
+  const c = useColors();
+  const insets = useSafeAreaInsets();
+  return (
+    <View style={{
+      paddingHorizontal: space(4), paddingTop: space(3), paddingBottom: Math.max(insets.bottom, space(3)),
+      backgroundColor: Platform.OS === "android" ? c.glassFill : undefined,
+      borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.line,
+    }}>
+      <GlassFill round={0} material="chrome" />
+      <View style={{ width: "100%", maxWidth: 680, alignSelf: "center" }}>{children}</View>
+    </View>
   );
 }
 
@@ -162,19 +187,23 @@ export function Card({
   children, style, onPress, accessibilityLabel,
 }: { children: ReactNode; style?: StyleProp<ViewStyle>; onPress?: () => void; accessibilityLabel?: string }) {
   const s = useStyles();
+  // A card given its own colour (e.g. the accent "next step" card) is solid, not glass.
+  const solid = !!StyleSheet.flatten(style)?.backgroundColor;
+  const fill = solid ? null : <GlassFill />;
   if (onPress) {
     return (
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={accessibilityLabel}
         onPress={onPress}
-        style={({ pressed }) => [s.card, pressed && s.pressed, style]}
+        style={({ pressed }) => [s.card, style, pressed && s.pressed]}
       >
+        {fill}
         {children}
       </Pressable>
     );
   }
-  return <View style={[s.card, style]}>{children}</View>;
+  return <View style={[s.card, style]}>{fill}{children}</View>;
 }
 
 type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
@@ -226,7 +255,31 @@ export function IconButton({
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} hitSlop={12}
       style={({ pressed }) => [{ padding: 4 }, pressed && { opacity: 0.6 }]}>
-      <Ionicons name={icon} size={24} color={color ?? c.ink} />
+      <Ionicons name={icon} size={24} color={color ?? c.accent} />
+    </Pressable>
+  );
+}
+
+/** A round glass button, for actions floating over content (e.g. search on Today). */
+export function GlassIconButton({ icon, onPress, label }: { icon: IconName; onPress: () => void; label: string }) {
+  const c = useColors();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={() => {
+        tap();
+        onPress();
+      }}
+      hitSlop={8}
+      style={({ pressed }) => [
+        glassSurface(c, 22),
+        { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
+        pressed && { opacity: 0.75, transform: [{ scale: 0.94 }] },
+      ]}
+    >
+      <GlassFill round={22} />
+      <Ionicons name={icon} size={20} color={c.ink} />
     </Pressable>
   );
 }
@@ -237,14 +290,14 @@ export function Field({
   const s = useStyles();
   return (
     <View style={{ gap: space(1.5) }}>
-      <Txt variant="h3">{label}</Txt>
+      <Txt variant="small" tone="muted" style={{ fontWeight: "600", marginStart: space(1) }}>{label}</Txt>
       <TextInput
         placeholderTextColor={s.c.faint}
         accessibilityLabel={label}
         {...props}
         style={[s.input, props.multiline && s.multiline, error && s.inputError, props.style]}
       />
-      {error ? <Txt variant="small" tone="danger">{error}</Txt> : hint ? <Muted>{hint}</Muted> : null}
+      {error ? <Txt variant="small" tone="danger" style={{ marginStart: space(1) }}>{error}</Txt> : hint ? <View style={{ marginStart: space(1) }}><Muted>{hint}</Muted></View> : null}
     </View>
   );
 }
@@ -432,12 +485,15 @@ export function Group({ children }: { children: ReactNode }) {
   const items = (Array.isArray(children) ? children : [children]).flat().filter(Boolean);
   return (
     <View style={s.group}>
-      {items.map((child, i) => (
-        <View key={i}>
-          {i > 0 && <View style={s.divider} />}
-          {child}
-        </View>
-      ))}
+      <GlassFill />
+      <View style={s.groupClip}>
+        {items.map((child, i) => (
+          <View key={i}>
+            {i > 0 && <View style={s.divider} />}
+            {child}
+          </View>
+        ))}
+      </View>
     </View>
   );
 }
@@ -457,13 +513,17 @@ export function ListRow({
   const s = useStyles();
   const body = (
     <>
-      {icon && <Ionicons name={icon} size={22} color={destructive ? s.c.danger : toneColors(s.c, tone).fg} />}
+      {icon && (
+        <View style={[s.rowIcon, { backgroundColor: destructive ? s.c.danger : tone === "neutral" ? s.c.faint : toneColors(s.c, tone).fg }]}>
+          <Ionicons name={icon} size={18} color="#FFFFFF" />
+        </View>
+      )}
       <View style={{ flex: 1, gap: 2 }}>
         <Txt tone={destructive ? "danger" : "ink"}>{title}</Txt>
         {subtitle ? <Muted>{subtitle}</Muted> : null}
       </View>
       {right}
-      {chevron && <Ionicons name="chevron-forward" size={18} color={s.c.faint} />}
+      {chevron && <Ionicons name="chevron-forward" size={17} color={s.c.faint} style={{ opacity: 0.7 }} />}
     </>
   );
   if (!onPress) return <View style={s.listRow}>{body}</View>;
@@ -493,8 +553,7 @@ export function SwitchRow({
             tap();
             onChange(v);
           }}
-          trackColor={{ true: c.accent, false: c.line }}
-          thumbColor="#FFFFFF"
+          {...Platform.OS === "ios" ? null : { trackColor: { true: c.accent, false: c.line }, thumbColor: "#FFFFFF" }}
         />
       )}
     />
@@ -511,6 +570,7 @@ export function Sheet({
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
       <Pressable style={s.sheetBackdrop} onPress={onClose} accessibilityLabel="Close">
         <Pressable style={[s.sheet, { paddingBottom: insets.bottom + space(4) }]} onPress={() => {}}>
+          <GlassFill round={radius.lg} material="thick" />
           <View style={s.grabber} />
           {title && <Txt variant="h2">{title}</Txt>}
           {children}
@@ -525,7 +585,14 @@ export function StatTile({ label, value, tone = "neutral" }: { label: string; va
   const p = toneColors(s.c, tone);
   return (
     <View style={[s.card, { flex: 1, minWidth: 96, gap: 2 }]}>
-      <Text style={[font.h2, { color: tone === "neutral" ? s.c.ink : p.fg, fontVariant: ["tabular-nums"] }]}>{value}</Text>
+      <GlassFill />
+      <Text
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        style={[font.title, { fontSize: 28, lineHeight: 34, color: tone === "neutral" ? s.c.ink : p.fg, fontVariant: ["tabular-nums"] }]}
+      >
+        {value}
+      </Text>
       <Muted numberOfLines={2}>{label}</Muted>
     </View>
   );

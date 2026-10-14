@@ -123,7 +123,7 @@ export default function DraftScreen() {
               accessibilityLabel={t("draft.german")}
               style={{
                 minHeight: 320, textAlignVertical: "top", writingDirection: "ltr", textAlign: "left", fontSize: 16, lineHeight: 23,
-                color: c.ink, backgroundColor: c.card, borderColor: c.accent, borderWidth: 1, borderRadius: radius.md, padding: space(4),
+                color: c.ink, backgroundColor: c.glassFill, borderColor: c.accent, borderWidth: 1, borderRadius: radius.md, borderCurve: "continuous", padding: space(4),
               }}
             />
             <View style={{ flexDirection: "row", gap: space(2) }}>

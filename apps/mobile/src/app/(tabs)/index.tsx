@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import {
-  Button, Card, DemoBanner, EmptyState, ErrorBox, IconButton, IconCircle, Muted, Screen, Section, Sheet,
+  Button, Card, DemoBanner, EmptyState, ErrorBox, GlassIconButton, IconCircle, Muted, Screen, Section, Sheet,
   SkeletonList, StatTile, Txt,
 } from "@/components/ui";
 import { TaskRow } from "@/components/TaskRow";
@@ -57,7 +57,7 @@ export default function Today() {
           <Txt variant="label" tone="accent">BüroKI</Txt>
           <Txt variant="title">{hello}</Txt>
         </View>
-        <IconButton icon="search" label={t("home.search")} onPress={() => router.push("/search")} />
+        <GlassIconButton icon="search" label={t("home.search")} onPress={() => router.push("/search")} />
       </View>
 
       <DemoBanner />

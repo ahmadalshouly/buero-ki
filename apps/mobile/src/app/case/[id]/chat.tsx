@@ -2,8 +2,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams } from "expo-router";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { FlatList, KeyboardAvoidingView, Platform, Pressable, TextInput, View } from "react-native";
+import { FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Backdrop } from "@/components/glass";
 import { Markdown } from "@/components/Markdown";
 import { Chip, ErrorBox, Muted, Skeleton, Txt } from "@/components/ui";
 import { friendlyError } from "@/lib/errorText";
@@ -14,23 +15,26 @@ import type { ChatMessage } from "@/lib/types";
 
 const useStyles = makeStyles((c) => ({
   list: { padding: space(4), gap: space(3), width: "100%", maxWidth: 680, alignSelf: "center", flexGrow: 1 },
-  bubble: { padding: space(3.5), borderRadius: radius.md, maxWidth: "88%" },
-  mine: { alignSelf: "flex-end", backgroundColor: c.accent, borderBottomRightRadius: 4 },
-  theirs: { alignSelf: "flex-start", backgroundColor: c.card, borderWidth: 1, borderColor: c.line, borderBottomLeftRadius: 4 },
+  bubble: { paddingVertical: space(2.5), paddingHorizontal: space(3.5), borderRadius: radius.md, borderCurve: "continuous", maxWidth: "88%" },
+  mine: { alignSelf: "flex-end", backgroundColor: c.accent, borderBottomRightRadius: 6 },
+  theirs: {
+    alignSelf: "flex-start", backgroundColor: c.glassFill, borderWidth: StyleSheet.hairlineWidth, borderColor: c.glassEdge, borderBottomLeftRadius: 6,
+  },
   composer: {
     flexDirection: "row",
     alignItems: "flex-end",
     gap: space(2),
-    padding: space(3),
-    borderTopWidth: 1,
+    paddingHorizontal: space(3),
+    paddingVertical: space(2),
+    borderTopWidth: StyleSheet.hairlineWidth,
     borderColor: c.line,
-    backgroundColor: c.card,
+    backgroundColor: c.glassFill,
   },
   input: {
-    flex: 1, maxHeight: 140, fontSize: 16, color: c.ink, paddingVertical: space(2.5), paddingHorizontal: space(3),
-    backgroundColor: c.bg, borderRadius: radius.md, outlineWidth: 0,
+    flex: 1, maxHeight: 140, fontSize: 17, color: c.ink, paddingTop: space(2.5), paddingBottom: space(2.5), paddingHorizontal: space(4),
+    backgroundColor: c.raised, borderRadius: 22, outlineWidth: 0,
   },
-  send: { width: 44, height: 44, borderRadius: 22, backgroundColor: c.accent, alignItems: "center", justifyContent: "center" },
+  send: { width: 40, height: 40, margin: 2, borderRadius: 20, backgroundColor: c.accent, alignItems: "center", justifyContent: "center" },
 }));
 
 export default function Chat() {
@@ -63,12 +67,14 @@ export default function Chat() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: s.c.bg }} edges={["bottom", "left", "right"]}>
+      <Backdrop />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined} keyboardVerticalOffset={100}>
         <FlatList
           ref={list}
           data={shown}
           keyExtractor={(m) => m.id}
           contentContainerStyle={s.list}
+          contentInsetAdjustmentBehavior="automatic"
           onContentSizeChange={() => list.current?.scrollToEnd({ animated: true })}
           ListHeaderComponent={<Txt variant="small" tone="faint" style={{ textAlign: "center" }}>{t("chat.disclaimer")}</Txt>}
           ListEmptyComponent={messages.isPending ? (

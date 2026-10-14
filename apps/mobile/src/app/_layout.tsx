@@ -46,6 +46,7 @@ function RootStack() {
   const { profile, loading, error, refetch } = useMe();
   const { t } = useTranslation();
   const c = useColors();
+  const scheme = useScheme();
   if (!ready || (signedIn && loading)) {
     return <View style={{ flex: 1, backgroundColor: c.bg, justifyContent: "center" }}><Loading /></View>;
   }
@@ -64,7 +65,10 @@ function RootStack() {
       {signedIn && onboarded && <ReminderSync />}
       <Stack
         screenOptions={{
-          headerStyle: { backgroundColor: c.bg },
+          // iOS: a translucent header that content scrolls under, like system apps.
+          ...(Platform.OS === "ios"
+            ? { headerTransparent: true, headerBlurEffect: scheme === "dark" ? "systemChromeMaterialDark" : "systemChromeMaterialLight" }
+            : { headerStyle: { backgroundColor: c.bg } }),
           headerTintColor: c.accent,
           headerTitleStyle: { color: c.ink, fontWeight: "600" },
           headerShadowVisible: false,
