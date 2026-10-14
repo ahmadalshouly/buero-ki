@@ -14,8 +14,10 @@ Deno.test("overpass query searches every filter of a kind around a rounded posit
   for (const kind of HELP_KINDS) assertMatch(overpassQuery(kind, 52.5, 13.4, 5), /^\[out:json\]\[timeout:15\];\(nwr\[/);
 });
 
-Deno.test("name searches are case-insensitive", () => {
-  assertMatch(overpassQuery("tenant", 52.5, 13.4, 5), /\["name"~"mieterverein[^"]*",i\]/);
+Deno.test("name searches use stems, so Mieterverein and mieterverein both match", () => {
+  const q = overpassQuery("tenant", 52.5, 13.4, 5);
+  assertMatch(q, /\["name"~"ieterverein[^"]*"\]/);
+  assert(new RegExp(q.match(/~"([^"]+)"/)![1]).test("Berliner Mieterverein e.V."));
 });
 
 Deno.test("places: contact details, languages, dedupe, distance order", () => {

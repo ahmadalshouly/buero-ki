@@ -4,7 +4,7 @@ import { overpassFailed, overpassQuery, parsePlaces } from "../supabase/function
 const UA = "BueroKI/1.0 (https://github.com/ahmadalshouly/buero-ki)";
 const SERVERS = ["https://overpass-api.de/api/interpreter", "https://maps.mail.ru/osm/tools/overpass/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
 const center = { lat: 52.481, lon: 13.435 };
-for (const kind of ["doctor", "debt", "migration", "dentist", "consumer", "tax"] as const) {
+for (const kind of ["debt", "tax", "social", "migration", "tenant", "patient", "lawyer"] as const) {
   const q = overpassQuery(kind, center.lat, center.lon, 5);
   const t0 = Date.now();
   try {

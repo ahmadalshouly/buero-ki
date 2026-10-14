@@ -19,7 +19,10 @@ export const HELP_KINDS = [
 export type HelpKind = (typeof HELP_KINDS)[number];
 
 // Overpass filters per kind. Each entry is one `nwr…` statement without the area filter.
-const name = (words: string) => `["name"~"${words}",i]`;
+// Name searches use word stems without the first letter instead of a case-insensitive match:
+// "chuldner" finds Schuldnerberatung and Schuldner- und Insolvenzberatung, and the busy public
+// servers answer it several times faster.
+const name = (stems: string) => `["name"~"${stems}"]`;
 const FILTERS: Record<HelpKind, string[]> = {
   doctor: [`["amenity"="doctors"]`, `["healthcare"="doctor"]`, `["amenity"="clinic"]`],
   dentist: [`["amenity"="dentist"]`, `["healthcare"="dentist"]`],
@@ -30,18 +33,18 @@ const FILTERS: Record<HelpKind, string[]> = {
   lawyer: [`["office"="lawyer"]`],
   migration: [
     `["social_facility:for"~"migrant|refugee"]["social_facility"!~"group_home|shelter|housing|assisted_living|nursing_home"]`,
-    name("migrationsberatung|migrationsdienst|jugendmigrationsdienst|flüchtlingsberatung|fluechtlingsberatung|integrationszentrum|integrationsagentur"),
+    name("igrationsberatung|igrationsdienst|lüchtlingsberatung|ntegrationszentrum|ntegrationsagentur"),
   ],
   social: [
     `["healthcare"="counselling"]`,
     `["social_facility"="outreach"]`,
-    name("sozialberatung|beratungsstelle|beratungszentrum"),
+    name("ozialberatung|eratungsstelle|eratungszentrum"),
   ],
-  debt: [name("schuldnerberatung|schuldnerhilfe|insolvenzberatung")],
-  tenant: [name("mieterverein|mieterbund|mieterschutz|mieterberatung|mietergemeinschaft")],
-  consumer: [name("verbraucherzentrale|verbraucherberatung")],
-  tax: [name("lohnsteuerhilfe|lohnsteuerberatung|lohnsteuer-hilfe")],
-  patient: [name("patientenberatung|patientenfürsprech|patientenstelle")],
+  debt: [name("chuldner|nsolvenzberatung")],
+  tenant: [name("ieterverein|ieterbund|ieterschutz|ieterberatung|ietergemeinschaft")],
+  consumer: [name("erbraucherzentrale|erbraucherberatung")],
+  tax: [name("ohnsteuerhilfe|ohnsteuerberatung")],
+  patient: [name("atientenberatung|atientenfürsprech|atientenstelle")],
 };
 
 export const PlacesInput = z.strictObject({
