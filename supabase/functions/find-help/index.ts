@@ -60,7 +60,7 @@ async function overpassAt(url: string, query: string): Promise<unknown> {
     method: "POST",
     headers: { "User-Agent": USER_AGENT, "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({ data: query }),
-    signal: AbortSignal.timeout(20_000),
+    signal: AbortSignal.timeout(25_000),
   });
   if (!res.ok) throw new Error(`${new URL(url).host} ${res.status}`);
   const data = await res.json();
@@ -71,7 +71,12 @@ async function overpassAt(url: string, query: string): Promise<unknown> {
 
 async function osm(kind: HelpKind, center: Center, radiusKm: number): Promise<Place[]> {
   const query = overpassQuery(kind, center.lat, center.lon, radiusKm);
-  const data = await Promise.any(OVERPASS.map((url) => overpassAt(url, query)));
+  const ask = () => Promise.any(OVERPASS.map((url) => overpassAt(url, query)));
+  // Busy servers often answer the next request; one more round is worth the wait.
+  const data = await ask().catch(async () => {
+    await new Promise((r) => setTimeout(r, 1500));
+    return ask();
+  });
   return parsePlaces(kind, center, data, radiusKm);
 }
 

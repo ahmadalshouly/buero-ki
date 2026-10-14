@@ -29,7 +29,7 @@ const FILTERS: Record<HelpKind, string[]> = {
   ],
   lawyer: [`["office"="lawyer"]`],
   migration: [
-    `["social_facility:for"~"migrant|refugee"]`,
+    `["social_facility:for"~"migrant|refugee"]["social_facility"!~"group_home|shelter|housing|assisted_living|nursing_home"]`,
     name("migrationsberatung|migrationsdienst|jugendmigrationsdienst|flüchtlingsberatung|fluechtlingsberatung|integrationszentrum|integrationsagentur"),
   ],
   social: [
@@ -138,6 +138,9 @@ function languages(tags: Record<string, string>): string[] {
 // Without a doctor, lawyer or counseling tag a name match is too loose (a shop called "Beratungsstelle Müller" is fine,
 // a kindergarten run by a welfare association is not), so name-only kinds drop obvious non-offices.
 const NOT_AN_OFFICE = /^(kindergarten|school|place_of_worship|restaurant|cafe|parking|bench|vending_machine|toilets)$/;
+// Housing for refugees or the homeless is often tagged like an advice office, but nobody gives advice there.
+const NOT_ADVICE = /unterkunft|wohnheim|notunterkunft|wohnprojekt|\bkita\b|kindergarten/i;
+const ADVICE_KINDS: HelpKind[] = ["migration", "social", "debt", "tenant", "consumer", "tax", "patient"];
 
 /** The box's corners lie outside the radius; those places are dropped. */
 export function parsePlaces(kind: HelpKind, center: { lat: number; lon: number }, data: unknown, radiusKm = Infinity, max = 50): Place[] {
@@ -151,6 +154,7 @@ export function parsePlaces(kind: HelpKind, center: { lat: number; lon: number }
     const label = tags.name?.trim();
     if (!label || lat === undefined || lon === undefined) continue;
     if (NOT_AN_OFFICE.test(tags.amenity ?? "")) continue;
+    if (ADVICE_KINDS.includes(kind) && NOT_ADVICE.test(label)) continue;
     // The same practice is often mapped twice (a point and its building).
     const dedupe = `${label.toLowerCase()}|${lat.toFixed(3)}|${lon.toFixed(3)}`;
     if (seen.has(dedupe)) continue;

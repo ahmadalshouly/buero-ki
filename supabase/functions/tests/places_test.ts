@@ -55,6 +55,15 @@ Deno.test("places outside the radius are dropped", () => {
   assertEquals(parsePlaces("doctor", center, data, 3).map((p) => p.name), ["Near"]);
 });
 
+Deno.test("advice kinds skip refugee housing and kindergartens", () => {
+  const data = { elements: [
+    { type: "node", id: 1, lat: 52.4812, lon: 13.4354, tags: { name: "Gemeinschaftsunterkunft Karl-Marx-Straße" } },
+    { type: "node", id: 2, lat: 52.4813, lon: 13.4355, tags: { name: "Migrationsberatung Caritas" } },
+  ] };
+  assertEquals(parsePlaces("migration", center, data).map((p) => p.name), ["Migrationsberatung Caritas"]);
+  assertEquals(parsePlaces("doctor", center, data).length, 2);
+});
+
 Deno.test("places survive an empty or odd answer", () => {
   assertEquals(parsePlaces("lawyer", center, null), []);
   assertEquals(parsePlaces("lawyer", center, { elements: [{ type: "node", id: 1 }] }), []);

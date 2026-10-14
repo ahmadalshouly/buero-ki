@@ -4,17 +4,21 @@ import { overpassFailed, overpassQuery, parsePlaces } from "../supabase/function
 const UA = "BueroKI/1.0 (https://github.com/ahmadalshouly/buero-ki)";
 const SERVERS = ["https://overpass-api.de/api/interpreter", "https://maps.mail.ru/osm/tools/overpass/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
 const center = { lat: 52.481, lon: 13.435 };
-for (const kind of ["doctor", "lawyer", "debt", "migration", "social", "tenant"] as const) {
+for (const kind of ["doctor", "debt", "migration", "dentist", "consumer", "tax"] as const) {
   const q = overpassQuery(kind, center.lat, center.lon, 5);
   const t0 = Date.now();
   try {
-    const { data, url } = await Promise.any(SERVERS.map(async (url) => {
-      const res = await fetch(url, { method: "POST", headers: { "User-Agent": UA, "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ data: q }), signal: AbortSignal.timeout(20_000) });
+    const ask = () => Promise.any(SERVERS.map(async (url) => {
+      const res = await fetch(url, { method: "POST", headers: { "User-Agent": UA, "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ data: q }), signal: AbortSignal.timeout(25_000) });
       if (!res.ok) throw new Error(`${url} ${res.status}`);
       const data = await res.json();
       if (overpassFailed(data)) throw new Error(`${url} ${overpassFailed(data)}`);
       return { data, url };
     }));
+    const { data, url } = await ask().catch(async () => {
+      await new Promise((r) => setTimeout(r, 1500));
+      return ask();
+    });
     const places = parsePlaces(kind, center, data, 5);
     console.log(kind, "OK", Date.now() - t0, "ms via", new URL(url).host, "places", places.length, places.slice(0, 3).map((p) => p.name).join(" | "));
   } catch (e) {
