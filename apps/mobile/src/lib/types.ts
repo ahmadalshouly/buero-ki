@@ -56,6 +56,9 @@ export interface Case {
 
 export interface Analysis {
   readable: boolean;
+  /** Whom the letter is addressed to, as printed. Missing on letters read before this was checked. */
+  addressed_to?: string | null;
+  belongs_to?: "person" | "someone_else" | "unsure";
   title_de: string;
   sender: string | null;
   document_date: string | null;
@@ -80,7 +83,9 @@ export interface CaseDocument {
   page_count: number;
   mime_type: string;
   file_name: string | null;
-  status: "uploaded" | "analyzing" | "ready" | "failed";
+  /** needs_owner: BüroKI asks whether the letter is the person's. not_owner: it is someone else's, so it was not read. */
+  status: "uploaded" | "analyzing" | "ready" | "failed" | "needs_owner" | "not_owner";
+  addressed_to?: string | null;
   sender: string | null;
   document_date: string | null;
   title_de: string | null;

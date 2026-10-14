@@ -251,6 +251,13 @@ const de: Locale = {
     delete: "Brief löschen",
     deleteConfirm: "Diesen Brief löschen?",
     deleteText: "Die Fotos und die Erklärung werden gelöscht. Aufgaben aus diesem Brief bleiben.",
+    addressedTo: "Adressiert an: {{name}}",
+    notYoursTitle: "Dieser Brief ist nicht an dich adressiert",
+    notYoursText: "BüroKI liest nur deine eigenen Briefe, damit die privaten Daten anderer Menschen privat bleiben. Die Person, an die der Brief geht, kann ein eigenes kostenloses BüroKI-Konto erstellen und ihn dort hinzufügen.",
+    whoseTitle: "Ist das dein Brief?",
+    whoseText: "BüroKI liest nur deine eigenen Briefe. Tipp: Trag deinen Namen in den Einstellungen ein, dann kann BüroKI das selbst prüfen.",
+    mine: "Ja, das ist meiner",
+    notMine: "Nein, er gehört jemand anderem",
   },
   draft: {
     pdf: "Als PDF speichern",
