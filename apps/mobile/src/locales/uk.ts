@@ -415,6 +415,12 @@ const uk: Locale = {
     todayTitle: "Термін сьогодні",
   },
   form: {
+    questionsTitle: "BüroKI потрібні ваші відповіді",
+    questionOf: "{{n}} з {{total}}",
+    answerPlaceholder: "Ваша відповідь будь-якою мовою",
+    skip: "Пропустити",
+    answer: "Відповісти",
+    askSkippedAgain: "Поставити пропущені питання ще раз",
     title: "Форма",
     addTitle: "Заповнити форму",
     intro: "Сфотографуйте кожну сторінку форми або виберіть PDF. Найкраще PDF із сайту установи: тоді BüroKI поверне вам той самий PDF уже заповненим.",

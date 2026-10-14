@@ -407,6 +407,12 @@ const tr: Locale = {
     todayTitle: "Son tarih bugün",
   },
   form: {
+    questionsTitle: "BüroKI'nin cevaplarına ihtiyacı var",
+    questionOf: "{{n}} / {{total}}",
+    answerPlaceholder: "Cevabın, istediğin dilde",
+    skip: "Atla",
+    answer: "Cevapla",
+    askSkippedAgain: "Atlanan soruları tekrar sor",
     title: "Form",
     addTitle: "Form doldur",
     intro: "Formun her sayfasının fotoğrafını çek veya PDF'i seç. En iyisi kurumun sitesinden indirilen PDF'tir: BüroKI sana aynı PDF'i doldurulmuş olarak geri verir.",

@@ -2,6 +2,7 @@ import { assert, assertEquals } from "jsr:@std/assert@1";
 import { PDFDocument, PDFHexString, PDFName } from "npm:pdf-lib@1.17.1";
 import { outputSchema } from "../_shared/anthropic.ts";
 import { fillPdf, readPdfFields } from "../_shared/pdfForm.ts";
+import * as schemas from "../_shared/schemas.ts";
 import { FormAnalysis, FormAnswers } from "../_shared/schemas.ts";
 
 async function sampleForm(): Promise<Uint8Array> {
@@ -27,6 +28,16 @@ Deno.test("form schemas are strict JSON Schema with every field required", () =>
     const js = outputSchema(schema) as { required: string[]; properties: object; additionalProperties: boolean };
     assertEquals(js.additionalProperties, false);
     assertEquals(js.required.sort(), Object.keys(js.properties).sort());
+  }
+});
+
+Deno.test("output schemas use no keywords structured outputs reject", () => {
+  // e.g. z.number().int() adds minimum/maximum, which makes the API answer 400.
+  const banned = /"(minimum|maximum|exclusiveMinimum|exclusiveMaximum|multipleOf|minLength|maxLength|minItems|maxItems|pattern|format)"/;
+  for (const [name, schema] of Object.entries(schemas)) {
+    if (!(schema && typeof schema === "object" && "safeParse" in schema)) continue;
+    const json = JSON.stringify(outputSchema(schema as never));
+    assert(!banned.test(json), `${name}: ${json.match(banned)?.[0]}`);
   }
 });
 

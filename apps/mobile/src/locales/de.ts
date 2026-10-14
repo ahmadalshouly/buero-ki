@@ -407,6 +407,12 @@ const de: Locale = {
     todayTitle: "Frist heute",
   },
   form: {
+    questionsTitle: "BüroKI braucht deine Antworten",
+    questionOf: "{{n}} von {{total}}",
+    answerPlaceholder: "Deine Antwort, in jeder Sprache",
+    skip: "Überspringen",
+    answer: "Antworten",
+    askSkippedAgain: "Übersprungene Fragen noch einmal stellen",
     title: "Formular",
     addTitle: "Formular ausfüllen",
     intro: "Fotografiere jede Seite des Formulars oder wähle das PDF. Am besten ist ein PDF von der Website der Behörde: Dann bekommst du dasselbe PDF ausgefüllt zurück.",

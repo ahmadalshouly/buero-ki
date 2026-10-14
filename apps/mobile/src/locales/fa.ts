@@ -407,6 +407,12 @@ const fa: Locale = {
     todayTitle: "مهلت امروز است",
   },
   form: {
+    questionsTitle: "BüroKI به پاسخ‌های شما نیاز دارد",
+    questionOf: "{{n}} از {{total}}",
+    answerPlaceholder: "پاسخ شما، به هر زبانی",
+    skip: "رد شدن",
+    answer: "پاسخ",
+    askSkippedAgain: "پرسش‌های ردشده را دوباره بپرس",
     title: "فرم",
     addTitle: "پر کردن فرم",
     intro: "از هر صفحهٔ فرم عکس بگیرید یا فایل PDF را انتخاب کنید. بهترین حالت PDF از سایت اداره است: در این صورت BüroKI همان PDF را پرشده به شما برمی‌گرداند.",
