@@ -9,14 +9,16 @@ import { useMe } from "@/lib/session";
 import { space, useColors } from "@/lib/theme";
 
 export default function NewDraft() {
-  const { id, documentId, revise } = useLocalSearchParams<{ id: string; documentId?: string; revise?: string }>();
+  const params = useLocalSearchParams<{ id: string; documentId?: string; revise?: string; kind?: "letter" | "email"; instructions?: string }>();
+  const { id, documentId, revise } = params;
   const { t } = useTranslation();
   const c = useColors();
   const previous = useDraft(revise ?? "");
   const documents = useDocuments(id);
-  const [kind, setKind] = useState<"letter" | "email">("letter");
+  const [kind, setKind] = useState<"letter" | "email">(params.kind === "email" ? "email" : "letter");
   const [docId, setDocId] = useState<string | null>(documentId ?? null);
-  const [instructions, setInstructions] = useState("");
+  // Other screens can start a letter with a request already written (e.g. asking an advice centre for an appointment).
+  const [instructions, setInstructions] = useState(params.instructions ?? "");
   const create = useCreateDraft(id);
   const learn = useLearnFacts(id, "draft");
   const { profile } = useMe();

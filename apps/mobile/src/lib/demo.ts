@@ -5,7 +5,8 @@ import { ApiError, validatePages } from "./errors";
 import { DAILY_LIMITS } from "./limits";
 import { authStorage } from "./storage";
 import type {
-  AgentFunction, Analysis, Case, CaseDocument, CaseForm, ChatMessage, Draft, FormField, Profile, Task, TimelineItem, UserFact,
+  AgentFunction, Analysis, Case, CaseDocument, CaseForm, ChatMessage, Draft, FormField, HelpKind, HelpPlace, Profile, Task, TimelineItem,
+  UserFact,
 } from "./types";
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -236,6 +237,21 @@ function spend(fn: AgentFunction) {
 const drop = <T extends { id: string }>(list: T[], key: string) => {
   const i = list.findIndex((x) => x.id === key);
   if (i >= 0) list.splice(i, 1);
+};
+
+// Made-up places around Berlin-Neukölln, so the help screens can be tried without a backend.
+const HELP_NAMES: Record<HelpKind, string[]> = {
+  doctor: ["Hausarztpraxis am Hermannplatz", "Praxis Dr. Yilmaz", "Kinderarztpraxis Sonnenallee"],
+  dentist: ["Zahnarztpraxis Karl-Marx-Straße", "Zahnärzte am Rathaus Neukölln"],
+  psychotherapy: ["Psychotherapeutische Praxis Weserstraße", "Zentrum Überleben (Beratung für Geflüchtete)"],
+  lawyer: ["Kanzlei für Migrationsrecht Özdemir", "Rechtsanwältin Weber, Sozialrecht", "Anwaltskanzlei Mietrecht Neukölln"],
+  migration: ["Migrationsberatung für Erwachsene (MBE) Caritas", "Jugendmigrationsdienst Neukölln"],
+  social: ["Allgemeine Sozialberatung Diakonie", "Beratungsstelle der AWO"],
+  debt: ["Schuldnerberatung Neukölln"],
+  tenant: ["Berliner Mieterverein, Beratungszentrum Neukölln"],
+  consumer: ["Verbraucherzentrale Berlin"],
+  tax: ["Lohnsteuerhilfe Neukölln e.V."],
+  patient: ["Unabhängige Patientenberatung, Beratungsstelle Berlin"],
 };
 
 export const demoApi: Api = {
@@ -587,6 +603,27 @@ Mit freundlichen Grüßen
         kind: "document" as const, id: d.id, case_id: d.case_id, title: d.title_de ?? d.file_name, detail: d.summary, at: d.created_at,
       })),
     ].sort((a, b) => b.at.localeCompare(a.at));
+  },
+
+  async findHelp(kind, where) {
+    await wait(500);
+    const center = "lat" in where ? { lat: where.lat, lon: where.lon, label: null } : { lat: 52.4811, lon: 13.4353, label: where.place };
+    const places: HelpPlace[] = HELP_NAMES[kind].map((name, i) => ({
+      id: `demo-${kind}-${i}`,
+      kind,
+      name,
+      lat: center.lat + 0.004 * (i + 1),
+      lon: center.lon + 0.003 * (i + 1),
+      distance_m: 450 * (i + 1) + 120,
+      address: `Sonnenallee ${10 + i * 7}, 12045 Berlin`,
+      phone: "+49 30 1234567",
+      email: i === 0 ? "beratung@example.org" : null,
+      website: "https://example.org",
+      opening_hours: "Mo-Fr 09:00-16:00",
+      languages: i === 1 ? ["ar", "de", "tr"] : [],
+      wheelchair: i === 0 ? true : null,
+    }));
+    return { center, places };
   },
 
   async listFacts() {

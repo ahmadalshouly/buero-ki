@@ -74,6 +74,14 @@
         {
           "faceIDPermission": "BüroKI uses Face ID to keep your letters private."
         }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "BüroKI uses your location once to find doctors, lawyers and advice centres near you.",
+          "isIosBackgroundLocationEnabled": false,
+          "isAndroidBackgroundLocationEnabled": false
+        }
       ]
     ],
     "scheme": "bueroki",

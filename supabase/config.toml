@@ -21,6 +21,9 @@ verify_jwt = true
 [functions.learn-facts]
 verify_jwt = true
 
+[functions.find-help]
+verify_jwt = true
+
 [functions.send-email]
 verify_jwt = true
 

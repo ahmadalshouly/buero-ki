@@ -13,7 +13,8 @@ import {
 import { friendlyError } from "@/lib/errorText";
 import { useIconFlip } from "@/lib/direction";
 import { formatDate } from "@/lib/i18n";
-import { errorMessage, useDeleteDocument, useDocument, usePageUrls, useRetryDocument } from "@/lib/queries";
+import { helpForCategory } from "@/lib/help";
+import { errorMessage, useCase, useDeleteDocument, useDocument, usePageUrls, useRetryDocument } from "@/lib/queries";
 import { isDemo } from "@/lib/supabase";
 import { radius, space, useColors } from "@/lib/theme";
 
@@ -31,6 +32,7 @@ export default function DocumentScreen() {
   const [menu, setMenu] = useState(false);
   const pages = usePageUrls(id, showPages && !isDemo);
   const retry = useRetryDocument(doc?.case_id ?? "");
+  const theCase = useCase(doc?.case_id ?? "");
   const remove = useDeleteDocument(doc?.case_id ?? "");
 
   if (!doc) {
@@ -112,6 +114,11 @@ export default function DocumentScreen() {
                 <Txt variant="h3" tone="warn">{t("document.advice")}</Txt>
               </View>
               <Txt>{a.advice_reason ?? t("document.adviceText")}</Txt>
+              <Button small variant="secondary" icon="help-buoy-outline" title={t("help.findAdvice")}
+                onPress={() => router.push({
+                  pathname: "/help/[kind]",
+                  params: { kind: helpForCategory(theCase.data?.category ?? "other")[0], caseId: doc.case_id },
+                })} />
             </Card>
           )}
 
