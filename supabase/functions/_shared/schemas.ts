@@ -32,6 +32,9 @@ export const Analysis = z.strictObject({
   urgency: z.enum(["low", "medium", "high"]),
   needs_advice: z.boolean().describe("True if the person should get advice from a Beratungsstelle or lawyer."),
   advice_reason: z.string().nullable().describe("Why advice is recommended, in the user's language."),
+  sender_email: z.string().nullable().describe(
+    "The sender's email address for replies, exactly as printed in the letter (letterhead, footer or contact box). Prefer the address of the responsible team over a general one. Null if none is printed; never guess one.",
+  ),
   reference_number: z.string().nullable().describe("Aktenzeichen, BG-Nummer, Kundennummer or similar, exactly as printed."),
   case_summary: z.string().describe("Updated summary of the whole case after this document, 2 to 4 sentences in the user's language."),
   new_facts: z.array(z.strictObject({ key: z.string(), value: z.string() }))

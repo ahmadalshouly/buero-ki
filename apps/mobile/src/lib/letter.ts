@@ -1,6 +1,7 @@
 // Turns a drafted German letter into a printable A4 page laid out after DIN 5008
 // (form B), so the recipient address sits in the window of a standard DL or C5/6
 // window envelope and the fold marks line up.
+import type { CaseDocument } from "./types";
 
 export interface LetterParts {
   sender: string[];
@@ -135,4 +136,24 @@ export function isEmailAddress(text: string): boolean {
 /** Pulls an email address out of free text, such as the office field of a case. */
 export function emailIn(text: string | null | undefined): string {
   return text?.match(/[^\s@<>]+@[^\s@<>]+\.[a-z]{2,}/i)?.[0] ?? "";
+}
+
+/**
+ * The office's email to offer when sending: from the letter being answered, else the newest
+ * letter that prints one, else an address typed into the case's office field. Always editable.
+ */
+export function officeEmail(
+  replyToDocumentId: string | null,
+  documents: Pick<CaseDocument, "id" | "created_at" | "title_de" | "analysis">[],
+  authority: string | null | undefined,
+): { email: string; letter: string | null } {
+  const found = (d: (typeof documents)[number]) => {
+    const email = d.analysis?.sender_email?.trim().toLowerCase() ?? "";
+    return isEmailAddress(email) ? email : "";
+  };
+  const answered = documents.find((d) => d.id === replyToDocumentId);
+  const newest = [...documents].sort((a, b) => b.created_at.localeCompare(a.created_at)).find(found);
+  const letter = answered && found(answered) ? answered : newest;
+  if (letter) return { email: found(letter), letter: letter.title_de };
+  return { email: emailIn(authority).toLowerCase(), letter: null };
 }

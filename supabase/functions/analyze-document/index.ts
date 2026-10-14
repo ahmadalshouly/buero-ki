@@ -4,6 +4,7 @@ import { encodeBase64 } from "jsr:@std/encoding@1/base64";
 import { z } from "npm:zod@4.6.7";
 import { generateJson, languageName } from "../_shared/anthropic.ts";
 import { loadCaseContext, renderCase, today } from "../_shared/case.ts";
+import { isEmailAddress } from "../_shared/email.ts";
 import { handler, HttpError } from "../_shared/http.ts";
 import { enforceLimit, recordUsage } from "../_shared/limits.ts";
 import { Analysis, MAX_PAGES, pageBlock } from "../_shared/schemas.ts";
@@ -55,6 +56,10 @@ Today's date is ${today()}. Use it to calculate deadlines that are given as a pe
       effort: "high",
     });
     await recordUsage(ctx, "analyze-document", usage);
+
+    // The app offers this address when the person sends an email; they can still change it.
+    const email = analysis.sender_email?.trim().toLowerCase() ?? "";
+    analysis.sender_email = isEmailAddress(email) ? email : null;
 
     const facts: Record<string, unknown> = { ...(caseCtx.caseRow.facts ?? {}) };
     for (const f of analysis.new_facts) facts[f.key] = f.value;

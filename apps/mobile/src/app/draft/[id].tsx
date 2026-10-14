@@ -9,10 +9,10 @@ import { LTR_INPUT, useLtrText } from "@/lib/direction";
 import { ApiError } from "@/lib/errors";
 import { friendlyError } from "@/lib/errorText";
 import { formatDate } from "@/lib/i18n";
-import { emailIn, isEmailAddress, placeholders } from "@/lib/letter";
+import { isEmailAddress, officeEmail, placeholders } from "@/lib/letter";
 import { exportLetterPdf } from "@/lib/printLetter";
 import {
-  errorMessage, useCase, useDeleteDraft, useDraft, useSendEmail, useSetDraftStatus, useUpdateDraft,
+  errorMessage, useCase, useDeleteDraft, useDocuments, useDraft, useSendEmail, useSetDraftStatus, useUpdateDraft,
 } from "@/lib/queries";
 import { useMe, useSession } from "@/lib/session";
 import { radius, space, useColors } from "@/lib/theme";
@@ -26,6 +26,7 @@ export default function DraftScreen() {
   const query = useDraft(id);
   const draft = query.data;
   const theCase = useCase(draft?.case_id ?? "");
+  const letters = useDocuments(draft?.case_id ?? "");
   const update = useUpdateDraft(draft);
   const setStatus = useSetDraftStatus(draft);
   const remove = useDeleteDraft();
@@ -35,6 +36,7 @@ export default function DraftScreen() {
   const [sending, setSending] = useState(false);
   const [to, setTo] = useState("");
   const [replyTo, setReplyTo] = useState("");
+  const [found, setFound] = useState<{ email: string; letter: string | null } | null>(null);
   const [editing, setEditing] = useState(false);
   const [body, setBody] = useState("");
   const [menu, setMenu] = useState(false);
@@ -60,7 +62,7 @@ export default function DraftScreen() {
   }
 
   function openEmail() {
-    const to = emailIn(theCase.data?.authority);
+    const to = officeEmail(draft!.document_id, letters.data ?? [], theCase.data?.authority).email;
     const url = `mailto:${to}?subject=${encodeURIComponent(draft!.subject)}&body=${encodeURIComponent(draft!.body_de)}`;
     Linking.openURL(url).catch(() => toast(t("common.error"), "error"));
   }
@@ -71,7 +73,9 @@ export default function DraftScreen() {
       toast(t("draft.sendFillFirst", { fields: missing.slice(0, 4).join(", ") }), "error");
       return;
     }
-    setTo(emailIn(theCase.data?.authority));
+    const office = officeEmail(draft!.document_id, letters.data ?? [], theCase.data?.authority);
+    setTo(office.email);
+    setFound(office);
     setReplyTo(profile?.contact_email ?? loginEmail ?? "");
     send.reset();
     setSending(true);
@@ -220,7 +224,8 @@ export default function DraftScreen() {
           autoCapitalize="none"
           autoCorrect={false}
           keyboardType="email-address"
-          hint={t("draft.sendToHint")}
+          hint={found?.letter && to.trim().toLowerCase() === found.email
+            ? t("draft.sendToFound", { letter: found.letter }) : t("draft.sendToHint")}
           error={to.trim() && !isEmailAddress(to.trim()) ? t("draft.sendInvalid") : null}
         />
         <Card>

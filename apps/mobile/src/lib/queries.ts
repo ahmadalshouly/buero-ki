@@ -70,6 +70,7 @@ export const useDocuments = (caseId: string) =>
   useQuery({
     queryKey: keys.documents(caseId),
     queryFn: () => api.listDocuments(caseId),
+    enabled: !!caseId,
     refetchInterval: (q) => (q.state.data?.some(busy) ? 4000 : false),
   });
 export const useDocument = (id: string) =>
