@@ -12,7 +12,7 @@ import {
 import { categoryIcon } from "@/lib/categories";
 import { formatDate } from "@/lib/i18n";
 import {
-  errorMessage, useCase, useDeleteCase, useDeleteTask, useDocuments, useDrafts, useTasks, useTimeline, useUpdateCase,
+  errorMessage, useCase, useDeleteCase, useDeleteTask, useDocuments, useDrafts, useForms, useTasks, useTimeline, useUpdateCase,
 } from "@/lib/queries";
 import { space, useColors } from "@/lib/theme";
 import type { CaseStatus, Task, TimelineItem } from "@/lib/types";
@@ -24,6 +24,7 @@ const TIMELINE: Record<TimelineItem["kind"], { icon: IconName; label: string }> 
   draft: { icon: "create-outline", label: "case.timelineDraft" },
   sent: { icon: "paper-plane-outline", label: "case.timelineSent" },
   task_done: { icon: "checkmark-circle-outline", label: "case.timelineTask" },
+  form: { icon: "clipboard-outline", label: "case.timelineForm" },
 };
 
 export default function CaseScreen() {
@@ -36,6 +37,7 @@ export default function CaseScreen() {
 
   const caseQ = useCase(id);
   const documents = useDocuments(id);
+  const forms = useForms(id);
   const tasks = useTasks({ caseId: id });
   const drafts = useDrafts(id);
   const timeline = useTimeline(id);
@@ -44,7 +46,7 @@ export default function CaseScreen() {
   const removeTask = useDeleteTask();
 
   const refreshing = caseQ.isRefetching || documents.isRefetching || tasks.isRefetching;
-  const refresh = () => [caseQ, documents, tasks, drafts, timeline].forEach((q) => q.refetch());
+  const refresh = () => [caseQ, documents, forms, tasks, drafts, timeline].forEach((q) => q.refetch());
 
   if (!caseQ.data) {
     return (
@@ -112,7 +114,11 @@ export default function CaseScreen() {
         <Button style={{ flex: 1 }} icon="camera-outline" title={t("case.addLetter")} onPress={() => router.push(`/case/${id}/scan`)} />
         <Button style={{ flex: 1 }} variant="secondary" icon="chatbubbles-outline" title={t("case.ask")} onPress={() => router.push(`/case/${id}/chat`)} />
       </View>
-      <Button variant="secondary" icon="create-outline" title={t("case.draft")} onPress={() => router.push(`/case/${id}/draft`)} />
+      <View style={{ flexDirection: "row", gap: space(2) }}>
+        <Button style={{ flex: 1 }} variant="secondary" icon="create-outline" title={t("case.draft")} onPress={() => router.push(`/case/${id}/draft`)} />
+        <Button style={{ flex: 1 }} variant="secondary" icon="clipboard-outline" title={t("case.fillForm")}
+          onPress={() => router.push({ pathname: "/case/[id]/scan", params: { id, kind: "form" } })} />
+      </View>
 
       {reading && (
         <Card style={{ flexDirection: "row", alignItems: "center", gap: space(3) }}>
@@ -143,7 +149,7 @@ export default function CaseScreen() {
         onChange={setTab}
         options={[
           { value: "timeline", label: t("case.timeline") },
-          { value: "letters", label: `${t("case.letters")} ${documents.data?.length ?? ""}`.trim() },
+          { value: "letters", label: `${t("case.letters")} ${(documents.data?.length ?? 0) + (forms.data?.length ?? 0) || ""}`.trim() },
           { value: "tasks", label: `${t("case.tasks")} ${openTasks.length || ""}`.trim() },
           { value: "drafts", label: `${t("case.drafts")} ${drafts.data?.length || ""}`.trim() },
         ]}
@@ -156,7 +162,8 @@ export default function CaseScreen() {
               const meta = TIMELINE[item.kind];
               const last = i === timeline.data!.length - 1;
               const open = item.kind === "document" ? () => router.push(`/document/${item.item_id}`)
-                : item.kind === "draft" || item.kind === "sent" ? () => router.push(`/draft/${item.item_id}`) : undefined;
+                : item.kind === "draft" || item.kind === "sent" ? () => router.push(`/draft/${item.item_id}`)
+                : item.kind === "form" ? () => router.push(`/form/${item.item_id}`) : undefined;
               return (
                 <View key={`${item.kind}-${item.item_id}`} style={{ flexDirection: "row", gap: space(3) }}>
                   <View style={{ alignItems: "center", width: 32 }}>
@@ -198,6 +205,25 @@ export default function CaseScreen() {
             {(d.status === "analyzing" || d.status === "uploaded") && <Muted>{t("case.reading")}</Muted>}
           </Card>
         ))
+      )}
+
+      {tab === "letters" && !!forms.data?.length && (
+        <Section title={t("case.forms")}>
+          {forms.data.map((f) => {
+            const done = f.fields.filter((x) => x.type === "signature" || (x.value ?? "").trim() !== "").length;
+            return (
+              <Card key={f.id} onPress={() => router.push(`/form/${f.id}`)}>
+                <View style={{ flexDirection: "row", gap: space(2), alignItems: "center" }}>
+                  <Ionicons name="clipboard-outline" size={18} color={c.accent} />
+                  <Txt variant="h3" style={{ flex: 1 }}>{f.title_de ?? f.file_name ?? t("form.title")}</Txt>
+                </View>
+                {f.status === "ready" && <Muted>{t("form.progress", { filled: done, total: f.fields.length })}</Muted>}
+                {(f.status === "analyzing" || f.status === "uploaded") && <Muted>{t("form.reading")}</Muted>}
+                {f.status === "failed" && <Txt tone="danger">{t("case.failed")}</Txt>}
+              </Card>
+            );
+          })}
+        </Section>
       )}
 
       {tab === "tasks" && (

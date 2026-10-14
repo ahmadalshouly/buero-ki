@@ -89,7 +89,7 @@ export async function generateJson<S extends z.ZodType>(opts: {
   effort?: Effort;
   maxTokens?: number;
 }): Promise<{ data: z.infer<S>; usage: Usage }> {
-  const response = await anthropic().beta.messages.create({
+  const params = {
     model: MODEL,
     max_tokens: opts.maxTokens ?? 16000,
     betas: [FALLBACK_BETA],
@@ -103,7 +103,11 @@ export async function generateJson<S extends z.ZodType>(opts: {
       format: { type: "json_schema", schema: outputSchema(opts.schema) },
     },
     messages: [{ role: "user", content: opts.content }],
-  });
+  } satisfies Anthropic.Beta.MessageCreateParamsNonStreaming;
+  // Long answers (e.g. every field of a form) are streamed so the HTTP request does not time out.
+  const response = params.max_tokens > 16000
+    ? await anthropic().beta.messages.stream(params).finalMessage()
+    : await anthropic().beta.messages.create(params);
   checkStop(response);
 
   const parsed = opts.schema.safeParse(JSON.parse(textOf(response)));

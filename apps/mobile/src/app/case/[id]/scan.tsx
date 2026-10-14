@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
-import { router, useLocalSearchParams } from "expo-router";
+import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ActivityIndicator, View } from "react-native";
@@ -8,17 +8,21 @@ import { Button, Card, DemoBanner, ErrorBox, Footer, IconButton, Muted, Screen, 
 import { MAX_PAGES } from "@/lib/api";
 import { friendlyError } from "@/lib/errorText";
 import { choosePdf, choosePhotos, PermissionDenied, takePhoto } from "@/lib/pick";
-import { errorMessage, useAddDocument } from "@/lib/queries";
+import { errorMessage, useAddDocument, useAddForm } from "@/lib/queries";
 import { radius, space, useColors } from "@/lib/theme";
 import type { PickedFile } from "@/lib/types";
 
 export default function Scan() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  // kind=form: the pages are a form to fill in, not a letter.
+  const { id, kind } = useLocalSearchParams<{ id: string; kind?: string }>();
+  const isForm = kind === "form";
   const { t } = useTranslation();
   const c = useColors();
   const [pages, setPages] = useState<PickedFile[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const add = useAddDocument(id);
+  const addLetter = useAddDocument(id);
+  const addForm = useAddForm(id);
+  const add = isForm ? addForm : addLetter;
 
   const isPdf = pages[0]?.mimeType === "application/pdf";
   const room = MAX_PAGES - pages.length;
@@ -53,7 +57,7 @@ export default function Scan() {
   function analyze() {
     setError(null);
     add.mutate(pages, {
-      onSuccess: (doc) => router.replace(`/document/${doc.id}`),
+      onSuccess: (item) => router.replace(isForm ? `/form/${item.id}` : `/document/${item.id}`),
       onError: (e) => setError(friendlyError(e, t)),
     });
   }
@@ -63,8 +67,8 @@ export default function Scan() {
       <Screen scroll={false}>
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: space(4), padding: space(6) }}>
           <ActivityIndicator size="large" color={c.accent} />
-          <Txt variant="h2" style={{ textAlign: "center" }}>{t("scan.reading")}</Txt>
-          <Muted>{t("scan.readingHint")}</Muted>
+          <Txt variant="h2" style={{ textAlign: "center" }}>{t(isForm ? "form.reading" : "scan.reading")}</Txt>
+          <Muted>{t(isForm ? "form.readingHint" : "scan.readingHint")}</Muted>
           <Button variant="ghost" title={t("common.close")} onPress={() => router.back()} />
         </View>
       </Screen>
@@ -75,12 +79,13 @@ export default function Scan() {
     <Screen
       footer={pages.length > 0 ? (
         <Footer>
-          <Button icon="sparkles" title={t("scan.analyze", { count: pages.length })} onPress={analyze} />
+          <Button icon="sparkles" title={t(isForm ? "form.analyze" : "scan.analyze", { count: pages.length })} onPress={analyze} />
         </Footer>
       ) : undefined}
     >
+      {isForm && <Stack.Screen options={{ title: t("form.addTitle") }} />}
       <DemoBanner />
-      <Txt tone="muted">{t("scan.intro")}</Txt>
+      <Txt tone="muted">{t(isForm ? "form.intro" : "scan.intro")}</Txt>
 
       {pages.map((p, i) => (
         <Card key={`${p.uri}-${i}`} style={{ flexDirection: "row", alignItems: "center", gap: space(3), padding: space(3) }}>

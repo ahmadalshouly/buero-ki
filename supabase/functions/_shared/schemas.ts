@@ -61,6 +61,50 @@ export function pageBlock(mime: string, data: string): Anthropic.Beta.BetaConten
 }
 
 
+export const FIELD_TYPES = ["text", "date", "number", "checkbox", "choice", "signature"] as const;
+
+export const FormField = z.strictObject({
+  key: z.string().describe("Short unique id for the field, e.g. 'p1_familienname'. Unique within the form."),
+  pdf_field: z.string().nullable().describe("Exact name of the matching fillable PDF field from the list given, or null."),
+  page: z.number().int().nullable().describe("Page number, starting at 1."),
+  section: z.string().nullable().describe("German section heading the field belongs to, as printed."),
+  label_de: z.string().describe("The field's German label as printed on the form."),
+  explanation: z.string().describe("One short sentence in the user's language: what to put here."),
+  type: z.enum(FIELD_TYPES),
+  options: z.array(z.string()).describe("Allowed values for choice fields (the PDF's own option values when given), else empty."),
+  value: z.string().nullable().describe(
+    "Value to enter, written as it must appear on the German form: dates DD.MM.YYYY, checkboxes 'true' or 'false', choices one of options. Null if unknown.",
+  ),
+  source_note: z.string().nullable().describe("Where the value came from, in the user's language (e.g. 'From your profile'). Null if no value."),
+  question: z.string().nullable().describe("If value is null: a plain question in the user's language that the person can answer, with a hint where to find it."),
+  required: z.boolean().describe("True if the form marks the field as required or it is clearly needed."),
+});
+export type FormField = z.infer<typeof FormField>;
+
+export const FormAnalysis = z.strictObject({
+  readable: z.boolean().describe("False if the pages are too blurry or incomplete."),
+  is_form: z.boolean().describe("False if this is not a form to fill in (e.g. a letter)."),
+  title_de: z.string().describe("The form's German title, e.g. 'Antrag auf Bürgergeld (Hauptantrag)'."),
+  title: z.string().describe("The form's title in the user's language."),
+  summary: z.string().describe("Two or three sentences in the user's language: what the form is for and who it goes to."),
+  instructions: z.string().describe(
+    "Short Markdown in the user's language: documents to attach, where and how to hand it in, deadline if known, and what not to forget (signature, date).",
+  ),
+  fields: z.array(FormField).describe(
+    "Every field the person fills in, in the order of the form. Leave out fields reserved for the office ('Vom Amt auszufüllen').",
+  ),
+});
+export type FormAnalysis = z.infer<typeof FormAnalysis>;
+
+export const FormAnswers = z.strictObject({
+  updates: z.array(z.strictObject({
+    key: z.string().describe("Key of the field to set."),
+    value: z.string().describe("New value, written as it must appear on the German form."),
+    source_note: z.string().describe("Short note in the user's language, e.g. 'From your answer'."),
+  })).describe("Only fields the person's message gives a value for."),
+  reply: z.string().describe("One or two sentences in the user's language: what was filled in, and what is still missing."),
+});
+
 export const FACT_CATEGORIES = ["identity", "residence", "family", "work", "money", "housing", "health", "contact", "other"] as const;
 
 export const FactSuggestions = z.strictObject({
