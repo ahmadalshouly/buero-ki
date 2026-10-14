@@ -111,16 +111,22 @@ export async function generateJson<S extends z.ZodType>(opts: {
   return { data: parsed.data, usage: usageOf(response) };
 }
 
-export async function generateText(opts: {
+/**
+ * Answers a conversation in plain text, handing each piece to onText as it is written.
+ * The whole conversation is cached, so the next turn only pays for the new message.
+ */
+export async function streamText(opts: {
   system: string;
   messages: Anthropic.Beta.BetaMessageParam[];
   effort?: Effort;
+  onText: (text: string) => void;
 }): Promise<{ text: string; usage: Usage }> {
-  const response = await anthropic().beta.messages.create({
+  const stream = anthropic().beta.messages.stream({
     model: MODEL,
     max_tokens: 16000,
     betas: [FALLBACK_BETA],
     fallbacks: "default",
+    cache_control: { type: "ephemeral" },
     system: [
       { type: "text", text: BASE_SYSTEM, cache_control: { type: "ephemeral" } },
       { type: "text", text: opts.system },
@@ -128,6 +134,10 @@ export async function generateText(opts: {
     output_config: { effort: opts.effort ?? "medium" },
     messages: opts.messages,
   });
+  for await (const event of stream) {
+    if (event.type === "content_block_delta" && event.delta.type === "text_delta") opts.onText(event.delta.text);
+  }
+  const response = await stream.finalMessage();
   checkStop(response);
   return { text: textOf(response), usage: usageOf(response) };
 }

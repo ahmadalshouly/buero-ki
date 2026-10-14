@@ -48,4 +48,15 @@ describe("demo backend", () => {
     expect(usage.used["case-chat"]).toBeGreaterThan(0);
     expect(usage.limits["case-chat"]).toBe(40);
   });
+
+  it("only remembers facts the person keeps, and forgets on request", async () => {
+    await demoApi.sendMessage("demo-case-1", "We are two adults and one child.");
+    const [suggested] = await demoApi.learnFacts("demo-case-1");
+    expect(suggested.status).toBe("pending");
+    expect(await demoApi.learnFacts("demo-case-1")).toEqual([]);
+    await demoApi.keepFact(suggested.id);
+    expect((await demoApi.listFacts())[0]).toMatchObject({ status: "kept" });
+    await demoApi.forgetAllFacts();
+    expect(await demoApi.listFacts()).toEqual([]);
+  });
 });

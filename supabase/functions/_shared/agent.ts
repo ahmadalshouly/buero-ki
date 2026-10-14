@@ -98,6 +98,8 @@ export async function runAgent(opts: {
   toolContext: ToolContext;
   effort?: Effort;
   maxSteps?: number;
+  /** Gets each piece of the answer as it is written. */
+  onText?: (text: string) => void;
 }): Promise<{ text: string; usage: Usage; actions: ChatAction[] }> {
   const maxSteps = opts.maxSteps ?? 6;
   const messages = [...opts.messages];
@@ -107,11 +109,12 @@ export async function runAgent(opts: {
   let usage: Usage | null = null;
 
   for (let step = 1; ; step++) {
-    const response = await anthropic().beta.messages.create({
+    const stream = anthropic().beta.messages.stream({
       model: MODEL,
       max_tokens: 16000,
       betas: [FALLBACK_BETA],
       fallbacks: "default",
+      cache_control: { type: "ephemeral" },
       system: [
         { type: "text", text: BASE_SYSTEM, cache_control: { type: "ephemeral" } },
         { type: "text", text: opts.system },
@@ -122,6 +125,15 @@ export async function runAgent(opts: {
       tool_choice: step >= maxSteps ? { type: "none" } : { type: "auto" },
       messages,
     });
+    // Text from an earlier step stays; a blank line separates it from the next.
+    let started = false;
+    for await (const event of stream) {
+      if (event.type !== "content_block_delta" || event.delta.type !== "text_delta" || !opts.onText) continue;
+      if (!started && texts.length) opts.onText("\n\n");
+      started = true;
+      opts.onText(event.delta.text);
+    }
+    const response = await stream.finalMessage();
     usage = addUsage(usage, usageOf(response));
     checkStop(response);
     const text = textOf(response).trim();

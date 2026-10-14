@@ -1,9 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams } from "expo-router";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { FlatList, KeyboardAvoidingView, Platform, Pressable, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { FactSuggestions } from "@/components/FactSuggestions";
 import { Markdown } from "@/components/Markdown";
 import { Chip, ErrorBox, Muted, Skeleton, Txt } from "@/components/ui";
 import { friendlyError } from "@/lib/errorText";
@@ -69,13 +70,32 @@ export default function Chat() {
   const s = useStyles();
   const [text, setText] = useState("");
   const [pending, setPending] = useState<ChatMessage | null>(null);
+  const [streamed, setStreamed] = useState("");
+  const latest = useRef("");
+  const frame = useRef<number | null>(null);
   const list = useRef<FlatList<ChatMessage>>(null);
   const messages = useMessages(id);
   const send = useSendMessage(id);
 
-  // Show the question at once, until the refreshed list contains it.
+  useEffect(() => () => {
+    if (frame.current !== null) cancelAnimationFrame(frame.current);
+  }, []);
+
+  // Show the question and the answer as it is written, until the refreshed list contains them.
   const showPending = pending && (send.isPending || messages.isFetching);
-  const shown = [...(messages.data ?? []), ...(showPending ? [pending] : [])];
+  const answer: ChatMessage | null = showPending && streamed
+    ? { id: "streaming", case_id: id, role: "assistant", content: streamed, created_at: "" }
+    : null;
+  const shown = [...(messages.data ?? []), ...(showPending ? [pending] : []), ...(answer ? [answer] : [])];
+
+  // Many small pieces arrive per second; draw at most once per frame.
+  function onText(soFar: string) {
+    latest.current = soFar;
+    frame.current ??= requestAnimationFrame(() => {
+      frame.current = null;
+      setStreamed(latest.current);
+    });
+  }
   const examples = t("chat.examples", { returnObjects: true }) as string[];
 
   function submit(value = text) {
@@ -83,8 +103,12 @@ export default function Chat() {
     if (!message || send.isPending) return;
     setText("");
     setPending({ id: "pending", case_id: id, role: "user", content: message, created_at: "" });
-    send.mutate(message, {
+    setStreamed("");
+    send.mutate({ text: message, onText }, {
       onError: () => {
+        if (frame.current !== null) cancelAnimationFrame(frame.current);
+        frame.current = null;
+        setStreamed("");
         setPending(null);
         setText(message);
       },
@@ -116,12 +140,13 @@ export default function Chat() {
           )}
           ListFooterComponent={(
             <View style={{ gap: space(3) }}>
-              {send.isPending && (
+              {send.isPending && !streamed && (
                 <View style={[s.bubble, s.theirs]}>
                   <Muted>{t("chat.thinking")}</Muted>
                 </View>
               )}
               {send.error && <ErrorBox message={friendlyError(send.error, t)} />}
+              <FactSuggestions caseId={id} messages={messages.data} />
             </View>
           )}
           renderItem={({ item }) => (
