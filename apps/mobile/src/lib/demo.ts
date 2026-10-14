@@ -4,7 +4,9 @@ import type { Api } from "./api";
 import { ApiError, validatePages } from "./errors";
 import { DAILY_LIMITS } from "./limits";
 import { authStorage } from "./storage";
-import type { AgentFunction, Analysis, Case, CaseDocument, ChatMessage, Draft, Profile, Task, TimelineItem } from "./types";
+import type {
+  AgentFunction, Analysis, Case, CaseDocument, CaseForm, ChatMessage, Draft, FormField, Profile, Task, TimelineItem,
+} from "./types";
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const now = () => new Date().toISOString();
@@ -50,6 +52,44 @@ After the deadline the Jobcenter can refuse the money (§ 66 SGB I). You can sti
   reference_number: "BG 12345//0067890",
   amounts: [{ label: "Monthly Bürgergeld applied for", amount_eur: 1124 }],
 };
+
+const sampleFields = (name: string | null): FormField[] => [
+  {
+    key: "p1_name", pdf_field: null, page: 1, section: "1. Persönliche Daten", label_de: "Familienname, Vorname",
+    explanation: "Your last name and first name, as in your passport.", type: "text", options: [], value: name,
+    source_note: name ? "From your profile" : null, question: name ? null : "What is your full name?", required: true,
+  },
+  {
+    key: "p1_birth", pdf_field: null, page: 1, section: "1. Persönliche Daten", label_de: "Geburtsdatum",
+    explanation: "Your date of birth.", type: "date", options: [], value: null, source_note: null,
+    question: "When were you born? It is on your passport or residence permit.", required: true,
+  },
+  {
+    key: "p1_nationality", pdf_field: null, page: 1, section: "1. Persönliche Daten", label_de: "Staatsangehörigkeit",
+    explanation: "Your citizenship.", type: "text", options: [], value: null, source_note: null,
+    question: "Which citizenship do you have?", required: true,
+  },
+  {
+    key: "p1_married", pdf_field: null, page: 1, section: "2. Familienstand", label_de: "verheiratet",
+    explanation: "Tick this if you are married.", type: "checkbox", options: [], value: "false", source_note: null,
+    question: null, required: false,
+  },
+  {
+    key: "p2_bg", pdf_field: null, page: 2, section: "3. Bedarfsgemeinschaft", label_de: "BG-Nummer",
+    explanation: "Your Jobcenter number, printed on its letters.", type: "text", options: [], value: "BG 12345//0067890",
+    source_note: "From the letter of the Jobcenter", question: null, required: false,
+  },
+  {
+    key: "p2_date", pdf_field: null, page: 2, section: "Unterschrift", label_de: "Ort, Datum",
+    explanation: "Place and today's date.", type: "text", options: [], value: `Berlin, ${new Date().toLocaleDateString("de-DE")}`,
+    source_note: "From your profile and today's date", question: null, required: true,
+  },
+  {
+    key: "p2_sign", pdf_field: null, page: 2, section: "Unterschrift", label_de: "Unterschrift",
+    explanation: "Sign here by hand after printing.", type: "signature", options: [], value: null, source_note: null,
+    question: null, required: true,
+  },
+];
 
 const state = {
   profile: {
@@ -157,6 +197,7 @@ const state = {
     },
   ] as Task[],
   drafts: [] as Draft[],
+  forms: [] as CaseForm[],
   messages: [] as ChatMessage[],
   usage: [] as { fn: AgentFunction; at: number }[],
 };
@@ -249,7 +290,7 @@ export const demoApi: Api = {
   },
   async deleteCase(key) {
     drop(state.cases, key);
-    for (const list of [state.documents, state.tasks, state.drafts, state.messages] as { id: string; case_id: string }[][]) {
+    for (const list of [state.documents, state.forms, state.tasks, state.drafts, state.messages] as { id: string; case_id: string }[][]) {
       for (const item of list.filter((x) => x.case_id === key)) drop(list, item.id);
     }
   },
@@ -265,6 +306,10 @@ export const demoApi: Api = {
           ? [{ case_id: caseId, item_id: d.id, kind: "sent" as const, at: d.sent_at, title: d.subject, detail: d.kind, tone: null }]
           : []),
       ]),
+      ...state.forms.filter((f) => f.case_id === caseId).map((f) => ({
+        case_id: caseId, item_id: f.id, kind: "form" as const, at: f.created_at, title: f.title_de ?? f.file_name, detail: f.summary,
+        tone: null,
+      })),
       ...state.tasks.filter((t) => t.case_id === caseId && t.completed_at).map((t) => ({
         case_id: caseId, item_id: t.id, kind: "task_done" as const, at: t.completed_at!, title: t.title, detail: null, tone: null,
       })),
@@ -325,6 +370,74 @@ export const demoApi: Api = {
   },
   async deleteDocument(key) {
     drop(state.documents, key);
+  },
+
+  async listForms(caseId) {
+    return state.forms.filter((f) => f.case_id === caseId).sort((a, b) => b.created_at.localeCompare(a.created_at));
+  },
+  async getForm(key) {
+    const f = find(state.forms, key);
+    return { ...f, fields: f.fields.map((x) => ({ ...x })) };
+  },
+  async addForm(caseId, pages) {
+    validatePages(pages);
+    spend("fill-form");
+    await wait(1800);
+    const form: CaseForm = {
+      id: id(),
+      case_id: caseId,
+      storage_path: "",
+      page_paths: [],
+      mime_type: pages[0].mimeType,
+      file_name: pages[0].name,
+      status: "ready",
+      fillable: false,
+      title_de: "Antrag auf Bürgergeld (Demo)",
+      title: "Application for Bürgergeld (demo)",
+      summary: "Demo mode: sample fields. Connect BüroKI to Supabase so it can read your real form.",
+      instructions: "## Before you hand it in\n- Sign and date page 2.\n- Attach a copy of your passport.\n- Keep a copy for yourself.",
+      fields: sampleFields(state.profile.full_name),
+      filled_path: null,
+      filled_at: null,
+      error: null,
+      created_at: now(),
+      updated_at: now(),
+    };
+    state.forms.push(form);
+    touch(caseId);
+    return form;
+  },
+  async retryForm(key) {
+    return demoApi.getForm(key);
+  },
+  async saveFormFields(key, fields) {
+    const f = find(state.forms, key);
+    f.fields = fields.map((x) => ({ ...x }));
+    f.updated_at = now();
+  },
+  async answerForm(key, message) {
+    spend("fill-form");
+    await wait(1000);
+    const f = find(state.forms, key);
+    const date = message.match(/\d{1,2}\.\d{1,2}\.\d{4}/)?.[0];
+    const updated: string[] = [];
+    if (date) {
+      f.fields = f.fields.map((x) => (x.type === "date" && !x.value ? { ...x, value: date, source_note: "From your answer", question: null } : x));
+      updated.push(...f.fields.filter((x) => x.value === date).map((x) => x.key));
+    }
+    return {
+      form: await demoApi.getForm(key),
+      reply: updated.length
+        ? "Demo mode: I put the date into the birth date field."
+        : "Demo mode: in the real app I fill every field your message answers. Try a date like 01.02.1990.",
+      updated,
+    };
+  },
+  async exportForm() {
+    throw new ApiError("Demo mode cannot fill PDF files.", "input");
+  },
+  async deleteForm(key) {
+    drop(state.forms, key);
   },
 
   async listTasks({ caseId, openOnly }) {

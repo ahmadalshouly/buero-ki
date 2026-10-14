@@ -4,7 +4,7 @@ import { ApiError, EXTENSIONS, validatePages } from "./errors";
 import { DAILY_LIMITS } from "./limits";
 import { isDemo, supabase } from "./supabase";
 import type {
-  AgentFunction, Case, CaseDocument, CaseStatus, ChatMessage, Draft, NewCase, PickedFile, Profile, SearchResult, Task,
+  AgentFunction, Case, CaseDocument, CaseForm, CaseStatus, FormField, ChatMessage, Draft, NewCase, PickedFile, Profile, SearchResult, Task,
   TimelineItem, UsageToday,
 } from "./types";
 
@@ -35,6 +35,18 @@ export interface Api {
   addDocument(caseId: string, pages: PickedFile[]): Promise<CaseDocument>;
   retryDocument(id: string): Promise<CaseDocument>;
   deleteDocument(id: string): Promise<void>;
+
+  listForms(caseId: string): Promise<CaseForm[]>;
+  getForm(id: string): Promise<CaseForm>;
+  /** Uploads the form, then has the agent list and pre-fill its fields. Resolves when that is done. */
+  addForm(caseId: string, pages: PickedFile[]): Promise<CaseForm>;
+  retryForm(id: string): Promise<CaseForm>;
+  saveFormFields(id: string, fields: FormField[]): Promise<void>;
+  /** The person tells the agent something in their own words; it fills the matching fields. */
+  answerForm(id: string, message: string): Promise<{ form: CaseForm; reply: string; updated: string[] }>;
+  /** Writes the values into the PDF and returns a short-lived download link. Only for fillable PDFs. */
+  exportForm(id: string): Promise<{ url: string | null; skipped: string[] }>;
+  deleteForm(id: string): Promise<void>;
 
   listTasks(filter: { caseId?: string; openOnly?: boolean }): Promise<Task[]>;
   createTask(input: { caseId: string; title: string; dueDate: string | null }): Promise<Task>;
@@ -95,6 +107,24 @@ function supabaseApi(db: SupabaseClient): Api {
     return api.getDocument(documentId);
   }
 
+  async function upload(caseId: string, pages: PickedFile[], prefix = ""): Promise<string[]> {
+    const uid = await userId();
+    const stamp = Date.now();
+    return Promise.all(pages.map(async (page, i) => {
+      const path = `${uid}/${caseId}/${prefix}${stamp}-${i + 1}.${EXTENSIONS[page.mimeType]}`;
+      const bytes = await (await fetch(page.uri)).arrayBuffer();
+      const res = await db.storage.from("documents").upload(path, bytes, { contentType: page.mimeType });
+      if (res.error) throw new ApiError(res.error.message);
+      return path;
+    }));
+  }
+
+  async function readForm(formId: string): Promise<CaseForm> {
+    // On failure the function marks the form as failed, so the screen shows a retry.
+    await invoke(db, "fill-form", { action: "analyze", form_id: formId });
+    return api.getForm(formId);
+  }
+
   const api: Api = {
     async getProfile() {
       const id = await userId();
@@ -137,7 +167,9 @@ function supabaseApi(db: SupabaseClient): Api {
     async deleteCase(id) {
       const uid = await userId();
       const docs = must(await db.from("documents").select("storage_path, page_paths").eq("case_id", id));
-      const paths = docs.flatMap((d) => (d.page_paths?.length ? d.page_paths : [d.storage_path]));
+      const forms = must(await db.from("forms").select("storage_path, page_paths, filled_path").eq("case_id", id));
+      const paths = [...docs, ...forms].flatMap((d) => (d.page_paths?.length ? d.page_paths : [d.storage_path]))
+        .concat(forms.flatMap((f) => (f.filled_path ? [f.filled_path] : [])));
       if (paths.length) await db.storage.from("documents").remove(paths);
       // Older uploads may not be referenced by a row any more; clear the case folder too.
       const { data: rest } = await db.storage.from("documents").list(`${uid}/${id}`);
@@ -161,15 +193,7 @@ function supabaseApi(db: SupabaseClient): Api {
     },
     async addDocument(caseId, pages) {
       validatePages(pages);
-      const uid = await userId();
-      const stamp = Date.now();
-      const paths = await Promise.all(pages.map(async (page, i) => {
-        const path = `${uid}/${caseId}/${stamp}-${i + 1}.${EXTENSIONS[page.mimeType]}`;
-        const bytes = await (await fetch(page.uri)).arrayBuffer();
-        const upload = await db.storage.from("documents").upload(path, bytes, { contentType: page.mimeType });
-        if (upload.error) throw new ApiError(upload.error.message);
-        return path;
-      }));
+      const paths = await upload(caseId, pages);
       const doc = must(await db.from("documents").insert({
         case_id: caseId,
         storage_path: paths[0],
@@ -184,6 +208,37 @@ function supabaseApi(db: SupabaseClient): Api {
       const doc = await api.getDocument(id);
       await db.storage.from("documents").remove(doc.page_paths?.length ? doc.page_paths : [doc.storage_path]);
       ok(await db.from("documents").delete().eq("id", id));
+    },
+
+    async listForms(caseId) {
+      return must(await db.from("forms").select("*").eq("case_id", caseId).order("created_at", { ascending: false }));
+    },
+    async getForm(id) {
+      return must(await db.from("forms").select("*").eq("id", id).single());
+    },
+    async addForm(caseId, pages) {
+      validatePages(pages);
+      const paths = await upload(caseId, pages, "form-");
+      const form = must(await db.from("forms").insert({
+        case_id: caseId,
+        storage_path: paths[0],
+        page_paths: paths,
+        mime_type: pages[0].mimeType,
+        file_name: pages[0].name,
+      }).select().single()) as CaseForm;
+      return readForm(form.id);
+    },
+    retryForm: readForm,
+    async saveFormFields(id, fields) {
+      ok(await db.from("forms").update({ fields }).eq("id", id));
+    },
+    answerForm: (id, message) => invoke(db, "fill-form", { action: "answer", form_id: id, message }),
+    exportForm: (id) => invoke(db, "fill-form", { action: "export", form_id: id }),
+    async deleteForm(id) {
+      const form = await api.getForm(id);
+      const paths = [...(form.page_paths?.length ? form.page_paths : [form.storage_path]), ...(form.filled_path ? [form.filled_path] : [])];
+      await db.storage.from("documents").remove(paths);
+      ok(await db.from("forms").delete().eq("id", id));
     },
 
     async listTasks({ caseId, openOnly }) {

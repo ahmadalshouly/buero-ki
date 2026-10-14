@@ -86,6 +86,43 @@ export interface CaseDocument {
   created_at: string;
 }
 
+export interface FormField {
+  key: string;
+  pdf_field: string | null;
+  page: number | null;
+  section: string | null;
+  label_de: string;
+  explanation: string;
+  type: "text" | "date" | "number" | "checkbox" | "choice" | "signature";
+  options: string[];
+  value: string | null;
+  source_note: string | null;
+  question: string | null;
+  required: boolean;
+}
+
+export interface CaseForm {
+  id: string;
+  case_id: string;
+  storage_path: string;
+  page_paths: string[];
+  mime_type: string;
+  file_name: string | null;
+  status: "uploaded" | "analyzing" | "ready" | "failed";
+  /** The PDF has real form fields, so it can be returned filled in. */
+  fillable: boolean;
+  title_de: string | null;
+  title: string | null;
+  summary: string | null;
+  instructions: string | null;
+  fields: FormField[];
+  filled_path: string | null;
+  filled_at: string | null;
+  error: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Task {
   id: string;
   case_id: string;
@@ -138,7 +175,7 @@ export interface NewCase {
 export interface TimelineItem {
   case_id: string;
   item_id: string;
-  kind: "document" | "draft" | "sent" | "task_done";
+  kind: "document" | "draft" | "sent" | "task_done" | "form";
   at: string;
   title: string | null;
   detail: string | null;

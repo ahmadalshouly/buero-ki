@@ -5,7 +5,7 @@ import { QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/re
 import { api } from "./api";
 import { ApiError } from "./errors";
 import { authStorage } from "./storage";
-import type { Case, CaseDocument, CaseStatus, Draft, NewCase, PickedFile, Task } from "./types";
+import type { Case, CaseDocument, CaseForm, CaseStatus, Draft, FormField, NewCase, PickedFile, Task } from "./types";
 
 export const keys = {
   profile: ["profile"] as const,
@@ -18,6 +18,8 @@ export const keys = {
   pages: (id: string) => ["document", id, "pages"] as const,
   tasks: (filter: { caseId?: string; openOnly?: boolean }) => ["tasks", filter] as const,
   drafts: (caseId: string) => ["case", caseId, "drafts"] as const,
+  forms: (caseId: string) => ["case", caseId, "forms"] as const,
+  form: (id: string) => ["form", id] as const,
   draft: (id: string) => ["draft", id] as const,
   messages: (caseId: string) => ["case", caseId, "messages"] as const,
   search: (q: string) => ["search", q] as const,
@@ -76,6 +78,20 @@ export const usePageUrls = (id: string, enabled: boolean) =>
     queryFn: async () => api.getPageUrls(await api.getDocument(id)),
     enabled,
     staleTime: 5 * 60_000,
+  });
+const formBusy = (f: CaseForm) => f.status === "analyzing" || f.status === "uploaded";
+export const useForms = (caseId: string) =>
+  useQuery({
+    queryKey: keys.forms(caseId),
+    queryFn: () => api.listForms(caseId),
+    refetchInterval: (q) => (q.state.data?.some(formBusy) ? 4000 : false),
+  });
+export const useForm = (id: string) =>
+  useQuery({
+    queryKey: keys.form(id),
+    queryFn: () => api.getForm(id),
+    enabled: !!id,
+    refetchInterval: (q) => (q.state.data && formBusy(q.state.data) ? 4000 : false),
   });
 export const useTasks = (filter: { caseId?: string; openOnly?: boolean }) =>
   useQuery({ queryKey: keys.tasks(filter), queryFn: () => api.listTasks(filter) });
@@ -153,6 +169,58 @@ export function useRetryDocument(caseId: string) {
 export function useDeleteDocument(caseId: string) {
   const invalidate = useInvalidate();
   return useMutation({ mutationFn: (id: string) => api.deleteDocument(id), onSuccess: () => invalidate(caseId) });
+}
+
+export function useAddForm(caseId: string) {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (pages: PickedFile[]) => api.addForm(caseId, pages),
+    onSettled: () => invalidate(caseId),
+  });
+}
+
+/** Mutations on one form; each one puts the server's copy of the form into the cache. */
+export function useFormActions(form: CaseForm | undefined) {
+  const qc = useQueryClient();
+  const invalidate = useInvalidate();
+  const put = (next: CaseForm) => {
+    qc.setQueryData(keys.form(next.id), next);
+    qc.invalidateQueries({ queryKey: keys.forms(next.case_id) });
+  };
+  return {
+    save: useMutation({
+      mutationFn: async (fields: FormField[]) => {
+        await api.saveFormFields(form!.id, fields);
+        return { ...form!, fields };
+      },
+      onSuccess: put,
+    }),
+    answer: useMutation({
+      mutationFn: (message: string) => api.answerForm(form!.id, message),
+      onSuccess: (res) => {
+        put(res.form);
+        qc.invalidateQueries({ queryKey: keys.usage });
+      },
+    }),
+    retry: useMutation({
+      mutationFn: () => api.retryForm(form!.id),
+      onSettled: () => {
+        qc.invalidateQueries({ queryKey: keys.form(form!.id) });
+        invalidate(form!.case_id);
+      },
+    }),
+    exportPdf: useMutation({
+      mutationFn: () => api.exportForm(form!.id),
+      onSuccess: () => qc.invalidateQueries({ queryKey: keys.form(form!.id) }),
+    }),
+    remove: useMutation({
+      mutationFn: () => api.deleteForm(form!.id),
+      onSuccess: () => {
+        qc.removeQueries({ queryKey: keys.form(form!.id) });
+        invalidate(form!.case_id);
+      },
+    }),
+  };
 }
 
 /** Ticks a task off everywhere at once, and rolls back if the server refuses. */
