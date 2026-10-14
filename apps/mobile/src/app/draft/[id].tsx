@@ -6,6 +6,7 @@ import { Linking, Share, TextInput, View } from "react-native";
 import { useFeedback } from "@/components/feedback";
 import { Badge, Button, Card, ErrorBox, IconButton, Muted, Screen, Section, Sheet, SkeletonList, Txt } from "@/components/ui";
 import { LTR_INPUT, useLtrText } from "@/lib/direction";
+import { friendlyError } from "@/lib/errorText";
 import { formatDate } from "@/lib/i18n";
 import { placeholders } from "@/lib/letter";
 import { exportLetterPdf } from "@/lib/printLetter";
@@ -75,7 +76,7 @@ export default function DraftScreen() {
     try {
       await exportLetterPdf(draft!.body_de, draft!.subject);
     } catch (e) {
-      toast(errorMessage(e), "error");
+      toast(friendlyError(e, t), "error");
     } finally {
       setPrinting(false);
     }

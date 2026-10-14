@@ -4,12 +4,13 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ActivityIndicator, ScrollView, Switch, TextInput, View } from "react-native";
 import { PendingFacts } from "@/components/FactSuggestions";
-import { useFeedback } from "@/components/feedback";
+import { useFeedback, waitForModalClose } from "@/components/feedback";
 import { Markdown } from "@/components/Markdown";
 import {
   Badge, Button, Card, Chip, DemoBanner, ErrorBox, Footer, IconButton, Muted, Screen, Section, Segmented, Sheet, SkeletonList, Txt,
 } from "@/components/ui";
 import { LTR_INPUT, useInputDir, useLtrText } from "@/lib/direction";
+import { withTimeout } from "@/lib/errors";
 import { friendlyError } from "@/lib/errorText";
 import { formAnswersText, formFileName, formProgress, formSheetHtml, groupFields, isFilled } from "@/lib/formSheet";
 import { errorMessage, useForm, useFormActions, useLearnFacts } from "@/lib/queries";
@@ -19,6 +20,8 @@ import { radius, space, useColors } from "@/lib/theme";
 import type { CaseForm, FormField } from "@/lib/types";
 
 type Filter = "all" | "missing";
+
+const EXPORT_SECONDS = 90;
 
 function FieldCard({ field, onChange }: { field: FormField; onChange: (value: string | null) => void }) {
   const ltrText = useLtrText();
@@ -334,7 +337,7 @@ export default function FormScreen() {
     setExporting(true);
     try {
       if (form!.fillable) {
-        const res = await actions.exportPdf.mutateAsync();
+        const res = await withTimeout(actions.exportPdf.mutateAsync(), EXPORT_SECONDS * 1000);
         if (!res.url) throw new Error(t("common.error"));
         await downloadPdf(res.url, formFileName(form!, "ausgefuellt"));
         if (res.skipped.length) toast(t("form.skipped", { count: res.skipped.length }));
@@ -432,8 +435,9 @@ export default function FormScreen() {
         </ScrollView>
         <Button icon="document-outline" title={form.fillable ? t("form.downloadFilled") : t("form.downloadSheet")}
           loading={exporting}
-          onPress={() => {
+          onPress={async () => {
             setFinishing(false);
+            await waitForModalClose();
             exportPdf(true);
           }} />
         <Button variant="secondary" icon="checkmark" title={t("form.finishClose")}
