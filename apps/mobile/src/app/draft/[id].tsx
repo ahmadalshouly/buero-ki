@@ -1,19 +1,24 @@
+import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
+import { Image } from "expo-image";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Linking, Share, TextInput, View } from "react-native";
-import { useFeedback } from "@/components/feedback";
+import { useFeedback, waitForModalClose } from "@/components/feedback";
 import { Badge, Button, Card, ErrorBox, Field, IconButton, Muted, Screen, Section, Sheet, SkeletonList, Txt } from "@/components/ui";
+import { api } from "@/lib/api";
 import { LTR_INPUT, useLtrText } from "@/lib/direction";
 import { ApiError } from "@/lib/errors";
 import { friendlyError } from "@/lib/errorText";
 import { formatDate } from "@/lib/i18n";
-import { isEmailAddress, officeEmail, placeholders } from "@/lib/letter";
+import { isEmailAddress, letterFileName, officeEmail, placeholders } from "@/lib/letter";
+import { choosePhotos, PermissionDenied, takePhoto } from "@/lib/pick";
 import { exportLetterPdf } from "@/lib/printLetter";
 import {
-  errorMessage, useCase, useDeleteDraft, useDocuments, useDraft, useSendEmail, useSetDraftStatus, useUpdateDraft,
+  errorMessage, useCase, useDeleteDraft, useDocuments, useDraft, useDraftFiles, useFileUrls, useSendEmail, useSetDraftStatus, useUpdateDraft,
 } from "@/lib/queries";
+import { downloadPdf } from "@/lib/savePdf";
 import { useMe, useSession } from "@/lib/session";
 import { radius, space, useColors } from "@/lib/theme";
 
@@ -41,6 +46,10 @@ export default function DraftScreen() {
   const [body, setBody] = useState("");
   const [menu, setMenu] = useState(false);
   const [printing, setPrinting] = useState(false);
+  const [askProof, setAskProof] = useState(false);
+  const files = useDraftFiles(draft);
+  const proofPaths = draft?.proof_paths ?? [];
+  const proofUrls = useFileUrls(proofPaths);
 
   if (!draft) {
     return <Screen>{query.error ? <ErrorBox message={errorMessage(query.error)} onRetry={() => query.refetch()} /> : <SkeletonList rows={3} />}</Screen>;
@@ -108,12 +117,59 @@ export default function DraftScreen() {
     }
     setPrinting(true);
     try {
-      await exportLetterPdf(draft!.body_de, draft!.subject);
+      const pdf = await exportLetterPdf(draft!.body_de, draft!.subject);
+      // Keep the exact letter with the draft, so it can be found again after sending.
+      if (pdf) {
+        files.savePdf.mutate(pdf, {
+          onSuccess: () => toast(t("draft.pdfSaved")),
+          onError: (e) => toast(friendlyError(e, t), "error"),
+        });
+      }
     } catch (e) {
       toast(friendlyError(e, t), "error");
     } finally {
       setPrinting(false);
     }
+  }
+
+  async function openSavedPdf() {
+    try {
+      const [url] = await api.getFileUrls([draft!.pdf_path!]);
+      if (!url) throw new Error(t("common.error"));
+      await downloadPdf(url, letterFileName(draft!.subject));
+    } catch (e) {
+      toast(friendlyError(e, t), "error");
+    }
+  }
+
+  function markSent() {
+    setStatus.mutate("sent", {
+      onSuccess: () => {
+        toast(t("draft.markedSent"));
+        // Letters go by post: offer to keep the receipt or tracking number as proof.
+        if (draft!.kind === "letter") setAskProof(true);
+      },
+    });
+  }
+
+  async function addProof(source: "camera" | "library") {
+    setAskProof(false);
+    await waitForModalClose();
+    try {
+      const photos = source === "camera" ? await takePhoto() : await choosePhotos(4);
+      if (!photos.length) return;
+      files.addProof.mutate(photos, {
+        onSuccess: () => toast(t("draft.proofSaved")),
+        onError: (e) => toast(friendlyError(e, t), "error"),
+      });
+    } catch (e) {
+      toast(e instanceof PermissionDenied ? t("case.cameraDenied") : friendlyError(e, t), "error");
+    }
+  }
+
+  async function removeProof(path: string) {
+    if (!(await confirm({ title: t("draft.proofRemoveConfirm"), confirm: t("common.delete"), destructive: true }))) return;
+    files.removeProof.mutate(path, { onError: (e) => toast(friendlyError(e, t), "error") });
   }
 
   async function del() {
@@ -185,9 +241,20 @@ export default function DraftScreen() {
           </View>
           {draft.kind === "letter" && (
             <View style={{ gap: space(1.5) }}>
-              <Button variant="secondary" icon="document-outline" title={t("draft.pdf")} onPress={savePdf} loading={printing} />
+              <Button variant="secondary" icon="document-outline" title={t("draft.pdf")} onPress={savePdf}
+                loading={printing || files.savePdf.isPending} />
               <Txt variant="small" tone="muted" style={{ textAlign: "center" }}>{t("draft.pdfHint")}</Txt>
             </View>
+          )}
+          {draft.pdf_path && (
+            <Card style={{ flexDirection: "row", alignItems: "center", gap: space(3) }}>
+              <Ionicons name="document-text" size={24} color={c.danger} />
+              <View style={{ flex: 1 }}>
+                <Txt variant="h3">{t("draft.savedPdf")}</Txt>
+                {draft.pdf_at && <Muted>{t("draft.savedPdfOn", { date: formatDate(draft.pdf_at) })}</Muted>}
+              </View>
+              <Button small variant="secondary" title={t("draft.open")} onPress={openSavedPdf} />
+            </Card>
           )}
           {draft.kind === "email" && !sent && <Button icon="paper-plane" title={t("draft.sendBueroki")} onPress={startSend} />}
           {draft.kind === "email" && <Button variant="secondary" icon="mail-outline" title={t("draft.sendEmail")} onPress={openEmail} />}
@@ -207,9 +274,30 @@ export default function DraftScreen() {
         </Section>
       )}
 
+      {sent && draft.sent_via !== "bueroki" && (
+        <Section title={t("draft.proofTitle")}>
+          {proofPaths.length === 0 && <Muted>{t("draft.proofEmpty")}</Muted>}
+          {proofPaths.length > 0 && (
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: space(2) }}>
+              {proofPaths.map((path, i) => (
+                <View key={path}>
+                  <Image source={proofUrls.data?.[i] ? { uri: proofUrls.data[i] } : undefined} contentFit="cover"
+                    accessibilityLabel={t("draft.proofTitle")}
+                    style={{ width: 96, height: 128, borderRadius: radius.sm, backgroundColor: c.skeleton }} />
+                  <View style={{ position: "absolute", top: 2, right: 2 }}>
+                    <IconButton icon="close-circle" label={t("common.delete")} onPress={() => removeProof(path)} color={c.ink} />
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
+          <Button variant="secondary" icon="camera-outline" title={t("draft.proofAdd")} loading={files.addProof.isPending}
+            onPress={() => setAskProof(true)} />
+        </Section>
+      )}
+
       {!sent ? (
-        <Button icon="paper-plane-outline" title={t("draft.markSent")} loading={setStatus.isPending}
-          onPress={() => setStatus.mutate("sent", { onSuccess: () => toast(t("draft.markedSent")) })} />
+        <Button icon="paper-plane-outline" title={t("draft.markSent")} loading={setStatus.isPending} onPress={markSent} />
       ) : draft.sent_via !== "bueroki" ? (
         <Button variant="ghost" title={t("draft.undoSent")} onPress={() => setStatus.mutate("draft")} />
       ) : null}
@@ -248,6 +336,13 @@ export default function DraftScreen() {
         <Button icon="paper-plane" title={t("draft.sendNow")} onPress={sendNow} loading={send.isPending}
           disabled={!isEmailAddress(to.trim()) || !isEmailAddress(replyTo.trim()) || send.isPending} />
         <Button variant="secondary" title={t("common.cancel")} onPress={() => setSending(false)} />
+      </Sheet>
+
+      <Sheet visible={askProof} onClose={() => setAskProof(false)} title={t("draft.proofAskTitle")}>
+        <Txt>{t("draft.proofAskText")}</Txt>
+        <Button icon="camera-outline" title={t("case.takePhoto")} onPress={() => addProof("camera")} />
+        <Button variant="secondary" icon="images-outline" title={t("case.choosePhoto")} onPress={() => addProof("library")} />
+        <Button variant="ghost" title={t("draft.proofLater")} onPress={() => setAskProof(false)} />
       </Sheet>
 
       <Sheet visible={menu} onClose={() => setMenu(false)}>

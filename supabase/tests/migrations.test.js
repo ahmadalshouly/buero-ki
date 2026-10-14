@@ -85,6 +85,10 @@ test("the timeline, search and audit log reflect what happened", async () => {
   const caseId = (await as(AMINA, "select id from public.cases")).rows[0].id;
   await as(AMINA, "insert into public.drafts (case_id, subject, body_de) values ($1, 'Unterlagen', 'Text')", [caseId]);
   await as(AMINA, "update public.drafts set status = 'sent', sent_at = now()");
+  // The exported PDF and proof photos are kept with the draft, and only the owner can change them.
+  await as(AMINA, "update public.drafts set pdf_path = 'a/b/draft.pdf', pdf_at = now(), proof_paths = array['a/b/receipt.jpg']");
+  assert.deepEqual((await as(AMINA, "select proof_paths from public.drafts")).rows[0].proof_paths, ["a/b/receipt.jpg"]);
+  assert.equal((await as(BORIS, "update public.drafts set proof_paths = '{}' returning id")).rows.length, 0);
   const kinds = (await as(AMINA, "select kind from public.case_timeline")).rows.map((r) => r.kind).sort();
   assert.deepEqual(kinds, ["document", "draft", "sent"]);
   assert.equal((await as(BORIS, "select * from public.case_timeline")).rows.length, 0);
