@@ -4,11 +4,11 @@ import { z } from "npm:zod@4.6.7";
 export const MODEL = "claude-opus-5-5";
 
 // Opus 5.5 can decline in rare cases; "default" fallbacks reroute those server-side.
-const FALLBACK_BETA = "server-side-fallback-2026-07-01";
+export const FALLBACK_BETA = "server-side-fallback-2026-07-01";
 
 let client: Anthropic | null = null;
 // Created on first use so modules load in tests without an API key.
-function anthropic(): Anthropic {
+export function anthropic(): Anthropic {
   // Reads ANTHROPIC_API_KEY from the function's secrets. Keys that are not tied to a
   // workspace also need ANTHROPIC_WORKSPACE_ID.
   const workspace = Deno.env.get("ANTHROPIC_WORKSPACE_ID");
@@ -51,7 +51,7 @@ export interface Usage {
 
 export class AgentError extends Error {}
 
-function usageOf(response: Anthropic.Beta.BetaMessage): Usage {
+export function usageOf(response: Anthropic.Beta.BetaMessage): Usage {
   return {
     model: response.model,
     input_tokens: response.usage.input_tokens + (response.usage.cache_creation_input_tokens ?? 0),
@@ -60,14 +60,14 @@ function usageOf(response: Anthropic.Beta.BetaMessage): Usage {
   };
 }
 
-function textOf(response: Anthropic.Beta.BetaMessage): string {
+export function textOf(response: Anthropic.Beta.BetaMessage): string {
   return response.content
     .filter((b): b is Anthropic.Beta.BetaTextBlock => b.type === "text")
     .map((b) => b.text)
     .join("");
 }
 
-function checkStop(response: Anthropic.Beta.BetaMessage) {
+export function checkStop(response: Anthropic.Beta.BetaMessage) {
   if (response.stop_reason === "refusal") {
     throw new AgentError("The assistant could not process this request.");
   }

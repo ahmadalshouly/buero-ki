@@ -39,12 +39,12 @@ Deno.test("pageBlock maps PDFs and images and rejects other files", () => {
 Deno.test("renderCase fences the case and marks missing data", () => {
   const text = renderCase({
     caseRow: { id: "1", title: "Bürgergeld", category: "jobcenter", authority: null, reference_number: null, summary: null, facts: {} },
-    documents: [], openTasks: [{ title: "Send payslips", due_date: "2026-10-20" }], sentDrafts: [],
+    documents: [], openTasks: [{ id: "t", title: "Send payslips", due_date: "2026-10-20" }], sentDrafts: [],
   }, null);
   assertMatch(text, /^<case>\n/);
   assertMatch(text, /<\/case>$/);
   assertMatch(text, /Authority: unknown/);
-  assertMatch(text, /Send payslips \(due 2026-10-20\)/);
+  assertMatch(text, /\[T1\] Send payslips \(due 2026-10-20\)/);
 });
 
 Deno.test("limits grow with the plan and fall back to free", () => {

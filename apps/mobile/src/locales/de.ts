@@ -297,6 +297,12 @@ const de: Locale = {
     ],
     thinking: "Denkt nach…",
     disclaimer: "Antworten können falsch sein. Frag bei wichtigen Entscheidungen eine Beratungsstelle.",
+    actions: {
+      task_added: "Aufgabe hinzugefügt: {{title}}",
+      task_updated: "Aufgabe geändert: {{title}}",
+      task_done: "Erledigt: {{title}}",
+      task_removed: "Aufgabe entfernt: {{title}}",
+    },
   },
   search: {
     title: "Suchen",

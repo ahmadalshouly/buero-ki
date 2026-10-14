@@ -114,11 +114,18 @@ export interface Draft {
   created_at: string;
 }
 
+/** A change the assistant made while answering, such as a task it added or removed. */
+export interface ChatAction {
+  kind: "task_added" | "task_updated" | "task_done" | "task_removed" | (string & {});
+  title: string;
+}
+
 export interface ChatMessage {
   id: string;
   case_id: string;
   role: "user" | "assistant";
   content: string;
+  actions?: ChatAction[];
   created_at: string;
 }
 

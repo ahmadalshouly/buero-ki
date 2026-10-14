@@ -297,6 +297,12 @@ const tr: Locale = {
     ],
     thinking: "Düşünüyor…",
     disclaimer: "Yanıtlar yanlış olabilir. Önemli kararlar için bir Beratungsstelle'ye (danışma merkezi) sorun.",
+    actions: {
+      task_added: "Görev eklendi: {{title}}",
+      task_updated: "Görev değiştirildi: {{title}}",
+      task_done: "Tamamlandı: {{title}}",
+      task_removed: "Görev kaldırıldı: {{title}}",
+    },
   },
   search: {
     title: "Ara",

@@ -313,6 +313,12 @@ const ar: Locale = {
     ],
     thinking: "يفكر…",
     disclaimer: "قد تكون الإجابات خاطئة. للقرارات المهمة، اسأل مركز استشارة (Beratungsstelle).",
+    actions: {
+      task_added: "تمت إضافة مهمة: {{title}}",
+      task_updated: "تم تعديل مهمة: {{title}}",
+      task_done: "تم الإنجاز: {{title}}",
+      task_removed: "تم حذف مهمة: {{title}}",
+    },
   },
   search: {
     title: "بحث",

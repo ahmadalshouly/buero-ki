@@ -19,7 +19,7 @@ export interface CaseContext {
     summary: string | null;
     created_at: string;
   }[];
-  openTasks: { title: string; due_date: string | null }[];
+  openTasks: { id: string; title: string; due_date: string | null }[];
   sentDrafts: { subject: string; sent_at: string | null }[];
 }
 
@@ -28,7 +28,7 @@ export async function loadCaseContext(supabase: SupabaseClient, caseId: string):
     supabase.from("cases").select("id, title, category, authority, reference_number, summary, facts").eq("id", caseId).single(),
     supabase.from("documents").select("id, title_de, sender, document_date, summary, created_at")
       .eq("case_id", caseId).eq("status", "ready").order("created_at", { ascending: true }).limit(40),
-    supabase.from("tasks").select("title, due_date").eq("case_id", caseId).eq("done", false)
+    supabase.from("tasks").select("id, title, due_date").eq("case_id", caseId).eq("done", false)
       .order("due_date", { ascending: true, nullsFirst: false }).limit(30),
     supabase.from("drafts").select("subject, sent_at").eq("case_id", caseId).eq("status", "sent")
       .order("sent_at", { ascending: true }).limit(20),
@@ -45,7 +45,7 @@ export async function loadCaseContext(supabase: SupabaseClient, caseId: string):
 /** Plain-text view of the case the agent reads before answering. */
 export function renderCase(ctx: CaseContext, fullName: string | null): string {
   const c = ctx.caseRow;
-  const list = <T>(items: T[], fmt: (t: T) => string) => (items.length ? items.map(fmt) : ["- none"]);
+  const list = <T>(items: T[], fmt: (t: T, i: number) => string) => (items.length ? items.map(fmt) : ["- none"]);
   return [
     "<case>",
     `Case: ${c.title}`,
@@ -64,8 +64,8 @@ export function renderCase(ctx: CaseContext, fullName: string | null): string {
     "Letters the person already sent:",
     ...list(ctx.sentDrafts, (d) => `- [${d.sent_at?.slice(0, 10) ?? "?"}] ${d.subject}`),
     "",
-    "Open tasks:",
-    ...list(ctx.openTasks, (t) => `- ${t.title}${t.due_date ? ` (due ${t.due_date})` : ""}`),
+    "Open tasks (short name in brackets):",
+    ...list(ctx.openTasks, (t, i) => `- [T${i + 1}] ${t.title}${t.due_date ? ` (due ${t.due_date})` : ""}`),
     "</case>",
   ].join("\n");
 }
