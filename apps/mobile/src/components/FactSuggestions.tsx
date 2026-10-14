@@ -36,12 +36,13 @@ export function FactSuggestions({ caseId, messages }: { caseId: string; messages
   return <PendingFacts caseId={caseId} />;
 }
 
-/** Each suggestion from this case still waiting for an answer, with Remember / Don't remember. */
-export function PendingFacts({ caseId }: { caseId: string }) {
+/** Each suggestion from this case (or one letter) still waiting for an answer, with Remember / Don't remember. */
+export function PendingFacts({ caseId, documentId }: { caseId: string; documentId?: string }) {
   const { t } = useTranslation();
   const facts = useFacts();
   const decide = useDecideFact();
-  const pending = (facts.data ?? []).filter((f) => f.status === "pending" && f.case_id === caseId);
+  const pending = (facts.data ?? []).filter((f) =>
+    f.status === "pending" && f.case_id === caseId && (!documentId || f.document_id === documentId));
   if (!pending.length) return null;
 
   return (

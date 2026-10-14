@@ -1,4 +1,4 @@
-// After a chat answer, or after the person tells a form something about themselves,
+// After a chat answer, or after the person tells a form or a letter request something about themselves,
 // suggests lasting facts about the person worth remembering.
 // Suggestions are stored as pending; the app asks the person to keep or ignore each
 // one, and only kept facts are ever given to the agent.
@@ -11,11 +11,19 @@ import { FactSuggestions } from "../_shared/schemas.ts";
 const RECENT_MESSAGES = 4;
 const MAX_SUGGESTIONS = 3;
 
+// Where the text came from. Without text, the latest chat messages of the case are used.
+const SOURCES = {
+  form: "What the person told BüroKI while filling in a form (a question from the form may come before their answer):",
+  draft: "What the person told BüroKI when asking it to write a letter for them:",
+  note: "Something the person wrote down for BüroKI:",
+} as const;
+
 const Input = z.strictObject({
   case_id: z.uuid(),
-  // What the person told a form (their situation, or an answer to one of its questions).
-  // Without it, the latest chat messages of the case are used.
+  // What the person told a form (their situation, or an answer to one of its questions),
+  // the instructions for a letter, or any other text they wrote.
   text: z.string().trim().min(1).max(4000).optional(),
+  source: z.enum(["form", "draft", "note"]).optional(),
 });
 
 Deno.serve(handler("learn-facts", Input, async (ctx) => {
@@ -50,9 +58,7 @@ Rules:
       "Already remembered or suggested:",
       ...(facts.length ? facts.map((f) => `- id ${f.id} [${f.category}, ${f.status}] ${f.fact}`) : ["- nothing yet"]),
       "",
-      input.text
-        ? "What the person told BüroKI while filling in a form (a question from the form may come before their answer):"
-        : "Latest conversation (oldest first):",
+      input.text ? SOURCES[input.source ?? "form"] : "Latest conversation (oldest first):",
       ...messages.map((m) => `<${m.role}>\n${m.content}\n</${m.role}>`),
     ].join("\n"),
     schema: FactSuggestions,
@@ -65,6 +71,7 @@ Rules:
   const rows = data.facts.slice(0, MAX_SUGGESTIONS).map((f) => ({
     user_id: userId,
     case_id: input.case_id,
+    origin: input.text ? input.source ?? "form" : "chat",
     category: f.category,
     fact: f.fact.trim().slice(0, 300),
     replaces_id: f.replaces_id && knownIds.has(f.replaces_id) ? f.replaces_id : null,

@@ -23,7 +23,12 @@ Deno.serve(handler("analyze-document", Input, async (ctx) => {
 
   await supabase.from("documents").update({ status: "analyzing", error: null }).eq("id", doc.id);
   try {
-    const caseCtx = await loadCaseContext(supabase, doc.case_id);
+    const [caseCtx, memory, known] = await Promise.all([
+      loadCaseContext(supabase, doc.case_id),
+      supabase.from("profiles").select("memory_enabled").eq("id", ctx.userId).single(),
+      supabase.from("user_facts").select("id, category, fact, status").order("created_at", { ascending: true }).limit(80),
+    ]);
+    const knownFacts = known.data ?? [];
     const pages = await Promise.all(paths.map(async (path) => {
       const { data: file, error } = await supabase.storage.from("documents").download(path);
       if (error || !file) throw new HttpError(404, "A page of this letter is missing from storage.", "file_missing");
@@ -40,7 +45,10 @@ Today's date is ${today()}. Use it to calculate deadlines that are given as a pe
         ...pages,
         {
           type: "text",
-          text: `The letter above was added to this case:\n\n${renderCase(caseCtx, profile.full_name)}\n\nAnalyse the letter now.`,
+          text: `The letter above was added to this case:\n\n${renderCase(caseCtx, profile.full_name)}\n\n` +
+            `Already remembered or suggested about the person (do not repeat these in about_person):\n` +
+            (knownFacts.length ? knownFacts.map((f) => `- id ${f.id} [${f.category}, ${f.status}] ${f.fact}`).join("\n") : "- nothing yet") +
+            "\n\nAnalyse the letter now.",
         },
       ],
       schema: Analysis,
@@ -80,6 +88,22 @@ Today's date is ${today()}. Use it to calculate deadlines that are given as a pe
     }
     const failed = (await Promise.all(writes)).find((r) => r.error);
     if (failed?.error) throw new Error(failed.error.message);
+
+    // Facts about the person wait as suggestions; the letter screen asks whether to keep each one.
+    if (analysis.readable && analysis.about_person.length && memory.data?.memory_enabled !== false) {
+      const keptIds = new Set(knownFacts.filter((f) => f.status === "kept").map((f) => f.id));
+      const { error } = await supabase.from("user_facts").insert(analysis.about_person.slice(0, 3).map((f) => ({
+        user_id: ctx.userId,
+        case_id: doc.case_id,
+        document_id: doc.id,
+        origin: "letter",
+        category: f.category,
+        fact: f.fact.trim().slice(0, 300),
+        replaces_id: f.replaces_id && keptIds.has(f.replaces_id) ? f.replaces_id : null,
+      })).filter((f) => f.fact));
+      // Suggestions are a bonus; the letter itself was read fine.
+      if (error) ctx.log("fact suggestions not saved", { error: error.message });
+    }
 
     return { document_id: doc.id, analysis };
   } catch (error) {

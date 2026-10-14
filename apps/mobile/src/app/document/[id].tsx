@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Linking, Pressable, ScrollView, View } from "react-native";
 import { useFeedback } from "@/components/feedback";
+import { PendingFacts } from "@/components/FactSuggestions";
 import { Markdown } from "@/components/Markdown";
 import {
   Badge, Button, Card, DueBadge, ErrorBox, IconButton, Muted, Screen, Section, Sheet, SkeletonList, Txt,
@@ -64,6 +65,8 @@ export default function DocumentScreen() {
           {a?.reference_number && <Badge label={a.reference_number} icon="pricetag-outline" />}
         </View>
       </View>
+
+      <PendingFacts caseId={doc.case_id} documentId={doc.id} />
 
       {reading && (
         <Card style={{ flexDirection: "row", alignItems: "center", gap: space(3) }}>

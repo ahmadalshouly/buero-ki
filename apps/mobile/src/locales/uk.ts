@@ -393,6 +393,14 @@ const uk: Locale = {
     forgetAll: "Забути все",
     forgetAllConfirm: "Забути все, що пам'ятає BüroKI?",
     forgetAllText: "Ваші справи, листи й чати залишаться. Видаляться лише відомості на цій сторінці.",
+    origins: {
+      chat: "З чату",
+      letter: "З листа",
+      form: "З формуляра",
+      draft: "З вашого запиту на лист",
+      note: "З того, що ви написали",
+      user: "Додано вами",
+    },
     categories: {
       identity: "Про вас",
       residence: "Перебування",

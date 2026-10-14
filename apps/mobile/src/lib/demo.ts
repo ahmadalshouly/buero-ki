@@ -358,6 +358,13 @@ export const demoApi: Api = {
       created_at: now(),
     };
     state.documents.push(doc);
+    // Like the real agent, offer to remember what the letter says about the person (once).
+    if (state.profile.memory_enabled !== false && !state.facts.some((f) => f.origin === "letter")) {
+      state.facts.push({
+        id: id(), category: "money", fact: "The Jobcenter knows you under the number BG 12345//0067890.", status: "pending",
+        case_id: caseId, replaces_id: null, source: "agent", origin: "letter", document_id: doc.id, created_at: now(), decided_at: null,
+      });
+    }
     for (const a of analysis.actions) {
       state.tasks.push({
         id: id(), case_id: caseId, document_id: doc.id, title: a.title, due_date: a.due_date, done: false,
@@ -578,14 +585,15 @@ Mit freundlichen Grüßen
   async listFacts() {
     return [...state.facts];
   },
-  async learnFacts(caseId, text) {
+  async learnFacts(caseId, text, source) {
     if (text) {
       // What the person told a form: the demo offers to remember the answer itself.
       const said = (text.match(/The person's answer: ([\s\S]+)$/)?.[1] ?? text).trim();
       if (said.length < 3 || state.profile.memory_enabled === false) return [];
       const fact: UserFact = {
         id: id(), category: "other", fact: `You told me: ${said.slice(0, 200)}`, status: "pending",
-        case_id: caseId, replaces_id: null, source: "agent", created_at: now(), decided_at: null,
+        case_id: caseId, replaces_id: null, source: "agent", origin: source ?? "form", document_id: null,
+        created_at: now(), decided_at: null,
       };
       state.facts.push(fact);
       return [fact];
@@ -596,7 +604,7 @@ Mit freundlichen Grüßen
     state.factSuggested = true;
     const fact: UserFact = {
       id: id(), category: "family", fact: "You live in Berlin with your partner and one child.", status: "pending",
-      case_id: caseId, replaces_id: null, source: "agent", created_at: now(), decided_at: null,
+      case_id: caseId, replaces_id: null, source: "agent", origin: "chat", document_id: null, created_at: now(), decided_at: null,
     };
     state.facts.push(fact);
     return [fact];

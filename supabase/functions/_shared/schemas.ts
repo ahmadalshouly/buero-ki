@@ -36,6 +36,13 @@ export const Analysis = z.strictObject({
   case_summary: z.string().describe("Updated summary of the whole case after this document, 2 to 4 sentences in the user's language."),
   new_facts: z.array(z.strictObject({ key: z.string(), value: z.string() }))
     .describe("New stable facts about the person or case (e.g. household size, BG number, approved amount)."),
+  about_person: z.array(z.strictObject({
+    category: z.enum(["identity", "residence", "family", "work", "money", "housing", "health", "contact", "other"]),
+    fact: z.string().describe("One short sentence in the user's language, addressed to them, e.g. 'Your address is Hauptstraße 5, 12345 Berlin.'"),
+    replaces_id: z.string().nullable().describe("id of a remembered fact this one corrects or updates, else null."),
+  })).describe(
+    "At most 3 lasting facts about the person this letter is addressed to, worth remembering for other paperwork (address, date of birth, nationality, residence permit and its end date, household members, customer or insurance numbers, approved benefits). Skip anything already remembered or suggested. The person will be asked before anything is kept.",
+  ),
 });
 export type Analysis = z.infer<typeof Analysis>;
 

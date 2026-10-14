@@ -23,6 +23,7 @@ Deno.test("analysis schema accepts a realistic answer and rejects extra keys", (
     key_terms: [{ term_de: "Mitwirkungspflicht", meaning: "Duty to cooperate" }], amounts: [],
     urgency: "high", needs_advice: false, advice_reason: null, reference_number: "123A456789",
     case_summary: "Bürgergeld application in progress.", new_facts: [{ key: "bg_number", value: "123A456789" }],
+    about_person: [{ category: "housing", fact: "Your address is Hauptstraße 5, 10115 Berlin.", replaces_id: null }],
   };
   assert(Analysis.safeParse(ok).success);
   assert(!Analysis.safeParse({ ...ok, extra: 1 }).success);

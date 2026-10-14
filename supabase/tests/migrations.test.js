@@ -143,6 +143,14 @@ test("facts stay private, and keeping a correction replaces the old fact", async
   assert.deepEqual(rows.map((r) => [r.fact, r.status]), [["You live in Berlin-Neukölln", "kept"]]);
 });
 
+test("facts suggested from a letter point at the person's own letter only", async () => {
+  const doc = (await as(AMINA, "select id, case_id from public.documents limit 1")).rows[0];
+  const row = (await as(AMINA, "insert into public.user_facts (fact, case_id, document_id, origin) values ('Your address is Hauptstraße 5', $1, $2, 'letter') returning origin", [doc.case_id, doc.id])).rows[0];
+  assert.equal(row.origin, "letter");
+  await assert.rejects(as(BORIS, "insert into public.user_facts (fact, document_id) values ('sneaky', $1)", [doc.id]), /row-level security/);
+  await assert.rejects(as(AMINA, "insert into public.user_facts (fact, origin) values ('x', 'gossip')"), /check constraint/);
+});
+
 test("deleting the login removes all of the person's data", async () => {
   await db.exec(`delete from auth.users where id = '${AMINA}'`);
   for (const table of ["profiles", "cases", "documents", "forms", "tasks", "drafts", "user_facts"]) {

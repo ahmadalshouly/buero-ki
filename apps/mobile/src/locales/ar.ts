@@ -401,6 +401,14 @@ const ar: Locale = {
     forgetAll: "انسَ كل شيء",
     forgetAllConfirm: "هل تريد أن ينسى BüroKI كل ما يتذكره؟",
     forgetAllText: "تبقى قضاياك ورسائلك ومحادثاتك. تُحذف فقط المعلومات في هذه الصفحة.",
+    origins: {
+      chat: "من محادثة",
+      letter: "من رسالة",
+      form: "من استمارة",
+      draft: "من رسالة طلبت كتابتها",
+      note: "من شيء كتبته",
+      user: "أضفتها بنفسك",
+    },
     categories: {
       identity: "عنك",
       residence: "الإقامة",

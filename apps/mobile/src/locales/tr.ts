@@ -385,6 +385,14 @@ const tr: Locale = {
     forgetAll: "Her şeyi unut",
     forgetAllConfirm: "BüroKI hatırladığı her şeyi unutsun mu?",
     forgetAllText: "Dosyaların, mektupların ve sohbetlerin kalır. Yalnızca bu sayfadaki bilgiler silinir.",
+    origins: {
+      chat: "Bir sohbetten",
+      letter: "Bir mektuptan",
+      form: "Bir formdan",
+      draft: "Yazılmasını istediğin bir mektuptan",
+      note: "Yazdığın bir şeyden",
+      user: "Senin eklediğin",
+    },
     categories: {
       identity: "Hakkında",
       residence: "Oturum",

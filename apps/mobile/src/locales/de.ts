@@ -385,6 +385,14 @@ const de: Locale = {
     forgetAll: "Alles vergessen",
     forgetAllConfirm: "Alles vergessen, was BüroKI sich gemerkt hat?",
     forgetAllText: "Deine Fälle, Briefe und Chats bleiben. Nur die Angaben auf dieser Seite werden gelöscht.",
+    origins: {
+      chat: "Aus einem Chat",
+      letter: "Aus einem Brief",
+      form: "Aus einem Formular",
+      draft: "Aus deinem Auftrag für einen Brief",
+      note: "Aus etwas, das du geschrieben hast",
+      user: "Von dir eingetragen",
+    },
     categories: {
       identity: "Über dich",
       residence: "Aufenthalt",
