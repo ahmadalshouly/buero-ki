@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { FlatList, KeyboardAvoidingView, Platform, Pressable, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { FactSuggestions } from "@/components/FactSuggestions";
 import { Markdown } from "@/components/Markdown";
 import { Chip, ErrorBox, Muted, Skeleton, Txt } from "@/components/ui";
 import { friendlyError } from "@/lib/errorText";
@@ -115,6 +116,7 @@ export default function Chat() {
                 </View>
               )}
               {send.error && <ErrorBox message={friendlyError(send.error, t)} />}
+              <FactSuggestions caseId={id} messages={messages.data} />
             </View>
           )}
           renderItem={({ item }) => (

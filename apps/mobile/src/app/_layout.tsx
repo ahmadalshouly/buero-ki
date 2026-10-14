@@ -75,6 +75,7 @@ function RootStack() {
         <Stack.Protected guard={signedIn && onboarded}>
           <Stack.Screen name="(tabs)" options={{ headerShown: false, title: "BüroKI" }} />
           <Stack.Screen name="search" options={{ title: t("search.title") }} />
+          <Stack.Screen name="memory" options={{ title: t("memory.title") }} />
           <Stack.Screen name="case/new" options={{ title: t("newCase.title"), presentation: "modal" }} />
           <Stack.Screen name="case/[id]/index" options={{ title: "" }} />
           <Stack.Screen name="case/[id]/edit" options={{ title: t("newCase.editTitle"), presentation: "modal" }} />

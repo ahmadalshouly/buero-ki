@@ -5,7 +5,7 @@ import { QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/re
 import { api } from "./api";
 import { ApiError } from "./errors";
 import { authStorage } from "./storage";
-import type { Case, CaseDocument, CaseStatus, Draft, NewCase, PickedFile, Task } from "./types";
+import type { Case, CaseDocument, CaseStatus, Draft, NewCase, PickedFile, Task, UserFact } from "./types";
 
 export const keys = {
   profile: ["profile"] as const,
@@ -21,6 +21,7 @@ export const keys = {
   draft: (id: string) => ["draft", id] as const,
   messages: (caseId: string) => ["case", caseId, "messages"] as const,
   search: (q: string) => ["search", q] as const,
+  facts: ["facts"] as const,
 };
 
 export const queryClient = new QueryClient({
@@ -83,6 +84,7 @@ export const useDrafts = (caseId: string) => useQuery({ queryKey: keys.drafts(ca
 export const useDraft = (id: string) => useQuery({ queryKey: keys.draft(id), queryFn: () => api.getDraft(id), enabled: !!id });
 export const useMessages = (caseId: string) =>
   useQuery({ queryKey: keys.messages(caseId), queryFn: () => api.listMessages(caseId) });
+export const useFacts = (enabled = true) => useQuery({ queryKey: keys.facts, queryFn: api.listFacts, enabled });
 export const useSearch = (q: string) =>
   useQuery({ queryKey: keys.search(q), queryFn: () => api.search(q), enabled: q.trim().length >= 2, staleTime: 10_000 });
 
@@ -232,6 +234,35 @@ export function useSendMessage(caseId: string) {
       qc.invalidateQueries({ queryKey: keys.messages(caseId) });
       qc.invalidateQueries({ queryKey: keys.usage });
     },
+  });
+}
+
+/** Asks for suggestions after a chat answer. Runs in the background, so failures stay quiet. */
+export function useLearnFacts(caseId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.learnFacts(caseId),
+    onSuccess: (facts) => {
+      if (facts.length) qc.invalidateQueries({ queryKey: keys.facts });
+    },
+  });
+}
+
+/** Keep or forget a fact; removes it from the list at once and rolls back on failure. */
+export function useDecideFact() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ fact, keep }: { fact: UserFact; keep: boolean }) => (keep ? api.keepFact(fact.id) : api.forgetFact(fact.id)),
+    onMutate: async ({ fact, keep }) => {
+      await qc.cancelQueries({ queryKey: keys.facts });
+      const prev = qc.getQueryData<UserFact[]>(keys.facts);
+      qc.setQueryData<UserFact[]>(keys.facts, (list) => list
+        ?.filter((f) => f.id !== fact.id && !(keep && f.id === fact.replaces_id))
+        .concat(keep ? [{ ...fact, status: "kept", decided_at: new Date().toISOString() }] : []));
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => ctx?.prev && qc.setQueryData(keys.facts, ctx.prev),
+    onSettled: () => qc.invalidateQueries({ queryKey: keys.facts }),
   });
 }
 
