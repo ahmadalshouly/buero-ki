@@ -3,8 +3,9 @@ import { router } from "expo-router";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { TextInput, View } from "react-native";
+import { CASE_ROW_INSET, CaseRow } from "@/components/CaseRow";
 import {
-  Badge, Button, Card, DemoBanner, EmptyState, ErrorBox, IconCircle, Muted, Screen, Segmented, SkeletonList, Txt,
+  Badge, Button, DemoBanner, EmptyState, ErrorBox, Group, Screen, Segmented, SkeletonList, Txt,
 } from "@/components/ui";
 import { categoryIcon } from "@/lib/categories";
 import { useIconFlip, useInputDir } from "@/lib/direction";
@@ -71,26 +72,25 @@ export default function Cases() {
           action={!cases.data?.length ? <Button icon="add" title={t("home.newCase")} onPress={() => router.push("/case/new")} /> : undefined}
         />
       ) : (
-        <View style={{ gap: space(3) }}>
+        <Group inset={CASE_ROW_INSET}>
           {list.map((x) => {
             const open = (tasks.data ?? []).filter((task) => task.case_id === x.id).length;
             return (
-              <Card key={x.id} onPress={() => router.push(`/case/${x.id}`)} style={{ flexDirection: "row", alignItems: "center", gap: space(3) }}>
-                <IconCircle name={categoryIcon(x.category)} tone={x.status === "closed" ? "neutral" : "accent"} />
-                <View style={{ flex: 1, gap: space(1) }}>
-                  <Txt variant="h3">{x.title}</Txt>
-                  <Muted numberOfLines={1}>{[x.authority ?? t(`category.${x.category}`), x.reference_number].filter(Boolean).join(" · ")}</Muted>
-                  <View style={{ flexDirection: "row", gap: space(2), flexWrap: "wrap", alignItems: "center" }}>
-                    <Badge label={t(`status.${x.status}`)} tone={x.status === "closed" ? "neutral" : x.status === "waiting" ? "warn" : "accent"} />
-                    {open > 0 && <Badge label={t("cases.tasksOpen", { count: open })} icon="checkbox-outline" />}
-                    <Txt variant="small" tone="faint">{formatDate(x.updated_at)}</Txt>
-                  </View>
+              <CaseRow
+                key={x.id}
+                item={x}
+                subtitle={[x.authority ?? t(`category.${x.category}`), x.reference_number].filter(Boolean).join(" · ")}
+                onPress={() => router.push(`/case/${x.id}`)}
+              >
+                <View style={{ flexDirection: "row", gap: space(2), flexWrap: "wrap", alignItems: "center", marginTop: space(1) }}>
+                  <Badge label={t(`status.${x.status}`)} tone={x.status === "closed" ? "neutral" : x.status === "waiting" ? "warn" : "accent"} />
+                  {open > 0 && <Badge label={t("cases.tasksOpen", { count: open })} icon="checkbox-outline" />}
+                  <Txt variant="caption" tone="faint">{formatDate(x.updated_at)}</Txt>
                 </View>
-                <Ionicons name="chevron-forward" size={20} color={c.faint} style={flip} />
-              </Card>
+              </CaseRow>
             );
           })}
-        </View>
+        </Group>
       )}
     </Screen>
   );

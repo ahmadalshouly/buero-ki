@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { FactSuggestions } from "@/components/FactSuggestions";
-import { Backdrop } from "@/components/glass";
+import { Backdrop, GlassFill } from "@/components/glass";
 import { Markdown } from "@/components/Markdown";
 import { Chip, ErrorBox, Muted, Skeleton, Txt } from "@/components/ui";
 import { useInputDir } from "@/lib/direction";
@@ -17,11 +17,16 @@ import type { ChatAction, ChatMessage } from "@/lib/types";
 
 const useStyles = makeStyles((c) => ({
   list: { padding: space(4), gap: space(3), width: "100%", maxWidth: 680, alignSelf: "center", flexGrow: 1 },
-  bubble: { paddingVertical: space(2.5), paddingHorizontal: space(3.5), borderRadius: radius.md, borderCurve: "continuous", maxWidth: "88%" },
-  mine: { alignSelf: "flex-end", backgroundColor: c.accent, borderBottomEndRadius: 6 },
+  bubble: { paddingVertical: space(2.5), paddingHorizontal: space(3.5), borderRadius: radius.md, borderCurve: "continuous" },
+  mine: { alignSelf: "flex-end", maxWidth: "85%", backgroundColor: c.accent, borderBottomEndRadius: 6 },
+  // Answers use the full width, like a document: long German words have room,
+  // and the text never has to fit a bubble that sized itself to the first line.
   theirs: {
-    alignSelf: "flex-start", backgroundColor: c.glassFill, borderWidth: StyleSheet.hairlineWidth, borderColor: c.glassEdge, borderBottomStartRadius: 6,
+    alignSelf: "stretch", backgroundColor: c.card, borderWidth: StyleSheet.hairlineWidth, borderColor: c.glassEdge,
+    paddingVertical: space(3.5), paddingHorizontal: space(4),
   },
+  author: { flexDirection: "row", alignItems: "center", gap: space(1.5), marginBottom: space(2) },
+  avatar: { width: 22, height: 22, borderRadius: 7, borderCurve: "continuous", backgroundColor: c.accent, alignItems: "center", justifyContent: "center" },
   composer: {
     flexDirection: "row",
     alignItems: "flex-end",
@@ -30,18 +35,23 @@ const useStyles = makeStyles((c) => ({
     paddingVertical: space(2),
     borderTopWidth: StyleSheet.hairlineWidth,
     borderColor: c.line,
-    backgroundColor: c.glassFill,
+    backgroundColor: Platform.OS === "android" ? c.glassFill : undefined,
   },
   input: {
     flex: 1, maxHeight: 140, fontSize: 17, color: c.ink, paddingTop: space(2.5), paddingBottom: space(2.5), paddingHorizontal: space(4),
     backgroundColor: c.raised, borderRadius: 22, outlineWidth: 0,
+    // Above the composer's blur layer on the web, where it would otherwise cover the field.
+    position: "relative", zIndex: 1,
   },
-  actions: { alignSelf: "flex-start", maxWidth: "88%", gap: space(1.5), marginTop: -space(1) },
+  actions: { alignSelf: "stretch", gap: space(1.5), marginTop: -space(1) },
   action: {
     flexDirection: "row", alignItems: "center", gap: space(2), paddingVertical: space(1.5), paddingHorizontal: space(3),
     borderRadius: radius.md, borderCurve: "continuous", backgroundColor: c.accentSoft,
   },
-  send: { width: 40, height: 40, margin: 2, borderRadius: 20, backgroundColor: c.accent, alignItems: "center", justifyContent: "center" },
+  send: {
+    width: 40, height: 40, margin: 2, borderRadius: 20, backgroundColor: c.accent, alignItems: "center", justifyContent: "center",
+    position: "relative", zIndex: 1,
+  },
 }));
 
 const ACTION_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
@@ -164,7 +174,13 @@ export default function Chat() {
                   {item.role === "user" ? (
                     <Txt tone="accentInk" selectable>{item.content}</Txt>
                   ) : (
-                    <Markdown text={item.content} />
+                    <>
+                      <View style={s.author}>
+                        <View style={s.avatar}><Ionicons name="sparkles" size={12} color={s.c.accentInk} /></View>
+                        <Txt variant="caption" tone="muted" style={{ fontWeight: "600" }}>BüroKI</Txt>
+                      </View>
+                      <Markdown text={item.content} />
+                    </>
                   )}
                 </View>
               )}
@@ -173,6 +189,7 @@ export default function Chat() {
           )}
         />
         <View style={s.composer}>
+          <GlassFill round={0} material="chrome" />
           <TextInput
             style={[s.input, inputDir]}
             value={text}
