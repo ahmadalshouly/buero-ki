@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, Switch, TextInput, View } from "react-native";
+import { ActivityIndicator, ScrollView, Switch, TextInput, View } from "react-native";
 import { PendingFacts } from "@/components/FactSuggestions";
 import { useFeedback } from "@/components/feedback";
 import { Markdown } from "@/components/Markdown";
@@ -11,7 +11,7 @@ import {
 } from "@/components/ui";
 import { useInputDir } from "@/lib/direction";
 import { friendlyError } from "@/lib/errorText";
-import { formFileName, formProgress, formSheetHtml, groupFields, isFilled } from "@/lib/formSheet";
+import { formAnswersText, formFileName, formProgress, formSheetHtml, groupFields, isFilled } from "@/lib/formSheet";
 import { errorMessage, useForm, useFormActions, useLearnFacts } from "@/lib/queries";
 import { downloadPdf, htmlToPdf } from "@/lib/savePdf";
 import { useMe } from "@/lib/session";
@@ -215,6 +215,7 @@ export default function FormScreen() {
   const [filter, setFilter] = useState<Filter>("all");
   const [menu, setMenu] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [finishing, setFinishing] = useState(false);
 
   if (!form) {
     return <Screen>{query.error ? <ErrorBox message={errorMessage(query.error)} onRetry={() => query.refetch()} /> : <SkeletonList rows={4} />}</Screen>;
@@ -293,9 +294,13 @@ export default function FormScreen() {
   async function answer(text: string): Promise<string | null> {
     if (!(await saveDraft())) return null;
     try {
+      const wasOpen = fields.some((f) => !isFilled(f) && f.type !== "signature");
       const res = await actions.answer.mutateAsync(text);
+      const nowOpen = res.form.fields.some((f) => !isFilled(f) && f.type !== "signature");
+      // The last question is answered: offer to finish, which asks what to remember from the whole form.
+      if (wasOpen && !nowOpen) openFinish(res.form);
       // Anything new the person said about themselves is offered to remember, never kept silently.
-      if (profile?.memory_enabled !== false) learn.mutate(text);
+      else if (profile?.memory_enabled !== false) learn.mutate(text);
       return res.reply;
     } catch (e) {
       toast(friendlyError(e, t), "error");
@@ -303,8 +308,18 @@ export default function FormScreen() {
     }
   }
 
-  async function exportPdf() {
-    if (progress.missingRequired > 0) {
+  /** The finish step: what to remember from this form, then the PDF, then closing the form. */
+  function openFinish(filled: CaseForm) {
+    setFinishing(true);
+    if (profile?.memory_enabled !== false) learn.mutate(formAnswersText(filled));
+  }
+
+  async function finish() {
+    if (await saveDraft()) openFinish(current);
+  }
+
+  async function exportPdf(confirmed = false) {
+    if (progress.missingRequired > 0 && !confirmed) {
       const go = await confirm({
         title: t("form.missingTitle"),
         message: t("form.missingText", { count: progress.missingRequired }),
@@ -351,8 +366,7 @@ export default function FormScreen() {
                 onPress={() => saveDraft().then((ok) => ok && toast(t("common.saved")))} />
             </View>
           ) : (
-            <Button icon="document-outline" title={form.fillable ? t("form.downloadFilled") : t("form.downloadSheet")}
-              onPress={exportPdf} loading={exporting} disabled={busy} />
+            <Button icon="checkmark-circle-outline" title={t("form.finish")} onPress={finish} loading={exporting} disabled={busy} />
           )}
         </Footer>
       }
@@ -401,6 +415,31 @@ export default function FormScreen() {
       <Muted>{form.fillable ? t("form.fillableHint") : t("form.sheetHint")}</Muted>
       <Muted>{t("form.disclaimer")}</Muted>
       {menuSheet}
+      <Sheet visible={finishing} onClose={() => setFinishing(false)} title={t("form.finishTitle")}>
+        <ScrollView style={{ maxHeight: 420 }} contentContainerStyle={{ gap: space(3) }}>
+          <Txt>{progress.missingRequired > 0 ? t("form.finishMissing", { count: progress.missingRequired }) : t("form.finishReady")}</Txt>
+          {profile?.memory_enabled !== false && (learn.isPending ? (
+            <View style={{ flexDirection: "row", gap: space(2), alignItems: "center" }}>
+              <ActivityIndicator color={c.accent} />
+              <Muted>{t("form.finishLearning")}</Muted>
+            </View>
+          ) : (
+            <PendingFacts caseId={form.case_id} empty={<Muted>{t("form.finishNothingNew")}</Muted>} />
+          ))}
+        </ScrollView>
+        <Button icon="document-outline" title={form.fillable ? t("form.downloadFilled") : t("form.downloadSheet")}
+          loading={exporting}
+          onPress={() => {
+            setFinishing(false);
+            exportPdf(true);
+          }} />
+        <Button variant="secondary" icon="checkmark" title={t("form.finishClose")}
+          onPress={() => {
+            setFinishing(false);
+            router.back();
+          }} />
+        <Button variant="ghost" title={t("form.keepEditing")} onPress={() => setFinishing(false)} />
+      </Sheet>
     </Screen>
   );
 }

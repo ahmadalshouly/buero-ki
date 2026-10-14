@@ -581,10 +581,13 @@ Mit freundlichen Grüßen
   async learnFacts(caseId, text) {
     if (text) {
       // What the person told a form: the demo offers to remember the answer itself.
-      const said = (text.match(/The person's answer: ([\s\S]+)$/)?.[1] ?? text).trim();
+      // A finished form: the demo offers to remember the birth date, if one was given.
+      const birth = text.startsWith("I filled in the form") ? text.match(/Geburtsdatum: (.+)/)?.[1] : undefined;
+      const said = birth ? `You were born on ${birth}.` : (text.match(/The person's answer: ([\s\S]+)$/)?.[1] ?? text).trim();
+      if (text.startsWith("I filled in the form") && !birth) return [];
       if (said.length < 3 || state.profile.memory_enabled === false) return [];
       const fact: UserFact = {
-        id: id(), category: "other", fact: `You told me: ${said.slice(0, 200)}`, status: "pending",
+        id: id(), category: "other", fact: birth ? said : `You told me: ${said.slice(0, 200)}`, status: "pending",
         case_id: caseId, replaces_id: null, source: "agent", created_at: now(), decided_at: null,
       };
       state.facts.push(fact);

@@ -16,6 +16,14 @@ export function formProgress(fields: FormField[]): { total: number; filled: numb
   };
 }
 
+/** What the person put into the form, for the agent to suggest what is worth remembering. */
+export function formAnswersText(form: Pick<CaseForm, "title_de" | "file_name" | "fields">): string {
+  const lines = form.fields
+    .filter((f) => f.type !== "signature" && isFilled(f))
+    .map((f) => `- ${f.label_de}: ${f.value!.trim()}`);
+  return `I filled in the form "${form.title_de ?? form.file_name ?? "Formular"}" with these answers:\n${lines.join("\n")}`.slice(0, 4000);
+}
+
 export interface FieldGroup {
   title: string | null;
   page: number | null;
