@@ -28,6 +28,8 @@ export interface Profile {
   full_name: string | null;
   plan: "free" | "plus" | "org";
   ai_consent_at: string | null;
+  /** Where replies go when BüroKI sends an email for the person. */
+  contact_email: string | null;
 }
 
 export interface Ctx<I> {
@@ -101,7 +103,7 @@ export function handler<S extends z.ZodType>(
       }
 
       const { data: profile, error: profileError } = await supabase
-        .from("profiles").select("language, full_name, plan, ai_consent_at").eq("id", userId).single();
+        .from("profiles").select("language, full_name, plan, ai_consent_at, contact_email").eq("id", userId).single();
       if (profileError || !profile) throw new HttpError(404, "Profile not found", "profile");
       if (opts.requireConsent !== false && !profile.ai_consent_at) {
         throw new HttpError(403, "Please agree to AI processing in the app settings first.", "consent");

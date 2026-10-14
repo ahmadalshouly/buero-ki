@@ -14,7 +14,7 @@ import { exportLetterPdf } from "@/lib/printLetter";
 import {
   errorMessage, useCase, useDeleteDraft, useDraft, useSendEmail, useSetDraftStatus, useUpdateDraft,
 } from "@/lib/queries";
-import { useSession } from "@/lib/session";
+import { useMe, useSession } from "@/lib/session";
 import { radius, space, useColors } from "@/lib/theme";
 
 export default function DraftScreen() {
@@ -30,9 +30,11 @@ export default function DraftScreen() {
   const setStatus = useSetDraftStatus(draft);
   const remove = useDeleteDraft();
   const send = useSendEmail(draft);
-  const { email: myEmail } = useSession();
+  const { email: loginEmail } = useSession();
+  const { profile } = useMe();
   const [sending, setSending] = useState(false);
   const [to, setTo] = useState("");
+  const [replyTo, setReplyTo] = useState("");
   const [editing, setEditing] = useState(false);
   const [body, setBody] = useState("");
   const [menu, setMenu] = useState(false);
@@ -70,12 +72,13 @@ export default function DraftScreen() {
       return;
     }
     setTo(emailIn(theCase.data?.authority));
+    setReplyTo(profile?.contact_email ?? loginEmail ?? "");
     send.reset();
     setSending(true);
   }
 
   function sendNow() {
-    send.mutate(to.trim().toLowerCase(), {
+    send.mutate({ to: to.trim().toLowerCase(), replyTo: replyTo.trim().toLowerCase() }, {
       onSuccess: (sentDraft) => {
         setSending(false);
         toast(t("draft.sentByBueroki", { to: sentDraft.sent_to ?? to }));
@@ -224,10 +227,21 @@ export default function DraftScreen() {
           <Txt variant="h3" style={ltrText}>{draft.subject}</Txt>
           <Muted numberOfLines={3}>{draft.body_de}</Muted>
         </Card>
-        <Muted>{t("draft.sendReplies", { email: myEmail ?? "" })}</Muted>
+        <Field
+          label={t("draft.replyTo")}
+          value={replyTo}
+          onChangeText={setReplyTo}
+          ltr
+          autoCapitalize="none"
+          autoCorrect={false}
+          keyboardType="email-address"
+          autoComplete="email"
+          hint={t("draft.sendReplies")}
+          error={replyTo.trim() && !isEmailAddress(replyTo.trim()) ? t("draft.sendInvalid") : null}
+        />
         {send.error && <ErrorBox message={errorMessage(send.error)} />}
         <Button icon="paper-plane" title={t("draft.sendNow")} onPress={sendNow} loading={send.isPending}
-          disabled={!isEmailAddress(to.trim()) || send.isPending} />
+          disabled={!isEmailAddress(to.trim()) || !isEmailAddress(replyTo.trim()) || send.isPending} />
         <Button variant="secondary" title={t("common.cancel")} onPress={() => setSending(false)} />
       </Sheet>
 

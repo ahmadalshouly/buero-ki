@@ -12,7 +12,7 @@ import type {
 
 export { ApiError, MAX_PAGES, TERMS_VERSION, type ApiErrorCode } from "./errors";
 
-export type ProfilePatch = Partial<Pick<Profile, "full_name" | "language" | "city" | "onboarded_at" | "ai_consent_at" | "memory_enabled">> & {
+export type ProfilePatch = Partial<Pick<Profile, "full_name" | "language" | "city" | "onboarded_at" | "ai_consent_at" | "memory_enabled" | "contact_email">> & {
   terms_version?: string;
 };
 
@@ -70,7 +70,7 @@ export interface Api {
   updateDraft(id: string, patch: { subject?: string; body_de?: string }): Promise<void>;
   setDraftStatus(id: string, status: Draft["status"]): Promise<void>;
   /** BüroKI sends the saved email draft to `to`; replies go to the person. Only call after they confirmed. */
-  sendEmail(id: string, to: string): Promise<Draft>;
+  sendEmail(id: string, to: string, replyTo: string): Promise<Draft>;
   deleteDraft(id: string): Promise<void>;
 
   listMessages(caseId: string): Promise<ChatMessage[]>;
@@ -205,7 +205,7 @@ function supabaseApi(db: SupabaseClient): Api {
   const api: Api = {
     async getProfile() {
       const id = await userId();
-      return must(await db.from("profiles").select("id, full_name, language, city, onboarded_at, ai_consent_at, plan, memory_enabled").eq("id", id).single());
+      return must(await db.from("profiles").select("id, full_name, language, city, onboarded_at, ai_consent_at, plan, memory_enabled, contact_email").eq("id", id).single());
     },
     async updateProfile(patch) {
       ok(await db.from("profiles").update(patch).eq("id", await userId()));
@@ -362,8 +362,8 @@ function supabaseApi(db: SupabaseClient): Api {
     async setDraftStatus(id, status) {
       ok(await db.from("drafts").update({ status, sent_at: status === "sent" ? new Date().toISOString() : null, sent_via: status === "sent" ? "self" : null }).eq("id", id));
     },
-    async sendEmail(id, to) {
-      const res = await invoke<{ draft: Draft }>(db, "send-email", { draft_id: id, to, confirmed: true });
+    async sendEmail(id, to, replyTo) {
+      const res = await invoke<{ draft: Draft }>(db, "send-email", { draft_id: id, to, reply_to: replyTo, confirmed: true });
       return res.draft;
     },
     async deleteDraft(id) {

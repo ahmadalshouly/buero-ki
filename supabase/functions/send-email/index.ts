@@ -7,13 +7,16 @@ import { handler, HttpError } from "../_shared/http.ts";
 const Input = z.strictObject({
   draft_id: z.uuid(),
   to: z.string().trim().toLowerCase().refine(isEmailAddress, "Please enter one valid email address."),
+  /** The person's email for replies, asked for in the app before sending. Defaults to the saved one. */
+  reply_to: z.string().trim().toLowerCase().refine(isEmailAddress, "Please enter your email address for replies.").optional(),
   // The app sends this only after the person tapped "Send" in the confirmation.
   confirmed: z.literal(true),
 });
 
 Deno.serve(handler("send-email", Input, async (ctx) => {
   const { supabase, input, profile } = ctx;
-  if (!ctx.userEmail) throw new HttpError(400, "Your account has no email address for replies.", "input");
+  const replyTo = input.reply_to ?? profile.contact_email ?? ctx.userEmail;
+  if (!replyTo) throw new HttpError(400, "Please enter your email address for replies.", "input");
 
   const { data: draft } = await supabase.from("drafts")
     .select("id, case_id, kind, subject, body_de, status").eq("id", input.draft_id).single();
@@ -37,9 +40,14 @@ Deno.serve(handler("send-email", Input, async (ctx) => {
     subject: draft.subject,
     body: draft.body_de,
     senderName: profile.full_name,
-    replyTo: ctx.userEmail,
+    replyTo,
   }, `draft-${draft.id}`);
   ctx.log("email sent", { draftId: draft.id, providerId });
+
+  if (replyTo !== profile.contact_email) {
+    const { error } = await supabase.from("profiles").update({ contact_email: replyTo }).eq("id", ctx.userId);
+    if (error) ctx.log("contact_email update failed", { error: error.message });
+  }
 
   const sentAt = new Date().toISOString();
   const [record, update] = await Promise.all([

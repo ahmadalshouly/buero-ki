@@ -166,6 +166,8 @@ test("sent emails are counted per person and cannot be erased or faked for other
     /row-level security/,
   );
   await assert.rejects(as(AMINA, "update public.drafts set sent_via = 'pigeon' where id = $1", [draft.id]), /check constraint/);
+  await as(AMINA, "update public.profiles set contact_email = 'amina@example.org' where id = $1", [AMINA]);
+  await assert.rejects(as(AMINA, "update public.profiles set contact_email = 'not an email' where id = $1", [AMINA]), /check constraint/);
 });
 
 test("deleting the login removes all of the person's data", async () => {
