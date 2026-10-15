@@ -1,11 +1,7 @@
 // Output schemas the agent must fill, shared by the functions and their tests.
-import type Anthropic from "npm:@anthropic-ai/sdk@0.133.0";
 import { z } from "npm:zod@4.6.7";
-import { HttpError } from "./http.ts";
 import { HELP_KINDS, SPECIALTIES } from "./places.ts";
 
-export const MAX_PAGES = 10;
-const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"] as const;
 
 /** Whose letter it is. BüroKI only reads letters addressed to the signed-in person. */
 export const OWNERSHIP = ["person", "someone_else", "unsure"] as const;
@@ -79,17 +75,6 @@ export const Draft = z.strictObject({
     "Short notes in the user's language: what to check before sending, what to attach, how to send it (email, post, Einschreiben, in person) and by when.",
   ),
 });
-
-export function pageBlock(mime: string, data: string): Anthropic.Beta.BetaContentBlockParam {
-  if (mime === "application/pdf") {
-    return { type: "document", source: { type: "base64", media_type: "application/pdf", data } };
-  }
-  if ((IMAGE_TYPES as readonly string[]).includes(mime)) {
-    return { type: "image", source: { type: "base64", media_type: mime as (typeof IMAGE_TYPES)[number], data } };
-  }
-  throw new HttpError(415, `Unsupported file type ${mime}. Please upload a JPEG, PNG or PDF.`, "file_type");
-}
-
 
 export const FIELD_TYPES = ["text", "date", "number", "checkbox", "choice", "signature"] as const;
 

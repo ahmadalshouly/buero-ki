@@ -2,15 +2,15 @@ name: Lyceum probe (temporary)
 on:
   push:
     branches: [claude/switch-to-lyceum-ic7vyv]
-    paths: [scripts/lyceum-probe/**, .github/workflows/lyceum-probe.yml]
+    paths: [scripts/lyceum-probe/**, .github/workflows/lyceum-probe.yml, supabase/functions/_shared/**]
 jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: denoland/setup-deno@v2
         with:
-          node-version: 22
-      - run: node scripts/lyceum-probe/probe.mjs
+          deno-version: v2.x
+      - run: deno run --allow-env --allow-net --allow-read scripts/lyceum-probe/e2e.ts
         env:
           LYCEUM_API_KEY: ${{ secrets.LYCEUM_API_KEY }}

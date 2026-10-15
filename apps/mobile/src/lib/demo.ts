@@ -357,7 +357,7 @@ export const demoApi: Api = {
     const analysis: Analysis = {
       ...sampleAnalysis,
       title_de: "Demo letter",
-      summary: "Demo mode: this is sample text. Connect Supabase and an Anthropic API key so BüroKI can read your real letter.",
+      summary: "Demo mode: this is sample text. Connect Supabase and a Lyceum API key so BüroKI can read your real letter.",
       actions: [{ title: "Connect BüroKI to Supabase to read real letters", due_date: day(7), how_due_date_was_found: null }],
       urgency: "low",
     };

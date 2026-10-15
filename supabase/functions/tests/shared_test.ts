@@ -1,9 +1,9 @@
-import { assert, assertEquals, assertMatch, assertThrows } from "jsr:@std/assert@1";
-import { outputSchema } from "../_shared/anthropic.ts";
+import { assert, assertEquals, assertMatch } from "jsr:@std/assert@1";
+import { outputSchema } from "../_shared/ai.ts";
 import { renderCase } from "../_shared/case.ts";
 import { type Ctx, eventStream, HttpError, toErrorResponse, wantsStream } from "../_shared/http.ts";
 import { DAILY_LIMITS, limitFor } from "../_shared/limits.ts";
-import { Analysis, Draft, FactSuggestions, pageBlock } from "../_shared/schemas.ts";
+import { Analysis, Draft, FactSuggestions } from "../_shared/schemas.ts";
 
 Deno.test("output schemas are strict JSON Schema with every field required", () => {
   for (const schema of [Analysis, Draft, FactSuggestions]) {
@@ -30,13 +30,6 @@ Deno.test("analysis schema accepts a realistic answer and rejects extra keys", (
   assert(!Analysis.safeParse({ ...ok, urgency: "urgent" }).success);
   assert(Analysis.safeParse({ ...ok, addressed_to: null, belongs_to: "unsure" }).success);
   assert(!Analysis.safeParse({ ...ok, belongs_to: "neighbour" }).success);
-});
-
-Deno.test("pageBlock maps PDFs and images and rejects other files", () => {
-  assertEquals(pageBlock("application/pdf", "x").type, "document");
-  assertEquals(pageBlock("image/jpeg", "x").type, "image");
-  const err = assertThrows(() => pageBlock("image/heic", "x"), HttpError);
-  assertEquals(err.status, 415);
 });
 
 Deno.test("renderCase fences the case and marks missing data", () => {

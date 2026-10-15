@@ -1,7 +1,7 @@
 // Drafts a German letter or email for a case, with a translation in the user's
 // language. Can also revise an earlier draft from the person's feedback.
 import { z } from "npm:zod@4.6.7";
-import { generateJson, languageName } from "../_shared/anthropic.ts";
+import { generateJson, languageName } from "../_shared/ai.ts";
 import { loadCaseContext, renderCase, today } from "../_shared/case.ts";
 import { handler, HttpError } from "../_shared/http.ts";
 import { enforceLimit, recordUsage } from "../_shared/limits.ts";
@@ -43,7 +43,6 @@ ${input.kind === "email" ? `End the email with the person's name and, on the nex
 ` : ""}The translation and notes must be in ${languageName(profile.language)}. Today's date is ${today()}.`,
     content: `${renderCase(caseCtx, profile.full_name)}${replyTo}${previous}\n\nWhat the person wants:\n<request>\n${input.instructions}\n</request>`,
     schema: Draft,
-    effort: "high",
   });
   await recordUsage(ctx, "draft-reply", usage);
 

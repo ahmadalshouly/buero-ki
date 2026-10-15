@@ -2,14 +2,14 @@
 // with an explanation in the person's language and pre-fills what is already known.
 // "answer" fills fields from something the person tells the agent in their own words.
 // "export" writes the values into a fillable PDF and returns a download link.
-import { encodeBase64 } from "jsr:@std/encoding@1/base64";
 import { z } from "npm:zod@4.6.7";
-import { generateJson, languageName } from "../_shared/anthropic.ts";
+import { generateJson, languageName } from "../_shared/ai.ts";
 import { loadCaseContext, renderCase, today } from "../_shared/case.ts";
 import { type Ctx, handler, HttpError } from "../_shared/http.ts";
 import { enforceLimit, recordUsage } from "../_shared/limits.ts";
 import { fillPdf, MAX_PDF_FIELDS, readPdfFields } from "../_shared/pdfForm.ts";
-import { FormAnalysis, FormAnswers, type FormField, MAX_PAGES, pageBlock } from "../_shared/schemas.ts";
+import { filesParts, MAX_PAGES } from "../_shared/pages.ts";
+import { FormAnalysis, FormAnswers, type FormField } from "../_shared/schemas.ts";
 
 const Input = z.discriminatedUnion("action", [
   z.strictObject({ action: z.literal("analyze"), form_id: z.uuid() }),
@@ -101,11 +101,10 @@ Never guess personal data: if the data below does not say it, leave the value nu
 Write explanations, questions, notes, the summary and the instructions in ${languageName(profile.language)}. Keep each explanation to one short sentence.
 Today's date is ${today()}. Use it for date fields such as 'Datum' next to the signature.`,
       content: [
-        ...files.map((f) => pageBlock(f.mime, encodeBase64(f.bytes))),
+        ...await filesParts(files),
         { type: "text", text: `The person's data:\n\n${context}${situation}${fieldList}\n\nList the form's fields now.` },
       ],
       schema: FormAnalysis,
-      effort: "medium",
       maxTokens: 64000,
     });
     await recordUsage(ctx, "fill-form", usage);
@@ -151,7 +150,6 @@ async function answer(ctx: Ctx<Input & { action: "answer" }>) {
 Only use what the message says. Do not change fields the message does not cover. If the message answers a question about one field, set that field, and any other field the answer clearly covers. If the person does not know or does not have something, set nothing and say in the reply where they can find it or what to do. Reply in ${languageName(profile.language)}. Today's date is ${today()}.`,
     content: `<fields>\n${fields.map((f) => JSON.stringify(f)).join("\n")}\n</fields>\n\nWhat the person said:\n<message>\n${input.message}\n</message>`,
     schema: FormAnswers,
-    effort: "low",
   });
   await recordUsage(ctx, "fill-form", usage);
 

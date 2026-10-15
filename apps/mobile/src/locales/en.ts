@@ -70,7 +70,7 @@ const en = {
     consentTitle: "How your letters are processed",
     consentPoints: [
       "Your letters are stored encrypted in the EU and only you can open them.",
-      "To explain a letter, BüroKI sends it to an AI service (Anthropic). It is not used to train AI.",
+      "To explain a letter, BüroKI sends it to an AI service from Germany (Lyceum) that runs in the EU. Your letters are not stored there and not used to train AI.",
       "You can download or delete everything at any time in Settings.",
       "BüroKI helps you understand and write. It is not legal advice.",
     ],
