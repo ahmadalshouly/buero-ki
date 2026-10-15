@@ -1,7 +1,7 @@
 // Turns a drafted German letter into a printable A4 page laid out after DIN 5008
 // (form B), so the recipient address sits in the window of a standard DL or C5/6
 // window envelope and the fold marks line up.
-import type { CaseDocument } from "./types";
+import type { CaseDocument, DraftAttachment } from "./types";
 
 export interface LetterParts {
   sender: string[];
@@ -156,4 +156,17 @@ export function officeEmail(
   const letter = answered && found(answered) ? answered : newest;
   if (letter) return { email: found(letter), letter: letter.title_de };
   return { email: emailIn(authority).toLowerCase(), letter: null };
+}
+
+const MIME_BY_EXT: Record<string, string> = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp", pdf: "application/pdf" };
+
+/** The pages of a letter in the case, as email attachments named after the letter. */
+export function letterAttachments(doc: Pick<CaseDocument, "storage_path" | "page_paths" | "title_de" | "file_name">): DraftAttachment[] {
+  const paths = doc.page_paths?.length ? doc.page_paths : [doc.storage_path];
+  const title = (doc.title_de ?? doc.file_name?.replace(/\.[a-z0-9]+$/i, "") ?? "Schreiben").replace(/[\\/:*?"<>|]+/g, " ").trim();
+  return paths.map((path, i) => {
+    const ext = path.split(".").pop()?.toLowerCase() ?? "pdf";
+    const page = paths.length > 1 ? ` Seite ${i + 1}` : "";
+    return { path, name: `${title}${page}.${ext}`, mime: MIME_BY_EXT[ext] ?? "application/pdf", own: false };
+  });
 }

@@ -1,4 +1,4 @@
-import { emailIn, isEmailAddress, officeEmail } from "../lib/letter";
+import { emailIn, isEmailAddress, letterAttachments, officeEmail } from "../lib/letter";
 
 describe("sending emails", () => {
   it("accepts exactly one plain address", () => {
@@ -30,5 +30,17 @@ describe("office email from letters", () => {
     expect(officeEmail(null, [letter("x", "2026-10-01", "not an email")], "Stadt, buergeramt@stadt.de"))
       .toEqual({ email: "buergeramt@stadt.de", letter: null });
     expect(officeEmail(null, [], null)).toEqual({ email: "", letter: null });
+  });
+});
+
+describe("attaching letters", () => {
+  it("names each page after the letter", () => {
+    expect(letterAttachments({ storage_path: "u/c/a.jpg", page_paths: ["u/c/a-1.jpg", "u/c/a-2.jpg"], title_de: "Bescheid", file_name: null }))
+      .toEqual([
+        { path: "u/c/a-1.jpg", name: "Bescheid Seite 1.jpg", mime: "image/jpeg", own: false },
+        { path: "u/c/a-2.jpg", name: "Bescheid Seite 2.jpg", mime: "image/jpeg", own: false },
+      ]);
+    expect(letterAttachments({ storage_path: "u/c/b.pdf", page_paths: [], title_de: null, file_name: "Mahnung.pdf" }))
+      .toEqual([{ path: "u/c/b.pdf", name: "Mahnung.pdf", mime: "application/pdf", own: false }]);
   });
 });

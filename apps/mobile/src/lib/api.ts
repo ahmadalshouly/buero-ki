@@ -6,7 +6,7 @@ import { DAILY_LIMITS } from "./limits";
 import { sseParser } from "./sse";
 import { isDemo, supabase, supabaseKey, supabaseUrl } from "./supabase";
 import type {
-  AgentFunction, Case, CaseDocument, CaseForm, CaseStatus, ChatMessage, Draft, FormField, HelpKind, HelpResult, HelpSpecialty, HelpWhere, NewCase,
+  AgentFunction, Case, CaseDocument, CaseForm, CaseStatus, ChatMessage, Draft, DraftAttachment, FormField, HelpKind, HelpResult, HelpSpecialty, HelpWhere, NewCase,
   PickedFile,
   Profile, SearchResult, Task, TimelineItem, UsageToday, UserFact,
 } from "./types";
@@ -82,6 +82,11 @@ export interface Api {
   /** Adds photos proving the letter was sent (receipt, tracking number). */
   addDraftProof(id: string, photos: PickedFile[]): Promise<Draft>;
   removeDraftProof(id: string, path: string): Promise<Draft>;
+  /** Uploads photos or PDFs to send with the email. */
+  addDraftAttachments(id: string, files: PickedFile[]): Promise<Draft>;
+  /** Adds files already stored (pages of a letter in the case) to the email. */
+  attachStoredFiles(id: string, files: DraftAttachment[]): Promise<Draft>;
+  removeDraftAttachment(id: string, path: string): Promise<Draft>;
 
   listMessages(caseId: string): Promise<ChatMessage[]>;
   /** onText receives the answer so far while it is being written. */
@@ -377,6 +382,26 @@ function supabaseApi(db: SupabaseClient): Api {
       await db.storage.from("documents").remove([path]);
       return saved;
     },
+    async addDraftAttachments(id, picked) {
+      const draft = await api.getDraft(id);
+      const paths = await upload(draft.case_id, picked, `draft-${id}-att-`);
+      const added = paths.map((path, i) => ({ path, name: picked[i].name, mime: picked[i].mimeType, own: true }));
+      return must(await db.from("drafts").update({ attachments: [...(draft.attachments ?? []), ...added] }).eq("id", id).select().single()) as Draft;
+    },
+    async attachStoredFiles(id, stored) {
+      const draft = await api.getDraft(id);
+      const have = new Set((draft.attachments ?? []).map((a) => a.path));
+      const next = [...(draft.attachments ?? []), ...stored.filter((a) => !have.has(a.path))];
+      return must(await db.from("drafts").update({ attachments: next }).eq("id", id).select().single()) as Draft;
+    },
+    async removeDraftAttachment(id, path) {
+      const draft = await api.getDraft(id);
+      const gone = (draft.attachments ?? []).find((a) => a.path === path);
+      const saved = must(await db.from("drafts").update({ attachments: (draft.attachments ?? []).filter((a) => a.path !== path) })
+        .eq("id", id).select().single()) as Draft;
+      if (gone?.own) await db.storage.from("documents").remove([path]);
+      return saved;
+    },
     async listDrafts(caseId) {
       return must(await db.from("drafts").select("*").eq("case_id", caseId).order("created_at", { ascending: false }));
     },
@@ -405,7 +430,11 @@ function supabaseApi(db: SupabaseClient): Api {
     },
     async deleteDraft(id) {
       const draft = await api.getDraft(id);
-      const files = [...(draft.pdf_path ? [draft.pdf_path] : []), ...(draft.proof_paths ?? [])];
+      const files = [
+        ...(draft.pdf_path ? [draft.pdf_path] : []),
+        ...(draft.proof_paths ?? []),
+        ...(draft.attachments ?? []).filter((a) => a.own).map((a) => a.path),
+      ];
       if (files.length) await db.storage.from("documents").remove(files);
       ok(await db.from("drafts").delete().eq("id", id));
     },

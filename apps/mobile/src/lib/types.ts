@@ -172,8 +172,18 @@ export interface Draft {
   pdf_at?: string | null;
   /** Photos proving it was sent: a post office receipt or a tracking number. */
   proof_paths?: string[];
+  /** Files BüroKI sends along with the email. */
+  attachments?: DraftAttachment[];
   revision_of: string | null;
   created_at: string;
+}
+
+export interface DraftAttachment {
+  path: string;
+  name: string;
+  mime: string;
+  /** True for files uploaded for this email (removed with the draft); false for pages of a letter in the case. */
+  own: boolean;
 }
 
 /** A change the assistant made while answering, such as a task it added or removed. */
