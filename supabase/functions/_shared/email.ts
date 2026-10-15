@@ -82,11 +82,16 @@ export async function sendWithResend(email: OutgoingEmail, draftId: string): Pro
   const payload = JSON.stringify(resendPayload(email, from));
   const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(payload)));
   const hash = [...digest.slice(0, 8)].map((b) => b.toString(16).padStart(2, "0")).join("");
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json", "Idempotency-Key": `draft-${draftId}-${hash}` },
-    body: payload,
-  });
+  let res: Response;
+  try {
+    res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json", "Idempotency-Key": `draft-${draftId}-${hash}` },
+      body: payload,
+    });
+  } catch (error) {
+    throw new HttpError(502, `The email service could not be reached: ${error instanceof Error ? error.message : String(error)}`, "send_failed");
+  }
   const body = await res.json().catch(() => ({})) as { id?: string; message?: string; name?: string };
   if (!res.ok || !body.id) {
     console.error(JSON.stringify({ level: "error", fn: "send-email", msg: "resend refused", status: res.status, name: body.name, message: body.message }));
@@ -95,7 +100,8 @@ export async function sendWithResend(email: OutgoingEmail, draftId: string): Pro
       throw new HttpError(422, `The email could not be sent: ${body.message ?? `email service answered ${res.status}`}`, "email_rejected");
     }
     if (res.status === 429) throw new HttpError(429, "Too many emails right now. Please try again in a minute.", "busy");
-    throw new HttpError(502, "The email service is unavailable right now. Please try again.", "upstream");
+    const detail = [res.status, body.message].filter(Boolean).join(" ");
+    throw new HttpError(502, `The email service is unavailable right now (${detail}). Please try again.`, "send_failed");
   }
   return body.id;
 }

@@ -7,7 +7,7 @@ import {
   type Attachment, DAILY_EMAIL_LIMITS, isEmailAddress, MAX_ATTACHMENT_BYTES, MAX_ATTACHMENTS, openPlaceholders, safeFilename,
   sendWithResend,
 } from "../_shared/email.ts";
-import { handler, HttpError } from "../_shared/http.ts";
+import { type Ctx, handler, HttpError } from "../_shared/http.ts";
 
 interface StoredAttachment {
   path: string;
@@ -26,7 +26,9 @@ async function loadAttachments(supabase: SupabaseClient, userId: string, stored:
       throw new HttpError(400, "An attachment could not be found. Remove it and add it again.", "input");
     }
     const { data, error } = await supabase.storage.from("documents").download(file.path);
-    if (error || !data) throw new HttpError(404, "An attachment could not be found. Remove it and add it again.", "not_found");
+    if (error || !data) {
+      throw new HttpError(404, `An attachment could not be found (${file.name ?? file.path}). Remove it and add it again.`, "attachment_missing");
+    }
     const bytes = new Uint8Array(await data.arrayBuffer());
     total += bytes.byteLength;
     if (total > MAX_ATTACHMENT_BYTES) {
@@ -49,13 +51,22 @@ const Input = z.strictObject({
   confirmed: z.literal(true),
 });
 
-Deno.serve(handler("send-email", Input, async (ctx) => {
+/** Unexpected failures carry their cause, so the person (and we) can see why nothing was sent. */
+function explained(error: unknown): HttpError {
+  if (error instanceof HttpError) return error;
+  return new HttpError(500, `The email was not sent: ${error instanceof Error ? error.message : String(error)}`, "send_failed");
+}
+
+Deno.serve(handler("send-email", Input, (ctx) => send(ctx).catch((error) => Promise.reject(explained(error)))));
+
+async function send(ctx: Ctx<z.infer<typeof Input>>) {
   const { supabase, input, profile } = ctx;
   const replyTo = input.reply_to ?? profile.contact_email ?? ctx.userEmail;
   if (!replyTo) throw new HttpError(400, "Please enter your email address for replies.", "input");
 
-  const { data: draft } = await supabase.from("drafts")
-    .select("id, case_id, kind, subject, body_de, status, attachments").eq("id", input.draft_id).single();
+  const { data: draft, error: draftError } = await supabase.from("drafts")
+    .select("id, case_id, kind, subject, body_de, status, attachments").eq("id", input.draft_id).maybeSingle();
+  if (draftError) throw new Error(`loading the draft failed: ${draftError.message}`);
   if (!draft) throw new HttpError(404, "Draft not found", "not_found");
   if (draft.kind !== "email") throw new HttpError(400, "Only email drafts can be sent by email.", "input");
   if (draft.status === "sent") throw new HttpError(409, "This email was already sent.", "already_sent");
@@ -65,7 +76,7 @@ Deno.serve(handler("send-email", Input, async (ctx) => {
   }
 
   const { data: count, error: countError } = await supabase.rpc("emails_sent_last_day");
-  if (countError) throw new Error(countError.message);
+  if (countError) throw new Error(`checking the daily limit failed: ${countError.message}`);
   const limit = DAILY_EMAIL_LIMITS[profile.plan] ?? DAILY_EMAIL_LIMITS.free;
   if ((count as number) >= limit) {
     throw new HttpError(429, `You reached today's limit of ${limit} emails. It resets within 24 hours.`, "limit");
@@ -100,4 +111,4 @@ Deno.serve(handler("send-email", Input, async (ctx) => {
   if (record.error) ctx.logError("sent_emails insert failed", { error: record.error.message });
   if (update.error) ctx.logError("draft update failed", { error: update.error.message });
   return { draft: update.data ?? { ...draft, status: "sent", sent_at: sentAt, sent_to: input.to, sent_via: "bueroki" } };
-}));
+}
