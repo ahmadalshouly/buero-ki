@@ -44,7 +44,7 @@ apps/mobile/            Expo (React Native) app for iOS, Android and web
 supabase/
   migrations/           Schema, row level security, storage bucket, usage, audit log, timeline, search
   functions/
-    _shared/            Request handler, Claude client, limits, case context, output schemas
+    _shared/            Request handler, AI client (Lyceum), limits, case context, output schemas
     analyze-document/   Reads a letter, explains it, creates tasks, updates the case
     draft-reply/        Writes or revises a German letter or email with a translation
     case-chat/          Answers questions about one case
@@ -71,9 +71,9 @@ npx expo start
 
 Scan the QR code with the Expo Go app on your phone, or press `w` for the browser.
 
-## Connect Supabase and Claude
+## Connect Supabase and the AI (Lyceum)
 
-**From GitHub:** add the repository secrets `SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_PASSWORD` and `ANTHROPIC_API_KEY`, then run the **Deploy backend** workflow (Actions tab). It does everything below, including the sign-in email, and runs again whenever `supabase/` changes.
+**From GitHub:** add the repository secrets `SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_PASSWORD` and `LYCEUM_API_KEY` (from [lyceum.technology](https://lyceum.technology)), then run the **Deploy backend** workflow (Actions tab). It does everything below, including the sign-in email, and runs again whenever `supabase/` changes.
 
 **Sending emails (optional):** create an account at [resend.com](https://resend.com), add and verify a domain you own (Resend shows the DNS records to add), create an API key, then add the repository secrets `RESEND_API_KEY` and `EMAIL_FROM` (an address on that domain, for example `post@mail.your-domain.de`) and run **Deploy backend** again. Without them, the app opens the email in the person's email app instead.
 
@@ -83,7 +83,7 @@ Scan the QR code with the Expo Go app on your phone, or press `w` for the browse
 ./scripts/setup-backend.sh <project-ref>
 ```
 
-It links the project, creates the database, stores the Anthropic key as a function secret and deploys the functions. Then follow step 4 and 5 below. If your Anthropic key is not tied to a workspace, also run `export ANTHROPIC_WORKSPACE_ID=wrkspc_...` first.
+It links the project, creates the database, stores the Lyceum key as a function secret and deploys the functions. Then follow step 4 and 5 below.
 
 **Step by step:**
 
@@ -95,9 +95,9 @@ It links the project, creates the database, stores the Anthropic key as a functi
    supabase link --project-ref <your-project-ref>
    supabase db push
    ```
-3. Add your Anthropic API key and deploy the functions:
+3. Add your Lyceum API key and deploy the functions:
    ```bash
-   supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
+   supabase secrets set LYCEUM_API_KEY=...
    supabase functions deploy analyze-document draft-reply case-chat fill-form learn-facts find-help send-email export-data delete-account
    ```
 4. Sign-in uses a 6-digit email code. In the Supabase dashboard go to **Authentication > Email Templates > Magic Link** and make sure the template includes `{{ .Token }}`, for example: `Your BüroKI code is {{ .Token }}`.
@@ -141,7 +141,9 @@ After `eas init`, add an `EXPO_TOKEN` secret on GitHub and every `v*` tag also s
 
 ## Notes on the AI
 
-- Claude is called through the Anthropic API only from the edge functions, so the API key never reaches the phone. The model is set in `supabase/functions/_shared/anthropic.ts`.
+- The model is DeepSeek V4.1 Flash, hosted in the EU by Lyceum (Lyceum Technology Germany GmbH), which does not store prompts or use them for training. It is called through Lyceum's OpenAI-compatible API only from the edge functions, so the API key never reaches the phone. The model and its settings are in `supabase/functions/_shared/ai.ts`.
+- Reasoning is turned off for speed (`reasoning_effort: "none"` and `chat_template_kwargs.thinking: false`).
+- The model reads photos but not PDF files, so a PDF is sent as the text of each page plus the scanned page images it contains (`supabase/functions/_shared/pages.ts`). A PDF with neither asks the person for photos.
 - Answers use structured JSON output, so the app always gets the same fields (summary, actions, deadlines, terms).
 - The agent explains and drafts but does not give individual legal advice. It flags when someone should see a Beratungsstelle or a lawyer, in line with the Rechtsdienstleistungsgesetz. Have a German lawyer confirm this before launch.
 - Every function runs as the signed-in user, so row level security applies to everything the agent reads and writes. Only `delete-account` uses the service role, and only to remove the person's own files and login.
