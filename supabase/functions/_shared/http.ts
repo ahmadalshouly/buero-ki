@@ -2,7 +2,7 @@
 // structured logs with a request id, and consistent error responses.
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2.117.3";
 import { z } from "npm:zod@4.6.7";
-import { AgentError, isApiError, isRateLimit } from "./anthropic.ts";
+import { AgentError, isApiError, isRateLimit } from "./ai.ts";
 
 export const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

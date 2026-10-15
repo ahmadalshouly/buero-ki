@@ -81,3 +81,11 @@ export function renderCase(ctx: CaseContext, fullName: string | null): string {
 export function today(): string {
   return new Date().toISOString().slice(0, 10);
 }
+
+/** The date if it is a real YYYY-MM-DD date, else null; the model sometimes writes a note where a date belongs. */
+export function isoDateOrNull(value: string | null | undefined): string | null {
+  const v = value?.trim() ?? "";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return null;
+  const time = Date.parse(`${v}T00:00:00Z`);
+  return !Number.isNaN(time) && new Date(time).toISOString().startsWith(v) ? v : null;
+}

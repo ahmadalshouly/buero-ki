@@ -1,6 +1,6 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { PDFDocument, PDFHexString, PDFName } from "npm:pdf-lib@1.17.1";
-import { outputSchema } from "../_shared/anthropic.ts";
+import { outputSchema } from "../_shared/ai.ts";
 import { fillPdf, readPdfFields } from "../_shared/pdfForm.ts";
 import * as schemas from "../_shared/schemas.ts";
 import { FormAnalysis, FormAnswers } from "../_shared/schemas.ts";

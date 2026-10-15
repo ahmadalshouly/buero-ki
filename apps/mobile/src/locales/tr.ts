@@ -72,7 +72,7 @@ const tr: Locale = {
     consentTitle: "Mektuplarınız nasıl işlenir",
     consentPoints: [
       "Mektuplarınız AB içinde şifreli olarak saklanır ve onları sadece siz açabilirsiniz.",
-      "Bir mektubu açıklamak için BüroKI onu bir yapay zekâ hizmetine (Anthropic) gönderir. Mektuplarınız yapay zekâ eğitmek için kullanılmaz.",
+      "Bir mektubu açıklamak için BüroKI onu Almanya'dan, AB içinde çalışan bir yapay zekâ hizmetine (Lyceum) gönderir. Mektuplarınız orada saklanmaz ve yapay zekâ eğitmek için kullanılmaz.",
       "Ayarlar'dan istediğiniz zaman her şeyi indirebilir veya silebilirsiniz.",
       "BüroKI anlamanıza ve yazmanıza yardım eder. Hukuki danışmanlık değildir.",
     ],

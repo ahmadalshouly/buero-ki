@@ -72,7 +72,7 @@ const de: Locale = {
     consentTitle: "So werden deine Briefe verarbeitet",
     consentPoints: [
       "Deine Briefe werden verschlüsselt in der EU gespeichert und nur du kannst sie öffnen.",
-      "Um einen Brief zu erklären, sendet BüroKI ihn an einen KI-Dienst (Anthropic). Er wird nicht zum Trainieren von KI verwendet.",
+      "Um einen Brief zu erklären, sendet BüroKI ihn an einen KI-Dienst aus Deutschland (Lyceum), der in der EU läuft. Er wird dort nicht gespeichert und nicht zum Trainieren von KI verwendet.",
       "Du kannst jederzeit in den Einstellungen alles herunterladen oder löschen.",
       "BüroKI hilft dir beim Verstehen und Schreiben. Es ist keine Rechtsberatung.",
     ],

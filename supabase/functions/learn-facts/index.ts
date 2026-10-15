@@ -3,7 +3,7 @@
 // Suggestions are stored as pending; the app asks the person to keep or ignore each
 // one, and only kept facts are ever given to the agent.
 import { z } from "npm:zod@4.6.7";
-import { generateJson, languageName } from "../_shared/anthropic.ts";
+import { generateJson, languageName } from "../_shared/ai.ts";
 import { handler } from "../_shared/http.ts";
 import { enforceLimit, recordUsage } from "../_shared/limits.ts";
 import { FactSuggestions } from "../_shared/schemas.ts";
@@ -65,7 +65,6 @@ Rules:
       ...messages.map((m) => `<${m.role}>\n${m.content}\n</${m.role}>`),
     ].join("\n"),
     schema: FactSuggestions,
-    effort: "low",
     maxTokens: 2000,
   });
   await recordUsage(ctx, "learn-facts", usage);

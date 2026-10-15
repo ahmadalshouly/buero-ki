@@ -1,9 +1,8 @@
 // Answers the person's questions about one case, in their language, with the case as context.
 // The agent can also change the case's tasks when the person asks (see _shared/caseTools.ts).
-import type Anthropic from "npm:@anthropic-ai/sdk@0.133.0";
 import { z } from "npm:zod@4.6.7";
 import { runAgent } from "../_shared/agent.ts";
-import { languageName } from "../_shared/anthropic.ts";
+import { type ChatMessage, languageName } from "../_shared/ai.ts";
 import { loadCaseContext, renderCase } from "../_shared/case.ts";
 import { historyContent, taskRefsFor, taskTools } from "../_shared/caseTools.ts";
 import { eventStream, handler, wantsStream } from "../_shared/http.ts";
@@ -35,7 +34,7 @@ Deno.serve(handler("case-chat", Input, async (ctx) => {
   ]);
 
   // Case state first, then the conversation, so later turns extend the same prefix.
-  const messages: Anthropic.Beta.BetaMessageParam[] = [
+  const messages: ChatMessage[] = [
     { role: "user", content: `Here is the current state of my case:\n\n${renderCase(caseCtx, profile.full_name)}` },
     { role: "assistant", content: "Thank you, I have read your case. What would you like to know?" },
     ...(history ?? []).reverse().map((m) => ({
@@ -55,7 +54,6 @@ Deno.serve(handler("case-chat", Input, async (ctx) => {
         messages,
         tools: taskTools,
         toolContext: { supabase, userId: ctx.userId, caseId: input.case_id, taskRefs: taskRefsFor(caseCtx.openTasks) },
-        effort: "low",
         onText,
       }),
     ]);

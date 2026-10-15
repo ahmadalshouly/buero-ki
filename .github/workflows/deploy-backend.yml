@@ -1,13 +1,12 @@
 name: Deploy backend
 
-# Pushes the database schema, the Anthropic key and the edge functions to
+# Pushes the database schema, the Lyceum AI key and the edge functions to
 # Supabase, and makes the sign-in email show the 6-digit code.
 #
 # Needs three repository secrets (Settings > Secrets and variables > Actions):
 #   SUPABASE_ACCESS_TOKEN  supabase.com/dashboard/account/tokens
 #   SUPABASE_DB_PASSWORD   the database password of the project
-#   ANTHROPIC_API_KEY      console.anthropic.com > API keys
-# Optional: ANTHROPIC_WORKSPACE_ID, for keys that are not tied to a workspace.
+#   LYCEUM_API_KEY         lyceum.technology > API keys
 # Optional, for reliable search results in Find help (otherwise OpenStreetMap is used):
 #   GOOGLE_MAPS_API_KEY    console.cloud.google.com > APIs & Services > Credentials, with "Places API (New)" enabled
 # Optional, to send emails from BüroKI (otherwise the app opens the email app):
@@ -40,10 +39,10 @@ jobs:
 
       - name: Check secrets
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          LYCEUM_API_KEY: ${{ secrets.LYCEUM_API_KEY }}
         run: |
           missing=0
-          for name in SUPABASE_ACCESS_TOKEN SUPABASE_DB_PASSWORD ANTHROPIC_API_KEY; do
+          for name in SUPABASE_ACCESS_TOKEN SUPABASE_DB_PASSWORD LYCEUM_API_KEY; do
             if [ -z "${!name}" ]; then echo "::error::Add the repository secret $name"; missing=1; fi
           done
           exit $missing
@@ -60,14 +59,12 @@ jobs:
 
       - name: Function secrets
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          ANTHROPIC_WORKSPACE_ID: ${{ secrets.ANTHROPIC_WORKSPACE_ID }}
+          LYCEUM_API_KEY: ${{ secrets.LYCEUM_API_KEY }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
           GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
         run: |
-          args=("ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY")
-          [ -n "$ANTHROPIC_WORKSPACE_ID" ] && args+=("ANTHROPIC_WORKSPACE_ID=$ANTHROPIC_WORKSPACE_ID")
+          args=("LYCEUM_API_KEY=$LYCEUM_API_KEY")
           [ -n "$RESEND_API_KEY" ] && args+=("RESEND_API_KEY=$RESEND_API_KEY")
           [ -n "$EMAIL_FROM" ] && args+=("EMAIL_FROM=$EMAIL_FROM")
           [ -n "$GOOGLE_MAPS_API_KEY" ] && args+=("GOOGLE_MAPS_API_KEY=$GOOGLE_MAPS_API_KEY")

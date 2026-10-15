@@ -2,15 +2,15 @@
 // the user's language, turns deadlines into tasks and updates the case summary.
 // BüroKI only reads the person's own letters: a letter addressed to someone else is
 // declined (that person can make their own account), and when it can't tell, it asks.
-import { encodeBase64 } from "jsr:@std/encoding@1/base64";
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2.117.3";
 import { z } from "npm:zod@4.6.7";
-import { generateJson, languageName } from "../_shared/anthropic.ts";
-import { type CaseContext, loadCaseContext, renderCase, today } from "../_shared/case.ts";
+import { generateJson, languageName } from "../_shared/ai.ts";
+import { type CaseContext, isoDateOrNull, loadCaseContext, renderCase, today } from "../_shared/case.ts";
 import { isEmailAddress } from "../_shared/email.ts";
 import { type Ctx, handler, HttpError } from "../_shared/http.ts";
 import { enforceLimit, recordUsage } from "../_shared/limits.ts";
-import { Analysis, MAX_PAGES, pageBlock } from "../_shared/schemas.ts";
+import { MAX_PAGES, pageParts } from "../_shared/pages.ts";
+import { Analysis } from "../_shared/schemas.ts";
 
 const Input = z.strictObject({
   document_id: z.uuid(),
@@ -67,7 +67,7 @@ Deno.serve(handler("analyze-document", Input, async (ctx) => {
       const { data: file, error } = await supabase.storage.from("documents").download(path);
       if (error || !file) throw new HttpError(404, "A page of this letter is missing from storage.", "file_missing");
       const mime = path.endsWith(".pdf") ? "application/pdf" : file.type || doc.mime_type;
-      return pageBlock(mime, encodeBase64(new Uint8Array(await file.arrayBuffer())));
+      return pageParts(mime, new Uint8Array(await file.arrayBuffer()));
     }));
 
     const lang = languageName(ctx.profile.language);
@@ -77,7 +77,7 @@ ${OWNERSHIP_RULES}
 Write every explanation, summary, task and meaning in ${lang}. Keep German official names and terms in German where the person will need to recognise them, followed by the explanation.
 Today's date is ${today()}. Use it to calculate deadlines that are given as a period.`,
       content: [
-        ...pages,
+        ...pages.flat(),
         {
           type: "text",
           text: `The letter above was added to this case:\n\n${renderCase(person.caseCtx, ctx.profile.full_name)}\n\n` +
@@ -89,12 +89,14 @@ Today's date is ${today()}. Use it to calculate deadlines that are given as a pe
         },
       ],
       schema: Analysis,
-      effort: "high",
     });
     await recordUsage(ctx, "analyze-document", usage);
     // The app offers this address when the person sends an email; they can still change it.
     const email = analysis.sender_email?.trim().toLowerCase() ?? "";
     analysis.sender_email = isEmailAddress(email) ? email : null;
+    // Dates go into date columns, so anything that is not a real date is dropped.
+    analysis.document_date = isoDateOrNull(analysis.document_date);
+    for (const a of analysis.actions) a.due_date = isoDateOrNull(a.due_date);
 
     if (analysis.belongs_to === "someone_else") return await decline(ctx, doc.id, analysis.addressed_to);
     if (analysis.belongs_to === "unsure") {

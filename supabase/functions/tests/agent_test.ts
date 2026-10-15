@@ -27,8 +27,8 @@ function ctxWith(row: Record<string, unknown>, refs = taskRefsFor([{ id: "a" }, 
 
 Deno.test("task tools have object input schemas", () => {
   for (const def of toolDefinitions(taskTools)) {
-    assertEquals(def.input_schema.type, "object");
-    assert(def.description && def.description.length > 20);
+    assertEquals(def.function.parameters.type, "object");
+    assert(def.function.description.length > 20);
   }
 });
 

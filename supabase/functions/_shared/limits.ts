@@ -1,5 +1,5 @@
 // Daily limits per plan, counted from the append-only ai_usage table.
-import type { Usage } from "./anthropic.ts";
+import type { Usage } from "./ai.ts";
 import { type Ctx, HttpError, type Profile } from "./http.ts";
 
 // learn-facts runs in the background after a chat answer; the app does not show its count.
