@@ -16,15 +16,12 @@ jobs:
             curl -sS -G "https://api.supabase.com/v1/projects/$REF/analytics/endpoints/logs" \
               -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
               --data-urlencode "sql=$1" --data-urlencode "iso_timestamp_start=$start" --data-urlencode "iso_timestamp_end=$end" \
-            | jq -r '(.error // empty | tostring), (.result[]? | "\(.timestamp) \(.event_message)")' \
+            | jq -r '(.error // empty | tostring), (.result[]? | tostring)' \
             | sed -E 's/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/<email>/g' | cut -c1-600 | while IFS= read -r l; do echo "::warning::$l"; done
             echo "::warning::----"
           }
-          for t in edge_function_logs function_runtime_logs functions_logs edge_logs; do
-            raw=$(curl -sS -G "https://api.supabase.com/v1/projects/$REF/analytics/endpoints/logs" -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
-              --data-urlencode "sql=select timestamp, event_message from $t order by timestamp desc limit 3" \
-              --data-urlencode "iso_timestamp_start=$start" --data-urlencode "iso_timestamp_end=$end")
-            echo "::warning::$t $(echo "$raw" | head -c 500 | sed -E 's/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/<email>/g' | tr '\n' ' ')"
-          done
+          q "select source_name, count() as n from logs group by source_name"
+          q "select timestamp, source_name, event_message from logs where source_name = 'function_logs' order by timestamp desc limit 40"
+          q "select timestamp, source_name, event_message, log_attributes['response.status_code'] as st from logs where source_name = 'function_edge_logs' and event_message like '%send-email%' order by timestamp desc limit 10"
           echo "function secrets present:"
           curl -sS "https://api.supabase.com/v1/projects/$REF/secrets" -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" | jq -r '.[].name' | grep -E 'RESEND|EMAIL' | sed 's/^/::warning::secret /' || echo "::warning::no email secrets"
