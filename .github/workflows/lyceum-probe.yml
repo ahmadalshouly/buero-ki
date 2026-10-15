@@ -1,0 +1,16 @@
+name: Lyceum probe (temporary)
+on:
+  push:
+    branches: [claude/switch-to-lyceum-ic7vyv]
+    paths: [scripts/lyceum-probe/**, .github/workflows/lyceum-probe.yml]
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/lyceum-probe/probe.mjs
+        env:
+          LYCEUM_API_KEY: ${{ secrets.LYCEUM_API_KEY }}
