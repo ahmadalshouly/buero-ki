@@ -14,7 +14,7 @@ export function friendlyError(error: unknown, t: TFunction): string {
     return t(`errors.${error.code as (typeof TRANSLATED)[number]}`);
   }
   if (error instanceof Error && error.message) {
-    if (i18n.language === "en" || (error instanceof ApiError && error.code === "input")) return error.message;
+    if (i18n.language === "en" || (error instanceof ApiError && (error.code === "input" || error.code === "email_rejected"))) return error.message;
   }
   return t("common.error");
 }

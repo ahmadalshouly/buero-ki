@@ -1,5 +1,5 @@
 import { assert, assertEquals, assertFalse } from "jsr:@std/assert@1";
-import { isEmailAddress, openPlaceholders, resendPayload, safeFilename } from "../_shared/email.ts";
+import { isEmailAddress, openPlaceholders, resendPayload, safeFilename, senderAddress } from "../_shared/email.ts";
 
 Deno.test("only one plain email address is accepted as recipient", () => {
   assert(isEmailAddress("poststelle@jobcenter-ge.de"));
@@ -43,4 +43,11 @@ Deno.test("file names are made safe for mail programs", () => {
   assertEquals(safeFilename('../../etc/"pass"\nwd.pdf', "Anlage-1.pdf"), ".. .. etc pass wd.pdf");
   assertEquals(safeFilename("  ", "Anlage-2.jpg"), "Anlage-2.jpg");
   assertEquals(safeFilename("Mietvertrag Seite 1.jpg", "x"), "Mietvertrag Seite 1.jpg");
+});
+
+Deno.test("EMAIL_FROM works with or without a display name", () => {
+  assertEquals(senderAddress("post@mail.bueroki.de"), "post@mail.bueroki.de");
+  assertEquals(senderAddress("BüroKI <post@mail.bueroki.de>"), "post@mail.bueroki.de");
+  const p = resendPayload({ to: "a@b.de", subject: "x", body: "y", senderName: "Amina", replyTo: "c@d.de" }, '"BüroKI" <post@mail.bueroki.de>');
+  assertEquals(p.from, '"Amina via BüroKI" <post@mail.bueroki.de>');
 });
