@@ -41,6 +41,11 @@ export function safeFilename(name: string, fallback: string): string {
   return clean || fallback;
 }
 
+/** EMAIL_FROM may be a bare address or "Name <address>"; we always need the bare address. */
+export function senderAddress(value: string): string {
+  return (value.match(/<([^<>]+)>/)?.[1] ?? value).trim().replace(/^"|"$/g, "");
+}
+
 /** The request body for Resend's POST /emails. */
 export function resendPayload(email: OutgoingEmail, from: string): Record<string, unknown> {
   const name = (email.senderName ?? "").replace(/["<>\r\n]/g, "").trim();
@@ -52,8 +57,9 @@ export function resendPayload(email: OutgoingEmail, from: string): Record<string
     `Diese E-Mail wurde mit BüroKI im Auftrag von ${name || email.replyTo} versendet.`,
     `Bitte antworten Sie direkt an ${email.replyTo}.`,
   ].join("\n");
+  const address = senderAddress(from);
   return {
-    from: name ? `"${name} via BüroKI" <${from}>` : `BüroKI <${from}>`,
+    from: name ? `"${name} via BüroKI" <${address}>` : `BüroKI <${address}>`,
     to: [email.to],
     bcc: [email.replyTo],
     reply_to: email.replyTo,
@@ -81,11 +87,14 @@ export async function sendWithResend(email: OutgoingEmail, draftId: string): Pro
     headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json", "Idempotency-Key": `draft-${draftId}-${hash}` },
     body: payload,
   });
-  const body = await res.json().catch(() => ({})) as { id?: string; message?: string };
+  const body = await res.json().catch(() => ({})) as { id?: string; message?: string; name?: string };
   if (!res.ok || !body.id) {
-    if (res.status === 422 || res.status === 400) {
-      throw new HttpError(422, `The email could not be sent: ${body.message ?? "invalid email"}`, "email_rejected");
+    console.error(JSON.stringify({ level: "error", fn: "send-email", msg: "resend refused", status: res.status, name: body.name, message: body.message }));
+    // 400/422: bad input; 401/403: wrong key or a sender domain that is not verified in Resend.
+    if ([400, 401, 403, 422].includes(res.status)) {
+      throw new HttpError(422, `The email could not be sent: ${body.message ?? `email service answered ${res.status}`}`, "email_rejected");
     }
+    if (res.status === 429) throw new HttpError(429, "Too many emails right now. Please try again in a minute.", "busy");
     throw new HttpError(502, "The email service is unavailable right now. Please try again.", "upstream");
   }
   return body.id;
