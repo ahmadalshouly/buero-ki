@@ -1,6 +1,5 @@
 import "@/lib/i18n";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
-import * as Notifications from "expo-notifications";
 import { router, Stack } from "expo-router";
 import { LocaleDirContext } from "expo-router/react-navigation";
 import { StatusBar } from "expo-status-bar";
@@ -15,6 +14,7 @@ import { useRtl } from "@/lib/direction";
 import { friendlyError } from "@/lib/errorText";
 import { SCRIPT_FONTS, scriptFont, setScriptFontsReady } from "@/lib/fonts";
 import { LockGate } from "@/lib/lock";
+import { Notifications } from "@/lib/notifications";
 import { usePrefs } from "@/lib/prefs";
 import { persister, queryClient, shouldPersist, useTasks } from "@/lib/queries";
 import { syncReminders } from "@/lib/reminders";
@@ -35,7 +35,7 @@ function ReminderSync() {
   }, [tasks, reminders, t]);
 
   useEffect(() => {
-    if (Platform.OS === "web") return;
+    if (!Notifications) return;
     const sub = Notifications.addNotificationResponseReceivedListener((res) => {
       const caseId = res.notification.request.content.data?.caseId;
       if (typeof caseId === "string") router.push(`/case/${caseId}`);

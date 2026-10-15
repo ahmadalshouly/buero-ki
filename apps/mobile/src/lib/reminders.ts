@@ -1,10 +1,10 @@
 // Local deadline reminders. They are scheduled on the device, so they work
 // offline and no letter content leaves the phone for push delivery.
-import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
+import { Notifications } from "./notifications";
 import type { Task } from "./types";
 
-export const supported = Platform.OS === "ios" || Platform.OS === "android";
+export const supported = Notifications !== null;
 const MAX_SCHEDULED = 60; // iOS keeps at most 64 pending local notifications.
 const CHANNEL = "deadlines";
 
@@ -31,7 +31,7 @@ export function planReminders(tasks: Task[], now = new Date()): PlannedReminder[
 }
 
 export async function ensurePermission(): Promise<boolean> {
-  if (!supported) return false;
+  if (!Notifications) return false;
   const current = await Notifications.getPermissionsAsync();
   if (current.granted) return true;
   if (!current.canAskAgain) return false;
@@ -45,7 +45,7 @@ export async function syncReminders(
   enabled: boolean,
   text: (r: PlannedReminder) => { title: string; body: string },
 ): Promise<void> {
-  if (!supported) return;
+  if (!Notifications) return;
   const plan = enabled ? planReminders(tasks) : [];
   const signature = plan.map((r) => `${r.taskId}:${r.kind}:${r.date.getTime()}:${r.title}`).join("|");
   if (signature === lastSignature) return;
@@ -69,7 +69,7 @@ export async function syncReminders(
   }
 }
 
-if (supported) {
+if (Notifications) {
   Notifications.setNotificationHandler({
     handleNotification: async () => ({
       shouldShowBanner: true,
