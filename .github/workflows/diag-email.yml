@@ -20,8 +20,7 @@ jobs:
             | sed -E 's/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/<email>/g' | cut -c1-600 | while IFS= read -r l; do echo "::warning::$l"; done
             echo "::warning::----"
           }
-          q "select source_name, count() as n from logs group by source_name"
-          q "select timestamp, source_name, event_message from logs where source_name = 'function_logs' order by timestamp desc limit 40"
-          q "select timestamp, source_name, event_message, log_attributes['response.status_code'] as st from logs where source_name = 'function_edge_logs' and event_message like '%send-email%' order by timestamp desc limit 10"
+          q "select * from logs order by timestamp desc limit 2"
+          q "select * from logs where event_message like '%send-email%' or event_message like '%error%' order by timestamp desc limit 30"
           echo "function secrets present:"
           curl -sS "https://api.supabase.com/v1/projects/$REF/secrets" -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" | jq -r '.[].name' | grep -E 'RESEND|EMAIL' | sed 's/^/::warning::secret /' || echo "::warning::no email secrets"
