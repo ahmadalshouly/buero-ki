@@ -12,6 +12,10 @@ Deno.test("only one plain email address is accepted as recipient", () => {
 Deno.test("open [fields] are found so half-finished emails are not sent", () => {
   assertEquals(openPlaceholders("Sehr geehrte [Name],\nAz. [Aktenzeichen] und [Name]"), ["[Name]", "[Aktenzeichen]"]);
   assertEquals(openPlaceholders("Mit freundlichen Grüßen\nAmina"), []);
+  // A letter's signature line is not a field to fill in, and is left out of the email.
+  assertEquals(openPlaceholders("Mit freundlichen Grüßen\n\n[Unterschrift]\n\nAmina"), []);
+  const sent = resendPayload({ to: "a@b.de", subject: "S", body: "Grüße\n\n[Unterschrift]\n\nAmina", senderName: "Amina", replyTo: "c@d.de" }, "x@y.de");
+  assertEquals(String(sent.text).startsWith("Grüße\n\nAmina\n"), true);
 });
 
 Deno.test("the email goes from BüroKI, replies and a copy go to the person", () => {

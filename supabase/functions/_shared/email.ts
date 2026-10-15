@@ -11,9 +11,16 @@ export function isEmailAddress(text: string): boolean {
   return text.length <= 254 && ADDRESS.test(text);
 }
 
-/** [Square bracket] fields the agent left for the person to fill in. */
+const SIGNATURE_LINE = /^[ \t]*\[\s*unterschrift\s*\][ \t]*$/gim;
+
+/** [Square bracket] fields the agent left for the person to fill in. The signature line is not one: an email has no signature. */
 export function openPlaceholders(text: string): string[] {
-  return [...new Set(text.match(/\[[^\]\n]{1,60}\]/g) ?? [])];
+  return [...new Set(text.replace(SIGNATURE_LINE, "").match(/\[[^\]\n]{1,60}\]/g) ?? [])];
+}
+
+/** Drops the "[Unterschrift]" line letters have, which means nothing in an email. */
+export function withoutSignatureLine(text: string): string {
+  return text.replace(SIGNATURE_LINE, "").replace(/\n{3,}/g, "\n\n");
 }
 
 /** At most this many files, and this much in total, so the email stays under mail servers' size limits. */
@@ -64,7 +71,7 @@ export function resendPayload(email: OutgoingEmail, from: string): Record<string
     bcc: [email.replyTo],
     reply_to: email.replyTo,
     subject: email.subject.replace(/[\r\n]+/g, " ").trim(),
-    text: `${email.body.trim()}\n${footer}`,
+    text: `${withoutSignatureLine(email.body).trim()}\n${footer}`,
     ...(files.length ? { attachments: files } : {}),
   };
 }
