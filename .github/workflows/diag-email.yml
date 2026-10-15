@@ -1,0 +1,26 @@
+name: Diagnose send-email (temporary)
+on:
+  push:
+    branches: [claude/project-thread-8m9dyz]
+jobs:
+  logs:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      REF: ${{ vars.SUPABASE_PROJECT_REF || 'tvkpaoqnvjpjfaeqdzhr' }}
+    steps:
+      - name: Recent send-email logs
+        run: |
+          start=$(date -u -d '-3 hours' +%Y-%m-%dT%H:%M:%SZ); end=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          q() {
+            curl -sS -G "https://api.supabase.com/v1/projects/$REF/analytics/endpoints/logs.all" \
+              -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+              --data-urlencode "sql=$1" --data-urlencode "iso_timestamp_start=$start" --data-urlencode "iso_timestamp_end=$end" \
+            | jq -r '(.error // empty | tostring), (.result[]? | "\(.timestamp) \(.event_message)")' \
+            | sed -E 's/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/<email>/g' | cut -c1-600
+            echo ----
+          }
+          q "select timestamp, event_message from function_logs where event_message like '%send-email%' or event_message like '%rror%' order by timestamp desc limit 40"
+          q "select timestamp, event_message from function_edge_logs where event_message like '%send-email%' order by timestamp desc limit 15"
+          echo "function secrets present:"
+          curl -sS "https://api.supabase.com/v1/projects/$REF/secrets" -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" | jq -r '.[].name' | grep -E 'RESEND|EMAIL' || echo none
