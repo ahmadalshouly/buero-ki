@@ -5,7 +5,7 @@
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2.117.3";
 import { z } from "npm:zod@4.6.7";
 import { generateJson, languageName } from "../_shared/ai.ts";
-import { type CaseContext, loadCaseContext, renderCase, today } from "../_shared/case.ts";
+import { type CaseContext, isoDateOrNull, loadCaseContext, renderCase, today } from "../_shared/case.ts";
 import { isEmailAddress } from "../_shared/email.ts";
 import { type Ctx, handler, HttpError } from "../_shared/http.ts";
 import { enforceLimit, recordUsage } from "../_shared/limits.ts";
@@ -94,6 +94,9 @@ Today's date is ${today()}. Use it to calculate deadlines that are given as a pe
     // The app offers this address when the person sends an email; they can still change it.
     const email = analysis.sender_email?.trim().toLowerCase() ?? "";
     analysis.sender_email = isEmailAddress(email) ? email : null;
+    // Dates go into date columns, so anything that is not a real date is dropped.
+    analysis.document_date = isoDateOrNull(analysis.document_date);
+    for (const a of analysis.actions) a.due_date = isoDateOrNull(a.due_date);
 
     if (analysis.belongs_to === "someone_else") return await decline(ctx, doc.id, analysis.addressed_to);
     if (analysis.belongs_to === "unsure") {
