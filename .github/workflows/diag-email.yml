@@ -13,14 +13,14 @@ jobs:
         run: |
           start=$(date -u -d '-3 hours' +%Y-%m-%dT%H:%M:%SZ); end=$(date -u +%Y-%m-%dT%H:%M:%SZ)
           q() {
-            curl -sS -G "https://api.supabase.com/v1/projects/$REF/analytics/endpoints/logs.all" \
+            curl -sS -G "https://api.supabase.com/v1/projects/$REF/analytics/endpoints/logs" \
               -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
               --data-urlencode "sql=$1" --data-urlencode "iso_timestamp_start=$start" --data-urlencode "iso_timestamp_end=$end" \
             | jq -r '(.error // empty | tostring), (.result[]? | "\(.timestamp) \(.event_message)")' \
             | sed -E 's/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/<email>/g' | cut -c1-600 | while IFS= read -r l; do echo "::warning::$l"; done
             echo "::warning::----"
           }
-          raw=$(curl -sS -G "https://api.supabase.com/v1/projects/$REF/analytics/endpoints/logs.all" -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+          raw=$(curl -sS -G "https://api.supabase.com/v1/projects/$REF/analytics/endpoints/logs" -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
             --data-urlencode "sql=select timestamp, event_message from function_logs order by timestamp desc limit 5" \
             --data-urlencode "iso_timestamp_start=$start" --data-urlencode "iso_timestamp_end=$end")
           echo "::warning::raw $(echo "$raw" | head -c 900 | sed -E 's/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/<email>/g' | tr '\n' ' ')"
