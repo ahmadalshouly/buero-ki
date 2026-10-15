@@ -16,6 +16,10 @@ export function friendlyError(error: unknown, t: TFunction): string {
   if (error instanceof ApiError && (TRANSLATED as readonly string[]).includes(error.code)) {
     return t(`errors.${error.code as (typeof TRANSLATED)[number]}`);
   }
+  if (error instanceof ApiError && error.code === "placeholders") {
+    const fields = [...new Set(error.message.match(/\[[^\]\n]{1,60}\]/g) ?? [])];
+    return t("draft.sendFillFirst", { fields: fields.slice(0, 4).join(", ") });
+  }
   if (error instanceof Error && error.message) {
     if (i18n.language === "en" || (error instanceof ApiError && PASSED_THROUGH.includes(error.code))) return error.message;
   }

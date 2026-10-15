@@ -12,6 +12,10 @@ describe("error text", () => {
     expect(friendlyError(new ApiError("The email was not sent: boom", "send_failed"), t)).toBe("The email was not sent: boom");
   });
 
+  it("names the fields still to fill in", () => {
+    expect(friendlyError(new ApiError("Fill in [Datum], [Aktenzeichen] before sending.", "placeholders"), t)).toBe("draft.sendFillFirst");
+  });
+
   it("adds a short reference to unexpected errors", () => {
     expect(friendlyError(new ApiError("Something went wrong on our side.", "internal" as never, "1234abcd-ffff"), t))
       .toBe("Something went wrong (internal · 1234abcd)");
