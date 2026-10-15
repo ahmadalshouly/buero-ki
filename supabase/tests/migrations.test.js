@@ -170,6 +170,9 @@ test("sent emails are counted per person and cannot be erased or faked for other
     /row-level security/,
   );
   await assert.rejects(as(AMINA, "update public.drafts set sent_via = 'pigeon' where id = $1", [draft.id]), /check constraint/);
+  await as(AMINA, `update public.drafts set attachments = '[{"path": "a/b/x.pdf", "name": "x.pdf", "mime": "application/pdf", "own": true}]' where id = $1`, [draft.id]);
+  const tooMany = JSON.stringify(Array.from({ length: 11 }, (_, i) => ({ path: `a/${i}.pdf` })));
+  await assert.rejects(as(AMINA, "update public.drafts set attachments = $2::jsonb where id = $1", [draft.id, tooMany]), /check constraint/);
   await as(AMINA, "update public.profiles set contact_email = 'amina@example.org' where id = $1", [AMINA]);
   await assert.rejects(as(AMINA, "update public.profiles set contact_email = 'not an email' where id = $1", [AMINA]), /check constraint/);
 });

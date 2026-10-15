@@ -8,7 +8,7 @@ import { ApiError } from "./errors";
 import i18n from "./i18n";
 import { authStorage } from "./storage";
 import type {
-  Case, CaseDocument, CaseForm, CaseStatus, Draft, FormField, HelpKind, HelpSpecialty, HelpWhere, NewCase, PickedFile, Task, UserFact,
+  Case, CaseDocument, CaseForm, CaseStatus, Draft, DraftAttachment, FormField, HelpKind, HelpSpecialty, HelpWhere, NewCase, PickedFile, Task, UserFact,
 } from "./types";
 
 export const keys = {
@@ -342,6 +342,9 @@ export function useDraftFiles(draft: Draft | undefined) {
     savePdf: useMutation({ mutationFn: (pdf: PickedFile) => api.saveDraftPdf(draft!.id, pdf), onSuccess: put }),
     addProof: useMutation({ mutationFn: (photos: PickedFile[]) => api.addDraftProof(draft!.id, photos), onSuccess: put }),
     removeProof: useMutation({ mutationFn: (path: string) => api.removeDraftProof(draft!.id, path), onSuccess: put }),
+    attach: useMutation({ mutationFn: (picked: PickedFile[]) => api.addDraftAttachments(draft!.id, picked), onSuccess: put }),
+    attachStored: useMutation({ mutationFn: (stored: DraftAttachment[]) => api.attachStoredFiles(draft!.id, stored), onSuccess: put }),
+    detach: useMutation({ mutationFn: (path: string) => api.removeDraftAttachment(draft!.id, path), onSuccess: put }),
   };
 }
 

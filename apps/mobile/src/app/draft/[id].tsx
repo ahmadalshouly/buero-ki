@@ -12,8 +12,8 @@ import { LTR_INPUT, useLtrText } from "@/lib/direction";
 import { ApiError } from "@/lib/errors";
 import { friendlyError } from "@/lib/errorText";
 import { formatDate } from "@/lib/i18n";
-import { isEmailAddress, letterFileName, officeEmail, placeholders } from "@/lib/letter";
-import { choosePhotos, PermissionDenied, takePhoto } from "@/lib/pick";
+import { isEmailAddress, letterAttachments, letterFileName, officeEmail, placeholders } from "@/lib/letter";
+import { choosePdf, choosePhotos, PermissionDenied, takePhoto } from "@/lib/pick";
 import { exportLetterPdf } from "@/lib/printLetter";
 import {
   errorMessage, useCase, useDeleteDraft, useDocuments, useDraft, useDraftFiles, useFileUrls, useSendEmail, useSetDraftStatus, useUpdateDraft,
@@ -21,6 +21,7 @@ import {
 import { downloadPdf } from "@/lib/savePdf";
 import { useMe, useSession } from "@/lib/session";
 import { radius, space, useColors } from "@/lib/theme";
+import type { CaseDocument } from "@/lib/types";
 
 export default function DraftScreen() {
   const ltrText = useLtrText();
@@ -47,9 +48,13 @@ export default function DraftScreen() {
   const [menu, setMenu] = useState(false);
   const [printing, setPrinting] = useState(false);
   const [askProof, setAskProof] = useState(false);
+  const [pickLetter, setPickLetter] = useState(false);
   const files = useDraftFiles(draft);
   const proofPaths = draft?.proof_paths ?? [];
   const proofUrls = useFileUrls(proofPaths);
+
+  const attachments = draft?.attachments ?? [];
+  const caseLetters = (letters.data ?? []).filter((d) => d.status === "ready");
 
   if (!draft) {
     return <Screen>{query.error ? <ErrorBox message={errorMessage(query.error)} onRetry={() => query.refetch()} /> : <SkeletonList rows={3} />}</Screen>;
@@ -167,6 +172,21 @@ export default function DraftScreen() {
     }
   }
 
+  async function attach(source: "camera" | "library" | "pdf") {
+    try {
+      const picked = source === "camera" ? await takePhoto() : source === "library" ? await choosePhotos(5) : await choosePdf();
+      if (!picked.length) return;
+      files.attach.mutate(picked, { onError: (e) => toast(friendlyError(e, t), "error") });
+    } catch (e) {
+      toast(e instanceof PermissionDenied ? t("case.cameraDenied") : friendlyError(e, t), "error");
+    }
+  }
+
+  function attachLetter(doc: CaseDocument) {
+    setPickLetter(false);
+    files.attachStored.mutate(letterAttachments(doc), { onError: (e) => toast(friendlyError(e, t), "error") });
+  }
+
   async function removeProof(path: string) {
     if (!(await confirm({ title: t("draft.proofRemoveConfirm"), confirm: t("common.delete"), destructive: true }))) return;
     files.removeProof.mutate(path, { onError: (e) => toast(friendlyError(e, t), "error") });
@@ -256,6 +276,29 @@ export default function DraftScreen() {
               <Button small variant="secondary" title={t("draft.open")} onPress={openSavedPdf} />
             </Card>
           )}
+          {draft.kind === "email" && (!sent || attachments.length > 0) && (
+            <Section title={t("draft.attachments")}>
+              {attachments.length === 0 && <Muted>{t("draft.attachmentsEmpty")}</Muted>}
+              {attachments.map((a) => (
+                <Card key={a.path} style={{ flexDirection: "row", alignItems: "center", gap: space(3) }}>
+                  <Ionicons name={a.mime === "application/pdf" ? "document-text-outline" : "image-outline"} size={22} color={c.accent} />
+                  <Txt style={[{ flex: 1 }, ltrText]} numberOfLines={1}>{a.name}</Txt>
+                  {!sent && <IconButton icon="close-circle" label={t("common.delete")} onPress={() => files.detach.mutate(a.path)} color={c.ink} />}
+                </Card>
+              ))}
+              {!sent && attachments.length < 10 && (
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: space(2) }}>
+                  <Button small variant="secondary" icon="camera-outline" title={t("case.takePhoto")} onPress={() => attach("camera")} />
+                  <Button small variant="secondary" icon="images-outline" title={t("case.choosePhoto")} onPress={() => attach("library")} />
+                  <Button small variant="secondary" icon="document-outline" title={t("draft.attachPdf")} onPress={() => attach("pdf")} />
+                  {caseLetters.length > 0 && (
+                    <Button small variant="secondary" icon="mail-open-outline" title={t("draft.attachLetter")} onPress={() => setPickLetter(true)} />
+                  )}
+                </View>
+              )}
+              {(files.attach.isPending || files.attachStored.isPending) && <Muted>{t("draft.attaching")}</Muted>}
+            </Section>
+          )}
           {draft.kind === "email" && !sent && <Button icon="paper-plane" title={t("draft.sendBueroki")} onPress={startSend} />}
           {draft.kind === "email" && <Button variant="secondary" icon="mail-outline" title={t("draft.sendEmail")} onPress={openEmail} />}
           {!sent && (
@@ -332,10 +375,19 @@ export default function DraftScreen() {
           hint={t("draft.sendReplies")}
           error={replyTo.trim() && !isEmailAddress(replyTo.trim()) ? t("draft.sendInvalid") : null}
         />
+        {attachments.length > 0 && <Muted>{t("draft.attachmentsCount", { count: attachments.length })}</Muted>}
         {send.error && <ErrorBox message={errorMessage(send.error)} />}
         <Button icon="paper-plane" title={t("draft.sendNow")} onPress={sendNow} loading={send.isPending}
           disabled={!isEmailAddress(to.trim()) || !isEmailAddress(replyTo.trim()) || send.isPending} />
         <Button variant="secondary" title={t("common.cancel")} onPress={() => setSending(false)} />
+      </Sheet>
+
+      <Sheet visible={pickLetter} onClose={() => setPickLetter(false)} title={t("draft.attachLetter")}>
+        {caseLetters.map((doc) => (
+          <Button key={doc.id} variant="secondary" icon="document-text-outline" title={doc.title_de ?? doc.file_name ?? t("draft.letter")}
+            onPress={() => attachLetter(doc)} />
+        ))}
+        <Button variant="ghost" title={t("common.cancel")} onPress={() => setPickLetter(false)} />
       </Sheet>
 
       <Sheet visible={askProof} onClose={() => setAskProof(false)} title={t("draft.proofAskTitle")}>

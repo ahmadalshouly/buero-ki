@@ -1,8 +1,44 @@
 // Sends an email draft to an office on the person's behalf, after they confirmed it in the app.
 // Only the saved draft is sent, exactly as the person last saw it.
 import { z } from "npm:zod@4.6.7";
-import { DAILY_EMAIL_LIMITS, isEmailAddress, openPlaceholders, sendWithResend } from "../_shared/email.ts";
+import { encodeBase64 } from "jsr:@std/encoding@1/base64";
+import type { SupabaseClient } from "npm:@supabase/supabase-js@2.117.3";
+import {
+  type Attachment, DAILY_EMAIL_LIMITS, isEmailAddress, MAX_ATTACHMENT_BYTES, MAX_ATTACHMENTS, openPlaceholders, safeFilename,
+  sendWithResend,
+} from "../_shared/email.ts";
 import { handler, HttpError } from "../_shared/http.ts";
+
+interface StoredAttachment {
+  path: string;
+  name: string;
+}
+
+/** Downloads the draft's files as the person (storage rules apply) and checks the size limits. */
+async function loadAttachments(supabase: SupabaseClient, userId: string, stored: StoredAttachment[]): Promise<Attachment[]> {
+  if (stored.length > MAX_ATTACHMENTS) {
+    throw new HttpError(413, `Please attach at most ${MAX_ATTACHMENTS} files.`, "too_large");
+  }
+  let total = 0;
+  const out: Attachment[] = [];
+  for (const [i, file] of stored.entries()) {
+    if (typeof file?.path !== "string" || !file.path.startsWith(`${userId}/`)) {
+      throw new HttpError(400, "An attachment could not be found. Remove it and add it again.", "input");
+    }
+    const { data, error } = await supabase.storage.from("documents").download(file.path);
+    if (error || !data) throw new HttpError(404, "An attachment could not be found. Remove it and add it again.", "not_found");
+    const bytes = new Uint8Array(await data.arrayBuffer());
+    total += bytes.byteLength;
+    if (total > MAX_ATTACHMENT_BYTES) {
+      throw new HttpError(413, "The attachments are too large together (15 MB at most). Remove some and try again.", "too_large");
+    }
+    const ext = file.path.split(".").pop() ?? "pdf";
+    const fallback = `Anlage-${i + 1}.${ext}`;
+    const name = safeFilename(String(file.name ?? ""), fallback);
+    out.push({ filename: name.toLowerCase().endsWith(`.${ext}`) ? name : `${name}.${ext}`, content: encodeBase64(bytes) });
+  }
+  return out;
+}
 
 const Input = z.strictObject({
   draft_id: z.uuid(),
@@ -19,7 +55,7 @@ Deno.serve(handler("send-email", Input, async (ctx) => {
   if (!replyTo) throw new HttpError(400, "Please enter your email address for replies.", "input");
 
   const { data: draft } = await supabase.from("drafts")
-    .select("id, case_id, kind, subject, body_de, status").eq("id", input.draft_id).single();
+    .select("id, case_id, kind, subject, body_de, status, attachments").eq("id", input.draft_id).single();
   if (!draft) throw new HttpError(404, "Draft not found", "not_found");
   if (draft.kind !== "email") throw new HttpError(400, "Only email drafts can be sent by email.", "input");
   if (draft.status === "sent") throw new HttpError(409, "This email was already sent.", "already_sent");
@@ -35,14 +71,17 @@ Deno.serve(handler("send-email", Input, async (ctx) => {
     throw new HttpError(429, `You reached today's limit of ${limit} emails. It resets within 24 hours.`, "limit");
   }
 
+  const attachments = await loadAttachments(supabase, ctx.userId, (draft.attachments ?? []) as StoredAttachment[]);
+
   const providerId = await sendWithResend({
     to: input.to,
     subject: draft.subject,
     body: draft.body_de,
     senderName: profile.full_name,
     replyTo,
-  }, `draft-${draft.id}`);
-  ctx.log("email sent", { draftId: draft.id, providerId });
+    attachments,
+  }, draft.id);
+  ctx.log("email sent", { draftId: draft.id, providerId, attachments: attachments.length });
 
   if (replyTo !== profile.contact_email) {
     const { error } = await supabase.from("profiles").update({ contact_email: replyTo }).eq("id", ctx.userId);

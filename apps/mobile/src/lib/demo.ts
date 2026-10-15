@@ -591,6 +591,22 @@ Mit freundlichen Grüßen
     d.proof_paths = [...(d.proof_paths ?? []), ...photos.map((p) => p.uri)];
     return { ...d };
   },
+  async addDraftAttachments(key, picked) {
+    const d = find(state.drafts, key);
+    d.attachments = [...(d.attachments ?? []), ...picked.map((p) => ({ path: p.uri, name: p.name, mime: p.mimeType, own: true }))];
+    return { ...d };
+  },
+  async attachStoredFiles(key, stored) {
+    const d = find(state.drafts, key);
+    const have = new Set((d.attachments ?? []).map((a) => a.path));
+    d.attachments = [...(d.attachments ?? []), ...stored.filter((a) => !have.has(a.path))];
+    return { ...d };
+  },
+  async removeDraftAttachment(key, path) {
+    const d = find(state.drafts, key);
+    d.attachments = (d.attachments ?? []).filter((a) => a.path !== path);
+    return { ...d };
+  },
   async removeDraftProof(key, path) {
     const d = find(state.drafts, key);
     d.proof_paths = (d.proof_paths ?? []).filter((p) => p !== path);
