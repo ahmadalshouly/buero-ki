@@ -64,6 +64,9 @@ function RootStack() {
     );
   }
   const onboarded = !!profile?.onboarded_at;
+  // Where a guarded route sends people. Without this, expo-router falls back to the
+  // first open route, which can be the old "auth" redirect, and the two bounce forever.
+  const home = !signedIn ? "/sign-in" : onboarded ? "/" : "/onboarding";
 
   return (
     <>
@@ -81,7 +84,7 @@ function RootStack() {
           contentStyle: { backgroundColor: c.bg },
         }}
       >
-        <Stack.Protected guard={signedIn && onboarded}>
+        <Stack.Protected guard={signedIn && onboarded} redirectTo={home}>
           <Stack.Screen name="(tabs)" options={{ headerShown: false, title: "BüroKI" }} />
           <Stack.Screen name="search" options={{ title: t("search.title") }} />
           <Stack.Screen name="memory" options={{ title: t("memory.title") }} />
@@ -97,10 +100,10 @@ function RootStack() {
           <Stack.Screen name="form/[id]" options={{ title: t("form.title") }} />
           <Stack.Screen name="help/[kind]" options={{ title: t("help.title") }} />
         </Stack.Protected>
-        <Stack.Protected guard={signedIn && !onboarded}>
+        <Stack.Protected guard={signedIn && !onboarded} redirectTo={home}>
           <Stack.Screen name="onboarding" options={{ headerShown: false }} />
         </Stack.Protected>
-        <Stack.Protected guard={!signedIn}>
+        <Stack.Protected guard={!signedIn} redirectTo={home}>
           <Stack.Screen name="sign-in" options={{ headerShown: false }} />
         </Stack.Protected>
         <Stack.Screen name="auth" options={{ headerShown: false }} />
