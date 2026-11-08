@@ -9,3 +9,10 @@ jest.mock("./src/lib/storage", () => {
     },
   };
 });
+
+// Since SDK 58 expo-notifications subscribes a default handler on import, and
+// jest-expo's mocked listener has no remove(), so replacing the handler throws.
+jest.mock("expo-notifications", () => ({
+  ...jest.requireActual("expo-notifications"),
+  setNotificationHandler: jest.fn(),
+}));
